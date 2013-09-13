@@ -18,6 +18,7 @@
 package org.apache.drill.exec.physical.base;
 
 import org.apache.drill.exec.physical.config.*;
+import org.apache.drill.exec.physical.config.OrderedPartitionSender;
 
 public abstract class AbstractPhysicalVisitor<T, X, E extends Throwable> implements PhysicalVisitor<T, X, E> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AbstractPhysicalVisitor.class);
@@ -102,6 +103,11 @@ public abstract class AbstractPhysicalVisitor<T, X, E extends Throwable> impleme
 
   @Override
   public T visitHashPartitionSender(HashPartitionSender op, X value) throws E {
+    return visitSender(op, value);
+  }
+
+  @Override
+  public T visitOrderedPartitionSender(OrderedPartitionSender op, X value) throws E {
     return visitSender(op, value);
   }
 
