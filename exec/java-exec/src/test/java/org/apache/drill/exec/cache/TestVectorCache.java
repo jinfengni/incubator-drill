@@ -18,7 +18,6 @@
 package org.apache.drill.exec.cache;
 
 import com.beust.jcommander.internal.Lists;
-import com.hazelcast.core.MultiMap;
 import com.hazelcast.nio.FastByteArrayInputStream;
 import com.hazelcast.nio.FastByteArrayOutputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -77,9 +76,9 @@ public class TestVectorCache {
     VectorWrap newWrap = new VectorWrap();
     newWrap.readData(in);
     */
-    MultiMap<String, VectorWrap> mmap = cache.getMultiMap("testMap");
+    MultiMap<VectorWrap> mmap = cache.getMultiMap(VectorWrap.class);
     mmap.put("vectors", wrap);
-    VectorWrap newWrap = mmap.get("vectors").iterator().next();
+    VectorWrap newWrap = (VectorWrap)mmap.get("vectors").iterator().next();
 
     List<ValueVector> vectors = newWrap.get();
     for (ValueVector vv : vectors) {
