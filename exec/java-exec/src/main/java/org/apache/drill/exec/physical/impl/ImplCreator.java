@@ -36,6 +36,7 @@ import org.apache.drill.exec.physical.impl.partitionsender.PartitionSenderCreato
 import org.apache.drill.exec.physical.impl.project.ProjectBatchCreator;
 import org.apache.drill.exec.physical.impl.sort.SortBatchCreator;
 import org.apache.drill.exec.physical.impl.svremover.SVRemoverCreator;
+import org.apache.drill.exec.physical.impl.trace.TraceBatchCreator;
 import org.apache.drill.exec.physical.impl.union.UnionBatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.json.JSONScanBatchCreator;
@@ -70,9 +71,10 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
   private AggBatchCreator abc = new AggBatchCreator();
   private MergeJoinCreator mjc = new MergeJoinCreator();
   private RootExec root = null;
-  
+  private TraceBatchCreator tbc = new TraceBatchCreator();
+
   private ImplCreator(){}
-  
+
   public RootExec getRoot(){
     return root;
   }
@@ -82,6 +84,10 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
     return pbc.getBatch(context, op, getChildren(op, context));
   }
 
+  @Override
+  public RecordBatch visitTrace(Trace op, FragmentContext context) throws ExecutionSetupException {
+    return tbc.getBatch(context, op, getChildren(op, context));
+  }
   @Override
   public RecordBatch visitSubScan(SubScan subScan, FragmentContext context) throws ExecutionSetupException {
     Preconditions.checkNotNull(subScan);
@@ -135,13 +141,13 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
     root = hsc.getRoot(context, op, getChildren(op, context));
     return null;
   }
-  
+
   @Override
   public RecordBatch visitFilter(Filter filter, FragmentContext context) throws ExecutionSetupException {
     return fbc.getBatch(context, filter, getChildren(filter, context));
   }
 
-  
+
   @Override
   public RecordBatch visitStreamingAggregate(StreamingAggregate config, FragmentContext context)
       throws ExecutionSetupException {
