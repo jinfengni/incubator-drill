@@ -109,13 +109,13 @@ public class HazelCache implements DistributedCache {
   
 
   @Override
-  public <V extends DrillSerializable> MultiMap<V> getMultiMap(Class<V> clazz) {
-    return new HCMultiMapImpl(this.instance.getMultiMap(clazz.toString()), clazz);
+  public <V extends DrillSerializable> DistributedMultiMap<V> getMultiMap(Class<V> clazz) {
+    return new HCDistributedMultiMapImpl(this.instance.getMultiMap(clazz.toString()), clazz);
   }
 
   @Override
-  public <V extends DrillSerializable> Map<V> getMap(Class<V> clazz) {
-    return new HCMapImpl(this.instance.getMap(clazz.toString()), clazz);
+  public <V extends DrillSerializable> DistributedMap<V> getMap(Class<V> clazz) {
+    return new HCDistributedMapImpl(this.instance.getMap(clazz.toString()), clazz);
   }
 
   @Override
@@ -123,11 +123,11 @@ public class HazelCache implements DistributedCache {
     return new HCCounterImpl(this.instance.getAtomicNumber(name));
   }
 
-  public static class HCMapImpl<V> implements Map<V> {
+  public static class HCDistributedMapImpl<V> implements DistributedMap<V> {
     private IMap<String, HCDrillSerializableWrapper> m;
     private Class<V> clazz;
 
-    public HCMapImpl(IMap m, Class<V> clazz) {
+    public HCDistributedMapImpl(IMap m, Class<V> clazz) {
       this.m = m;
       this.clazz = clazz;
     }
@@ -149,11 +149,11 @@ public class HazelCache implements DistributedCache {
     }
   }
 
-  public static class HCMultiMapImpl<V> implements MultiMap<V> {
+  public static class HCDistributedMultiMapImpl<V> implements DistributedMultiMap<V> {
     private com.hazelcast.core.MultiMap<String, HCDrillSerializableWrapper> mmap;
     private Class<V> clazz;
 
-    public HCMultiMapImpl(com.hazelcast.core.MultiMap mmap, Class<V> clazz) {
+    public HCDistributedMultiMapImpl(com.hazelcast.core.MultiMap mmap, Class<V> clazz) {
       this.mmap = mmap;
       this.clazz = clazz;
     }

@@ -38,16 +38,33 @@ public class OrderedPartitionExchange extends AbstractExchange {
 
   private final List<OrderDef> orderings;
   private final FieldReference ref;
+  private int recordsToSample = 10000; // How many records must be received before analyzing
+  private int samplingFactor = 10; // Will collect SAMPLING_FACTOR * number of partitions to send to distributed cache
+  private float completionFactor = .75f; // What fraction of fragments must be completed before attempting to build partition table
 
   //ephemeral for setup tasks.
   private List<DrillbitEndpoint> senderLocations;
   private List<DrillbitEndpoint> receiverLocations;
 
+  /*
   @JsonCreator
   public OrderedPartitionExchange(@JsonProperty("orderings") List<OrderDef> orderings, @JsonProperty("ref") FieldReference ref, @JsonProperty("child") PhysicalOperator child) {
     super(child);
     this.orderings = orderings;
     this.ref = ref;
+  }
+  */
+
+  @JsonCreator
+  public OrderedPartitionExchange(@JsonProperty("orderings") List<OrderDef> orderings, @JsonProperty("ref") FieldReference ref,
+                                  @JsonProperty("child") PhysicalOperator child, @JsonProperty("recordsToSample") Integer recordsToSample,
+                                  @JsonProperty("samplingFactor") Integer samplingFactor, @JsonProperty("completionFactor") Float completionFactor) {
+    super(child);
+    this.orderings = orderings;
+    this.ref = ref;
+    if (recordsToSample != null) this.recordsToSample = recordsToSample;
+    if (samplingFactor != null) this.samplingFactor = samplingFactor;
+    if (completionFactor != null) this.completionFactor = completionFactor;
   }
 
   @Override
@@ -68,7 +85,8 @@ public class OrderedPartitionExchange extends AbstractExchange {
 
   @Override
   public Sender getSender(int minorFragmentId, PhysicalOperator child) {
-    return new OrderedPartitionSender(orderings, ref, child, receiverLocations, receiverMajorFragmentId, senderLocations.size());
+    return new OrderedPartitionSender(orderings, ref, child, receiverLocations, receiverMajorFragmentId, senderLocations.size(), recordsToSample,
+            samplingFactor, completionFactor);
   }
 
   @Override
@@ -78,7 +96,7 @@ public class OrderedPartitionExchange extends AbstractExchange {
 
   @Override
   protected PhysicalOperator getNewWithChild(PhysicalOperator child) {
-    return new OrderedPartitionExchange(orderings, ref, child);
+    return new OrderedPartitionExchange(orderings, ref, child, recordsToSample, samplingFactor, completionFactor);
   }
 
   @Override

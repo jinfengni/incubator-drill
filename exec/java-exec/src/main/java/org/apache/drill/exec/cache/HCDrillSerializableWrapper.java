@@ -19,9 +19,7 @@ package org.apache.drill.exec.cache;
 
 import com.hazelcast.nio.DataSerializable;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
+import java.io.*;
 
 /**
  * Wraps a DrillSerializable object. Objects of this class can be put in the HazelCast implementation of Distributed Cache
@@ -36,12 +34,12 @@ public abstract class HCDrillSerializableWrapper implements DataSerializable {
     this.obj = obj;
   }
 
-  public void readData(DataInput arg0) throws IOException {
-    obj.read(arg0);
+  public void readData(DataInput in) throws IOException {
+    obj.read(in);
   }
 
-  public void writeData(DataOutput arg0) throws IOException {
-    obj.write(arg0);
+  public void writeData(DataOutput out) throws IOException {
+    obj.write(out);
   }
 
   public DrillSerializable get() {
@@ -56,8 +54,8 @@ public abstract class HCDrillSerializableWrapper implements DataSerializable {
    * @return
    */
   public static HCDrillSerializableWrapper getWrapper(DrillSerializable value, Class clazz) {
-    if (clazz.equals(VectorWrap.class)) {
-      return new HCSerializableWrapperClasses.VectorWrapSerializable(value);
+    if (clazz.equals(VectorContainerSerializable.class)) {
+      return new HCSerializableWrapperClasses.HCVectorListSerializable(value);
     } else {
       throw new UnsupportedOperationException("HCDrillSerializableWrapper not implemented for " + clazz);
     }

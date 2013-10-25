@@ -17,12 +17,10 @@
  */
 package org.apache.drill.exec.cache;
 
-import java.util.concurrent.TimeUnit;
+import java.util.Collection;
 
-public interface Map<V> {
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Map.class);
-  public DrillSerializable get(String key);
+public interface DistributedMultiMap<V> {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DistributedMultiMap.class);
+  public Collection<DrillSerializable> get(String key);
   public void put(String key, DrillSerializable value);
-  public void putIfAbsent(String key, DrillSerializable value);
-  public void putIfAbsent(String key, DrillSerializable value, long ttl, TimeUnit timeUnit);
 }

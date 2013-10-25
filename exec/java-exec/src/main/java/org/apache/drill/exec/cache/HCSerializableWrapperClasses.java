@@ -18,13 +18,13 @@
 package org.apache.drill.exec.cache;
 
 public class HCSerializableWrapperClasses {
-  public static class VectorWrapSerializable extends HCDrillSerializableWrapper {
+  public static class HCVectorListSerializable extends HCDrillSerializableWrapper {
 
-    public VectorWrapSerializable() {
-      super(new VectorWrap());
+    public HCVectorListSerializable() {
+      super(new VectorContainerSerializable());
     }
 
-    public VectorWrapSerializable(DrillSerializable obj) {
+    public HCVectorListSerializable(DrillSerializable obj) {
       super(obj);
     }
   }

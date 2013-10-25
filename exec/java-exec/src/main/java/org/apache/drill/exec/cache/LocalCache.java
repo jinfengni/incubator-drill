@@ -17,14 +17,20 @@
  */
 package org.apache.drill.exec.cache;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Lists;
+import com.google.common.io.ByteArrayDataInput;
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
 import org.apache.drill.exec.exception.DrillbitStartupException;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.ExecProtos.PlanFragment;
@@ -35,8 +41,8 @@ public class LocalCache implements DistributedCache {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LocalCache.class);
 
   private volatile Map<FragmentHandle, PlanFragment> handles;
-  private volatile ConcurrentMap<Class, org.apache.drill.exec.cache.Map> maps;
-  private volatile ConcurrentMap<Class, MultiMap> multiMaps;
+  private volatile ConcurrentMap<Class, DistributedMap> maps;
+  private volatile ConcurrentMap<Class, DistributedMultiMap> multiMaps;
   private volatile ConcurrentMap<String, Counter> counters;
   
   @Override
@@ -65,25 +71,25 @@ public class LocalCache implements DistributedCache {
   }
   
   @Override
-  public <V extends DrillSerializable> MultiMap<V> getMultiMap(Class<V> clazz) {
-    MultiMap mmap = multiMaps.get(clazz);
+  public <V extends DrillSerializable> DistributedMultiMap<V> getMultiMap(Class<V> clazz) {
+    DistributedMultiMap mmap = multiMaps.get(clazz);
     if (mmap == null) {
-      multiMaps.putIfAbsent(clazz, new LocalMultiMapImpl<V>());
+      multiMaps.putIfAbsent(clazz, new LocalDistributedMultiMapImpl<V>(clazz));
+      return multiMaps.get(clazz);
     } else {
       return mmap;
     }
-    return multiMaps.get(clazz);
   }
 
   @Override
-  public <V extends DrillSerializable> org.apache.drill.exec.cache.Map<V> getMap(Class<V> clazz) {
-    org.apache.drill.exec.cache.Map m = maps.get(clazz);
+  public <V extends DrillSerializable> DistributedMap<V> getMap(Class<V> clazz) {
+    DistributedMap m = maps.get(clazz);
     if (m == null) {
-      maps.putIfAbsent(clazz, new LocalMapImpl());
+      maps.putIfAbsent(clazz, new LocalDistributedMapImpl(clazz));
+      return maps.get(clazz);
     } else {
       return m;
     }
-    return maps.get(clazz);
   }
 
   @Override
@@ -91,55 +97,85 @@ public class LocalCache implements DistributedCache {
     Counter c = counters.get(name);
     if (c == null) {
       counters.putIfAbsent(name, new LocalCounterImpl());
+      return counters.get(name);
     } else {
       return c;
     }
-    return counters.get(name);
   }
 
-  public static class LocalMultiMapImpl<V> implements MultiMap<V> {
-    private ArrayListMultimap<String, DrillSerializable> mmap;
+  public static ByteArrayDataOutput serialize(DrillSerializable obj) {
+    ByteArrayDataOutput out = ByteStreams.newDataOutput();
+    try {
+      obj.write(out);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return out;
+  }
 
-    public LocalMultiMapImpl() {
+  public static DrillSerializable deserialize(byte[] bytes, Class clazz) {
+    ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
+    try {
+      DrillSerializable obj = (DrillSerializable)clazz.newInstance();
+      obj.read(in);
+      return obj;
+    } catch (InstantiationException | IllegalAccessException | IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static class LocalDistributedMultiMapImpl<V> implements DistributedMultiMap<V> {
+    private ArrayListMultimap<String, ByteArrayDataOutput> mmap;
+    private Class<DrillSerializable> clazz;
+
+    public LocalDistributedMultiMapImpl(Class clazz) {
       mmap = ArrayListMultimap.create();
+      this.clazz = clazz;
     }
 
     @Override
-    public Collection get(String key) {
-      return mmap.get(key);
+    public Collection<DrillSerializable> get(String key) {
+      List<DrillSerializable> list = Lists.newArrayList();
+      for (ByteArrayDataOutput o : mmap.get(key)) {
+        list.add(deserialize(o.toByteArray(), this.clazz));
+      }
+      return list;
     }
 
     @Override
     public void put(String key, DrillSerializable value) {
-      mmap.put(key, value);
+      mmap.put(key, serialize(value));
     }
   }
 
-  public static class LocalMapImpl<V> implements org.apache.drill.exec.cache.Map<V> {
-    private ConcurrentMap<String, DrillSerializable> m;
+  public static class LocalDistributedMapImpl<V> implements DistributedMap<V> {
+    private ConcurrentMap<String, ByteArrayDataOutput> m;
+    private Class<DrillSerializable> clazz;
 
-    public LocalMapImpl() {
+    public LocalDistributedMapImpl(Class clazz) {
       m = Maps.newConcurrentMap();
+      this.clazz = clazz;
     }
 
     @Override
     public DrillSerializable get(String key) {
-      return m.get(key);
+      if (m.get(key) == null) return null;
+      return deserialize(m.get(key).toByteArray(), this.clazz);
     }
 
     @Override
     public void put(String key, DrillSerializable value) {
-      m.put(key, value);
+      m.put(key, serialize(value));
     }
 
     @Override
     public void putIfAbsent(String key, DrillSerializable value) {
-      m.putIfAbsent(key, value);
+      m.putIfAbsent(key, serialize(value));
     }
 
     @Override
     public void putIfAbsent(String key, DrillSerializable value, long ttl, TimeUnit timeUnit) {
-      m.putIfAbsent(key, value);
+      m.putIfAbsent(key, serialize(value));
       logger.warn("Expiration not implemented in local map cache");
     }
   }
