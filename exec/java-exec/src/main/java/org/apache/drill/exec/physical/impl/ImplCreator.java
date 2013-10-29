@@ -40,6 +40,8 @@ import org.apache.drill.exec.physical.impl.svremover.SVRemoverCreator;
 import org.apache.drill.exec.physical.impl.trace.TraceBatchCreator;
 import org.apache.drill.exec.physical.impl.union.UnionBatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.store.internal.DrillInternalWriter;
+import org.apache.drill.exec.store.internal.DrillInternalWriterBatchCreator;
 import org.apache.drill.exec.store.json.JSONScanBatchCreator;
 import org.apache.drill.exec.store.json.JSONSubScan;
 import org.apache.drill.exec.store.mock.MockScanBatchCreator;
@@ -75,6 +77,7 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
   private MergeJoinCreator mjc = new MergeJoinCreator();
   private RootExec root = null;
   private TraceBatchCreator tbc = new TraceBatchCreator();
+  private DrillInternalWriterBatchCreator iwbc = new DrillInternalWriterBatchCreator();
 
   private ImplCreator(){}
 
@@ -91,6 +94,12 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
   public RecordBatch visitTrace(Trace op, FragmentContext context) throws ExecutionSetupException {
     return tbc.getBatch(context, op, getChildren(op, context));
   }
+
+  @Override
+  public RecordBatch visitInternalWriter(DrillInternalWriterConfig op, FragmentContext context) throws ExecutionSetupException {
+    return iwbc.getBatch(context, op, getChildren(op, context));
+  }
+
   @Override
   public RecordBatch visitSubScan(SubScan subScan, FragmentContext context) throws ExecutionSetupException {
     Preconditions.checkNotNull(subScan);

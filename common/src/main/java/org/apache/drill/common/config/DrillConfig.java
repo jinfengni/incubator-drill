@@ -42,6 +42,7 @@ public final class DrillConfig extends NestedConfig{
 
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillConfig.class);
   private final ObjectMapper mapper;
+  private static DrillConfig defaultInstance = DrillConfig.create();
   
   @SuppressWarnings("unchecked")
   private volatile List<Queue<Object>> sinkQueues = new CopyOnWriteArrayList<Queue<Object>>(new Queue[1]);
@@ -70,6 +71,10 @@ public final class DrillConfig extends NestedConfig{
    */
   public static DrillConfig create() {
     return create(null);
+  }
+
+  public static DrillConfig getDefaultInstance() {
+    return DrillConfig.defaultInstance;
   }
   
   /**

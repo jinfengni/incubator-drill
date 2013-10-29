@@ -112,7 +112,8 @@ public class TestTraceOutputDump {
 
         System.out.println("Found log location: " + logLocation);
 
-        String filename = new String(logLocation + "/" + "mock-scan" + "_" + qid + "_" + majorFragmentId + "_" + minorFragmentId);
+//        String filename = new String(logLocation + "/" + "mock-scan" + "_" + qid + "_" + majorFragmentId + "_" + minorFragmentId);
+        String filename = String.format("%s//%s_%d_%d_mock-scan", logLocation, qid, majorFragmentId, minorFragmentId);
 
         System.out.println("File Name: " + filename);
 

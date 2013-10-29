@@ -44,6 +44,11 @@ public abstract class AbstractPhysicalVisitor<T, X, E extends Throwable> impleme
   }
 
   @Override
+  public T visitInternalWriter(DrillInternalWriterConfig config, X value) throws E{
+    return visitOp(config, value);
+  }
+
+  @Override
   public T visitTrace(Trace trace, X value) throws E{
       return visitOp(trace, value);
   }
