@@ -74,7 +74,7 @@ public class TestWriteToDisk {
     VectorContainer container = new VectorContainer();
     container.addCollection(vectorList);
     container.setRecordCount(4);
-    VectorContainerSerializable wrap = new VectorContainerSerializable(container);
+    VectorAccessibleSerializable wrap = new VectorAccessibleSerializable(container, context.getAllocator());
 
     Configuration conf = new Configuration();
     conf.set("fs.name.default", "file:///");
@@ -86,14 +86,8 @@ public class TestWriteToDisk {
     wrap.writeToStream(out);
     out.close();
 
-    /*
-    DistributedMultiMap<VectorContainerSerializable> mmap = cache.getMultiMap(VectorContainerSerializable.class);
-    mmap.put("vectors", wrap);
-    VectorContainerSerializable newWrap = (VectorContainerSerializable)mmap.get("vectors").iterator().next();
-    */
-
     FSDataInputStream in = fs.open(path);
-    VectorContainerSerializable newWrap = new VectorContainerSerializable();
+    VectorAccessibleSerializable newWrap = new VectorAccessibleSerializable(context.getAllocator());
     newWrap.readFromStream(in);
     fs.close();
 

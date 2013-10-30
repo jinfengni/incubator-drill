@@ -46,7 +46,7 @@ public class TestVectorCache {
     Drillbit bit = new Drillbit(config, serviceSet);
     bit.run();
     DrillbitContext context = bit.getContext();
-    HazelCache cache = new HazelCache(config);
+    HazelCache cache = new HazelCache(config, context.getAllocator());
     cache.run();
 
     MaterializedField intField = MaterializedField.create(new SchemaPath("int", ExpressionPosition.UNKNOWN), Types.required(TypeProtos.MinorType.INT));
@@ -68,11 +68,11 @@ public class TestVectorCache {
     VectorContainer container = new VectorContainer();
     container.addCollection(vectorList);
     container.setRecordCount(4);
-    VectorContainerSerializable wrap = new VectorContainerSerializable(container);
+    VectorAccessibleSerializable wrap = new VectorAccessibleSerializable(container, context.getAllocator());
 
-    DistributedMultiMap<VectorContainerSerializable> mmap = cache.getMultiMap(VectorContainerSerializable.class);
+    DistributedMultiMap<VectorAccessibleSerializable> mmap = cache.getMultiMap(VectorAccessibleSerializable.class);
     mmap.put("vectors", wrap);
-    VectorContainerSerializable newWrap = (VectorContainerSerializable)mmap.get("vectors").iterator().next();
+    VectorAccessibleSerializable newWrap = (VectorAccessibleSerializable)mmap.get("vectors").iterator().next();
 
     VectorAccessible newContainer = newWrap.get();
     for (VectorWrapper w : newContainer) {
