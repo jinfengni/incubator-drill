@@ -138,7 +138,8 @@ public class OutgoingRecordBatch implements RecordBatch {
     recordCount = 0;
     for (VectorWrapper<?> v : vectorContainer) {
       logger.debug("Reallocating vv to capacity " + incoming.getRecordCount() + " after flush.");
-      VectorAllocator.getAllocator(v.getValueVector(), v.getValueVector()).alloc(incoming.getRecordCount());
+//      VectorAllocator.getAllocator(v.getValueVector(), v.getValueVector()).alloc(incoming.getRecordCount());
+      VectorAllocator.getAllocator(v.getValueVector(), 50).alloc(incoming.getRecordCount());
     }
     if (!ok) { throw new SchemaChangeException("Flush ended NOT OK!"); }
     return true;
@@ -161,7 +162,8 @@ public class OutgoingRecordBatch implements RecordBatch {
 
       // allocate a new value vector
       ValueVector outgoingVector = TypeHelper.getNewVector(v.getField(), context.getAllocator());
-      VectorAllocator.getAllocator(v.getValueVector(), outgoingVector).alloc(recordCapacity);
+//      VectorAllocator.getAllocator(v.getValueVector(), outgoingVector).alloc(recordCapacity);
+      VectorAllocator.getAllocator(v.getValueVector(), 50).alloc(recordCapacity);
       vectorContainer.add(outgoingVector);
       logger.debug("Reallocating to cap " + recordCapacity + " because of newly init'd vector : " + v.getValueVector());
     }
