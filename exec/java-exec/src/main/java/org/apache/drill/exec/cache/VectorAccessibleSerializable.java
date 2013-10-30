@@ -180,4 +180,8 @@ public class VectorAccessibleSerializable implements DrillSerializable {
   public VectorAccessible get() {
     return va;
   }
+  
+  public SelectionVector2 getSelectionVector2() {
+  	return sv2;
+  }
 }
