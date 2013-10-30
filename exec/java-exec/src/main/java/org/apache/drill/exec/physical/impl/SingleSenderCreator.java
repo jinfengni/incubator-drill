@@ -17,11 +17,14 @@
  */
 package org.apache.drill.exec.physical.impl;
 
+import com.yammer.metrics.MetricRegistry;
+import com.yammer.metrics.Timer;
 import io.netty.buffer.ByteBuf;
 
 import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.exec.metrics.DrillMetrics;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.SingleSender;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
@@ -35,7 +38,6 @@ import org.apache.drill.exec.rpc.bit.BitTunnel;
 
 public class SingleSenderCreator implements RootCreator<SingleSender>{
 
-  @Override
   public RootExec getRoot(FragmentContext context, SingleSender config, List<RecordBatch> children)
       throws ExecutionSetupException {
     assert children != null && children.size() == 1;
@@ -44,7 +46,11 @@ public class SingleSenderCreator implements RootCreator<SingleSender>{
   
   
   private static class SingleSenderRootExec implements RootExec{
+    private final MetricRegistry metrics = DrillMetrics.getInstance();
+    private final String GETTER_TIMER = MetricRegistry.name(SingleSenderRootExec.class, "GetterTimer");
+    private final String SETTER_TIMER = MetricRegistry.name(SingleSenderRootExec.class, "SenderTimer");
     static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(SingleSenderRootExec.class);
+
     private RecordBatch incoming;
     private BitTunnel tunnel;
     private FragmentHandle handle;
@@ -68,23 +74,29 @@ public class SingleSenderCreator implements RootCreator<SingleSender>{
         
         return false;
       }
+      Timer.Context getterContext = metrics.timer(GETTER_TIMER).time();
       IterOutcome out = incoming.next();
+      getterContext.stop();
+      Timer.Context senderContext = metrics.timer(SETTER_TIMER).time();
       logger.debug("Outcome of sender next {}", out);
       switch(out){
       case STOP:
       case NONE:
         FragmentWritableBatch b2 = new FragmentWritableBatch(true, handle.getQueryId(), handle.getMajorFragmentId(), handle.getMinorFragmentId(), recMajor, 0, incoming.getWritableBatch());
         tunnel.sendRecordBatch(new RecordSendFailure(), context, b2);
+        senderContext.stop();
         return false;
 
       case OK_NEW_SCHEMA:
       case OK:
         FragmentWritableBatch batch = new FragmentWritableBatch(false, handle.getQueryId(), handle.getMajorFragmentId(), handle.getMinorFragmentId(), recMajor, 0, incoming.getWritableBatch());
         tunnel.sendRecordBatch(new RecordSendFailure(), context, batch);
+        senderContext.stop();
         return true;
 
       case NOT_YET:
       default:
+        senderContext.stop();
         throw new IllegalStateException();
       }
     }

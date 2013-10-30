@@ -17,12 +17,15 @@
  */
 package org.apache.drill.exec.store.mock;
 
+import com.yammer.metrics.MetricRegistry;
+import com.yammer.metrics.Timer;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.expr.TypeHelper;
+import org.apache.drill.exec.metrics.DrillMetrics;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.impl.OutputMutator;
 import org.apache.drill.exec.record.MaterializedField;
@@ -34,6 +37,8 @@ import org.apache.drill.exec.vector.ValueVector;
 
 public class MockRecordReader implements RecordReader {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MockRecordReader.class);
+  MetricRegistry metrics = DrillMetrics.getInstance();
+  String READER_TIMER = MetricRegistry.name(MockRecordReader.class, "writerTimer");
 
   private OutputMutator output;
   private MockScanEntry config;
@@ -87,6 +92,7 @@ public class MockRecordReader implements RecordReader {
 
   @Override
   public int next() {
+    Timer.Context context = metrics.timer(READER_TIMER).time();
     if(recordsRead >= this.config.getRecords()) return 0;
     
     int recordSetSize = Math.min(batchRecordCount, this.config.getRecords() - recordsRead);
@@ -101,6 +107,7 @@ public class MockRecordReader implements RecordReader {
       m.generateTestData();
       
     }
+    context.stop();
     return recordSetSize;
   }
 

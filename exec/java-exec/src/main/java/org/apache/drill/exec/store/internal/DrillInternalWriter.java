@@ -22,11 +22,12 @@ import com.google.common.io.ByteStreams;
 import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos;
-import org.apache.drill.exec.cache.VectorContainerSerializable;
+import org.apache.drill.exec.cache.VectorAccessibleSerializable;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.DrillInternalWriterConfig;
 import org.apache.drill.exec.record.*;
+import org.apache.drill.exec.vector.BigIntVector;
 import org.apache.drill.exec.vector.IntVector;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -36,14 +37,19 @@ import org.apache.hadoop.fs.Path;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-public class DrillInternalWriter extends AbstractSingleRecordBatch<DrillInternalWriterConfig> {
+public class DrillInternalWriter extends AbstractRecordBatch<DrillInternalWriterConfig> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillInternalWriter.class);
 
   private final FSDataOutputStream output;
   private final SchemaPath schemaPath = new SchemaPath("recordsWritten", ExpressionPosition.UNKNOWN);
+  private long recordsWritten = 0;
+  private RecordBatch incoming;
+  private boolean first;
+  private boolean done = false;
 
   public DrillInternalWriter(DrillInternalWriterConfig popConfig, RecordBatch incoming, FragmentContext context) {
-    super(popConfig, context, incoming);
+    super(popConfig, context);
+    this.incoming = incoming;
     try {
       if (!popConfig.getNullOutput()) {
         Configuration conf = new Configuration();
@@ -74,19 +80,51 @@ public class DrillInternalWriter extends AbstractSingleRecordBatch<DrillInternal
   }
 
   @Override
+  public IterOutcome next() {
+    if (done) return IterOutcome.NONE;
+    IterOutcome upstream = incoming.next();
+    if(first && upstream == IterOutcome.OK) upstream = IterOutcome.OK_NEW_SCHEMA;
+    first = false;
+    while (upstream == IterOutcome.OK || upstream == IterOutcome.OK_NEW_SCHEMA) {
+      if (upstream == IterOutcome.OK_NEW_SCHEMA) {
+        try {
+          setupNewSchema();
+        } catch (SchemaChangeException ex) {
+          kill();
+          logger.error("Failure during query", ex);
+          context.fail(ex);
+          return IterOutcome.STOP;
+        }
+      }
+      doWork();
+      upstream = next();
+    }
+    switch(upstream){
+      case NONE:
+        createOutgoing();
+        done = true;
+        return IterOutcome.OK_NEW_SCHEMA;
+      case NOT_YET:
+      case STOP:
+        container.zeroVectors();
+        return upstream;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
   protected void setupNewSchema() throws SchemaChangeException {
     TypeProtos.MajorType type = TypeProtos.MajorType.newBuilder().setMinorType(TypeProtos.MinorType.INT).setMode(TypeProtos.DataMode.REQUIRED).build();
     MaterializedField outputField = MaterializedField.create(schemaPath, type);
-    IntVector out = new IntVector(outputField, context.getAllocator());
+    BigIntVector out = new BigIntVector(outputField, context.getAllocator());
     out.allocateNew(1);
     container.clear();
     container.add(out);
     container.buildSchema(BatchSchema.SelectionVectorMode.NONE);
   }
 
-  @Override
   protected void doWork() {
-    VectorContainerSerializable wrap = new VectorContainerSerializable(incoming);
+    VectorAccessibleSerializable wrap = new VectorAccessibleSerializable(incoming, context.getDrillbitContext().getAllocator());
     try {
       Stopwatch watch = new Stopwatch();
       watch.start();
@@ -95,9 +133,13 @@ public class DrillInternalWriter extends AbstractSingleRecordBatch<DrillInternal
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    IntVector vector = (IntVector)container.getValueAccessorById(container.getValueVectorId(schemaPath).getFieldId(), IntVector.class).getValueVector();
+    recordsWritten += incoming.getRecordCount();
+  }
+
+  private void createOutgoing() {
+    BigIntVector vector = (BigIntVector)container.getValueAccessorById(container.getValueVectorId(schemaPath).getFieldId(), BigIntVector.class).getValueVector();
     vector.allocateNew(1);
-    vector.getMutator().set(0, incoming.getRecordCount());
+    vector.getMutator().set(0, recordsWritten);
     vector.getMutator().setValueCount(1);
   }
 }
