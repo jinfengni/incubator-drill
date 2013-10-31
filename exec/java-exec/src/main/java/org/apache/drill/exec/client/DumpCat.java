@@ -159,7 +159,7 @@ public class DumpCat {
    *   Schema change batch indices: 0 
 	 * @throws Exception
 	 */
-	private void doQuery(FileInputStream input) throws Exception{
+	protected void doQuery(FileInputStream input) throws Exception{
 		
     //FileInputStream input = new FileInputStream(file.getAbsoluteFile());
 
@@ -212,7 +212,7 @@ public class DumpCat {
 	 * @param targetBatchNum
 	 * @throws Exception
 	 */
-	private void doBatch(FileInputStream input, int targetBatchNum, boolean showHeader) throws Exception {
+	protected void doBatch(FileInputStream input, int targetBatchNum, boolean showHeader) throws Exception {
     int batchNum = -1;
     
     VectorAccessibleSerializable vcSerializable = null;
@@ -244,6 +244,7 @@ public class DumpCat {
 	private void showSingleBatch (VectorAccessibleSerializable vcSerializable, boolean showHeader) {
 		VectorContainer vectorContainer = (VectorContainer)vcSerializable.get();   
 
+		/* show the header of the batch */
 		if (showHeader) {			
 			System.out.println(getBatchMetaInfo(vcSerializable).toString());
 			
@@ -258,6 +259,12 @@ public class DumpCat {
 			}  	
 		}
 		
+		/* show the contents in the batch */		
+		showBatchContent(vectorContainer) ;
+	}
+	
+	
+	private void showBatchContent(VectorContainer vectorContainer) {
 		/* show the contents in the batch */		
    	List<String> columns = Lists.newArrayList();
     for (VectorWrapper vw : vectorContainer) {
@@ -288,8 +295,12 @@ public class DumpCat {
       }
       System.out.printf("|\n");
     }
+    
+    if (rows > 0 && (rows -1 ) %50 !=0)
+    	System.out.println(StringUtils.repeat("-", width*17 + 1));
 	}
 	
+	/* Get batch meta info : rows, selectedRows, dataSize */
 	private BatchMetaInfo getBatchMetaInfo(VectorAccessibleSerializable vcSerializable) {	
 	 	VectorAccessible vectorContainer = vcSerializable.get();   
     	
