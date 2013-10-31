@@ -53,8 +53,8 @@ public class DumpCat {
       jc.setProgramName("./drill_dumpcat");
     } catch (ParameterException e) {
       System.out.println(e.getMessage());
-      //String[] valid = {"-f", "file"};
-      //new JCommander(o, valid).usage();
+      String[] valid = {"-f", "file"};
+      new JCommander(o, valid).usage();
       jc.usage();
       System.exit(-1);
     }
@@ -63,13 +63,27 @@ public class DumpCat {
       System.exit(0);
     }
     
-    if (o.batch < 0) {
-    	dumpCat.doQuery(o.location); 	
-    } else {
-    	dumpCat.doBatch(o.location, o.batch, o.include_headers);
+    /*Check if dump file exists*/
+    File file = new File(o.location);
+    if (!file.exists()) {
+    	System.out.println(String.format("Trace file %s not created", o.location));
+    	System.exit(-1);
     }
+    
+    FileInputStream input = new FileInputStream(file.getAbsoluteFile());
+    
+    if (o.batch < 0) {
+    	dumpCat.doQuery(input); 	
+    } else {
+    	dumpCat.doBatch(input, o.batch, o.include_headers);
+    }
+    
+    input.close();
 	}
 	
+	/**
+	 * Used to ensure the param "batch" is a non-negative number. 
+	 */
 	public static class BatchNumValidator implements IParameterValidator {
 		@Override
 		public void validate(String name, String value) throws ParameterException {
@@ -85,6 +99,9 @@ public class DumpCat {
 	  }
 	}
 	
+	/**
+	 *  Options as input to JCommander. 
+	 */
 	static class Options {
 		@Parameter(names = {"-f"}, description = "file containing dump", required=true)
 	  public String location = null;
@@ -142,13 +159,9 @@ public class DumpCat {
    *   Schema change batch indices: 0 
 	 * @throws Exception
 	 */
-	private void doQuery(String dumpFilename) throws Exception{
-		File file = new File(dumpFilename);
-
-    if (!file.exists())
-    	throw new IOException(String.format("Trace file %s not created", dumpFilename));
-
-    FileInputStream input = new FileInputStream(file.getAbsoluteFile());
+	private void doQuery(FileInputStream input) throws Exception{
+		
+    //FileInputStream input = new FileInputStream(file.getAbsoluteFile());
 
     int  batchNum = 0;
   	int  emptyBatchNum = 0;
@@ -177,12 +190,10 @@ public class DumpCat {
    	  
  		  vectorContainer.zeroVectors();
     }
-	   
-   	input.close();
-   	
+	     	
    	/* output the summary stat */   	
    	System.out.println(String.format("Total # of batches: %d", batchNum));
-   	//rows, selectedRows, avg rec size, total data size. 
+   	//output: rows, selectedRows, avg rec size, total data size. 
    	System.out.println(aggBatchMetaInfo.toString());    
    	System.out.println(String.format("Empty batch : %d", emptyBatchNum));
 	  System.out.println(String.format("Schema changes : %d", schemaChangeIdx.size()));
@@ -201,14 +212,7 @@ public class DumpCat {
 	 * @param targetBatchNum
 	 * @throws Exception
 	 */
-	private void doBatch(String dumpFilename, int targetBatchNum, boolean showHeader) throws Exception {
-		File file = new File(dumpFilename);
-
-		if (!file.exists())
-    	throw new IOException(String.format("Trace file %s not created", dumpFilename));
-
-    FileInputStream input = new FileInputStream(file.getAbsoluteFile());
-   
+	private void doBatch(FileInputStream input, int targetBatchNum, boolean showHeader) throws Exception {
     int batchNum = -1;
     
     VectorAccessibleSerializable vcSerializable = null;
@@ -222,12 +226,10 @@ public class DumpCat {
     		vectorContainer.zeroVectors();
     	}
     }
-    
-    input.close();
-	  
-    //
+        
     if (batchNum < targetBatchNum) {
     	System.out.println(String.format("Wrong input of batch # ! Total # of batch in the file is %d. Please input a number 0..%d as batch #", batchNum+1, batchNum));
+    	input.close();
     	System.exit(-1);
     }
    	
