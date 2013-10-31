@@ -278,7 +278,7 @@ public class DumpCat {
       if (row%50 == 0) {
         System.out.println(StringUtils.repeat("-", width*17 + 1));
         for (String column : columns) {
-          System.out.printf("| %-15s", width <= 15 ? column : column.substring(0, 14));
+          System.out.printf("| %-15s", column.length() <= 15 ? column : column.substring(0, 14));
         }
         System.out.printf("|\n");
         System.out.println(StringUtils.repeat("-", width*17 + 1));

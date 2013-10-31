@@ -79,6 +79,9 @@ public class VectorAccessibleSerializable implements DrillSerializable {
     UserBitShared.RecordBatchDef batchDef = UserBitShared.RecordBatchDef.parseDelimitedFrom(input);
     recordCount = batchDef.getRecordCount();
     if (batchDef.hasIsSelectionVector2() && batchDef.getIsSelectionVector2()) {
+    	if (sv2 ==null) {
+    		sv2 = new SelectionVector2(this.allocator);
+    	}
       sv2.allocateNew(recordCount * 2);
       sv2.getBuffer().setBytes(0, input, recordCount * 2);
       svMode = BatchSchema.SelectionVectorMode.TWO_BYTE;
