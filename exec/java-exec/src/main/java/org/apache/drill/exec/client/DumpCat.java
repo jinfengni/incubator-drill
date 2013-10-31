@@ -32,6 +32,7 @@ import org.apache.drill.exec.record.VectorAccessible;
 import org.apache.drill.exec.record.VectorContainer;
 import org.apache.drill.exec.record.VectorWrapper;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
+import org.apache.drill.exec.util.VectorUtil;
 
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
@@ -260,45 +261,9 @@ public class DumpCat {
 		}
 		
 		/* show the contents in the batch */		
-		showBatchContent(vectorContainer) ;
+		VectorUtil.showVectorAccessibleContent(vectorContainer);
 	}
 	
-	
-	private void showBatchContent(VectorContainer vectorContainer) {
-		/* show the contents in the batch */		
-   	List<String> columns = Lists.newArrayList();
-    for (VectorWrapper vw : vectorContainer) {
-      columns.add(vw.getValueVector().getField().getName());
-    }
-    
-    int width = columns.size();
-    int rows = vectorContainer.getRecordCount();
-    
-    for (int row = 0; row < rows; row++) {
-      if (row%50 == 0) {
-        System.out.println(StringUtils.repeat("-", width*17 + 1));
-        for (String column : columns) {
-          System.out.printf("| %-15s", column.length() <= 15 ? column : column.substring(0, 14));
-        }
-        System.out.printf("|\n");
-        System.out.println(StringUtils.repeat("-", width*17 + 1));
-      }
-      for (VectorWrapper vw : vectorContainer) {
-        Object o = vw.getValueVector().getAccessor().getObject(row);
-        if (o instanceof byte[]) {
-          String value = new String((byte[]) o);
-          System.out.printf("| %-15s",value.length() <= 15 ? value : value.substring(0, 14));
-        } else {
-          String value = o.toString();
-          System.out.printf("| %-15s",value.length() <= 15 ? value : value.substring(0,14));
-        }
-      }
-      System.out.printf("|\n");
-    }
-    
-    if (rows > 0 && (rows -1 ) %50 !=0)
-    	System.out.println(StringUtils.repeat("-", width*17 + 1));
-	}
 	
 	/* Get batch meta info : rows, selectedRows, dataSize */
 	private BatchMetaInfo getBatchMetaInfo(VectorAccessibleSerializable vcSerializable) {	
