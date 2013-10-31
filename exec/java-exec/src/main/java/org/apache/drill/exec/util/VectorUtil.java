@@ -31,7 +31,7 @@ public class VectorUtil {
 
 	public static void showVectorAccessibleContent(VectorAccessible va) {
 
-		int rows = 1000; //result.getHeader().getRowCount();
+		int rows = va.getRecordCount();
     List<String> columns = Lists.newArrayList();
     for (VectorWrapper vw : va) {
     	columns.add(vw.getValueVector().getField().getName());
