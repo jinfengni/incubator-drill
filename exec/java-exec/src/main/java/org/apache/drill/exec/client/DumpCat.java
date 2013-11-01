@@ -121,9 +121,9 @@ public class DumpCat {
 	 * Contains : # of rows, # of selected rows, data size (byte #).  
 	 */
 	private class BatchMetaInfo {
-		long rows = 0;
-		long selectedRows = 0;
-		long dataSize = 0;
+		private long rows = 0;
+		private long selectedRows = 0;
+		private long dataSize = 0;
 		
 		public BatchMetaInfo () {			
 		}
