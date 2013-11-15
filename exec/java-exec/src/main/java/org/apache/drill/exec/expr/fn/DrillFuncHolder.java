@@ -161,19 +161,20 @@ public abstract class DrillFuncHolder {
 	    	ValueReference param = parameters[i];
 	    	LogicalExpression callarg = call.args.get(i);	    	
 	    	
-	    	//String paramMinorType = param.type.getMinorType().name();
-	    	//String calledArgMinorType = callarg.getMajorType().getMinorType().name();
-	    	
 	    	Integer paramval = ResolverTypePrecedence.precedenceMap.get(param.type.getMinorType().name());
 	    	Integer callval = ResolverTypePrecedence.precedenceMap.get(callarg.getMajorType().getMinorType().name());
 	    	
-	    	if(paramval - callval<0){
+	    	if(paramval==null || callval==null){
+	    		// TODO: Throw exception, Compatibility precedence not defined
 	    		return -1;
 	    	}
 	    	
-	    	if(paramval!=null && callval!=null){
-				cost += paramval - callval;
-			}	     
+	    	if(paramval - callval<0){
+	    		return -1;
+	    	}	    	
+	    	
+			cost += paramval - callval;
+			    
 	    }	    
 	    return cost;
 	  }

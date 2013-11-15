@@ -38,15 +38,14 @@ public class OperatorFunctionResolver implements FunctionResolver {
 			}	      
 		}
 		
-		/** Convert function call here and return back **/
-		// TODO
+		/** TODO: Convert the function call to new datatypes  **/		
 		
-		if(bestmatch.matches(call)){
+		/*if(bestmatch.matches(call)){
 	        return bestmatch;
-	    }
+	    }*/
 	      
 		
-		return null;
+		return bestmatch;
 	}
 
 }
