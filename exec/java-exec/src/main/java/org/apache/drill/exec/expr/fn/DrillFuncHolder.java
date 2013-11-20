@@ -24,12 +24,14 @@ import org.apache.drill.common.expression.FunctionCall;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.expr.CodeGenerator;
 import org.apache.drill.exec.expr.CodeGenerator.BlockType;
 import org.apache.drill.exec.expr.CodeGenerator.HoldingContainer;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
+import org.apache.drill.exec.record.NullExpression;
 import org.apache.drill.exec.resolver.ResolverTypePrecedence;
 
 import com.google.common.base.Preconditions;
@@ -162,7 +164,17 @@ public abstract class DrillFuncHolder {
 	    	LogicalExpression callarg = call.args.get(i);	    	
 	    	
 	    	Integer paramval = ResolverTypePrecedence.precedenceMap.get(param.type.getMinorType().name());
-	    	Integer callval = ResolverTypePrecedence.precedenceMap.get(callarg.getMajorType().getMinorType().name());
+	    	Integer callval = null;
+	    	
+	    	/** Allow NULL Expression/Arguments in casting **/
+	    	if(callarg == null || callarg instanceof NullExpression)
+	    	{
+	    		callval = ResolverTypePrecedence.precedenceMap.get(ExecConstants.NULL_EXPRESSION);
+	    	}
+	    	else
+	    	{
+	    		callval = ResolverTypePrecedence.precedenceMap.get(callarg.getMajorType().getMinorType().name());
+	    	}
 	    	
 	    	if(paramval==null || callval==null){
 	    		// TODO: Throw exception, Compatibility precedence not defined

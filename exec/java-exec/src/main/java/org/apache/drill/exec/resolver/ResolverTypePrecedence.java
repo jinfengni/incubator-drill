@@ -33,6 +33,7 @@ public static final Map<String, Integer> precedenceMap;
   	 precedenceMap.put("TIME", 20);
   	 precedenceMap.put("DATE", 21);
   	 precedenceMap.put("DATETIME", 22);
+  	 precedenceMap.put("NULLEXPRESSION", 23);	 
   	 
     }
 
