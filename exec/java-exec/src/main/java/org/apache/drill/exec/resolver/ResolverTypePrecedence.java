@@ -11,7 +11,8 @@ public static final Map<String, Integer> precedenceMap;
     static {
 
    	 precedenceMap = new HashMap<String, Integer>();
-   	 precedenceMap.put("FIXEDBINARY", 1);
+   	 precedenceMap.put("NULLEXPRESSION", 0);	 
+  	 precedenceMap.put("FIXEDBINARY", 1);
   	 precedenceMap.put("VARBINARY", 2);
    	 precedenceMap.put("VARCHAR", 3);
    	 precedenceMap.put("VAR16CHAR", 4);
@@ -33,7 +34,6 @@ public static final Map<String, Integer> precedenceMap;
   	 precedenceMap.put("TIME", 20);
   	 precedenceMap.put("DATE", 21);
   	 precedenceMap.put("DATETIME", 22);
-  	 precedenceMap.put("NULLEXPRESSION", 23);	 
   	 
     }
 
