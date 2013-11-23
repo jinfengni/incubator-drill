@@ -66,7 +66,20 @@ parse returns [LogicalExpression e]
 functionCall returns [LogicalExpression e]
   :  Identifier OParen exprList? CParen {$e = registry.createExpression($Identifier.text, pos($Identifier), $exprList.listE);  }
   ;
+  
+castCall returns [LogicalExpression e]
+	@init{
+  	  List<LogicalExpression> exprs = new ArrayList<LogicalExpression>();
+	  ExpressionPosition p = null;
+	}  
+  :  Cast OParen expression As dataType CParen { exprs.add($expression.e); exprs.add($dataType.e); $e = registry.createExpression($Cast.text, p, exprs);  }
+  ;
 
+dataType returns [LogicalExpression e]
+	: INT    {$e = new ValueExpressions.QuotedString($INT.text, pos($INT) ); }
+	| BIGINT {$e = new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT)); }  
+	; 
+	
 ifStatement returns [LogicalExpression e]
 	@init {
 	  IfExpression.Builder s = IfExpression.newBuilder();

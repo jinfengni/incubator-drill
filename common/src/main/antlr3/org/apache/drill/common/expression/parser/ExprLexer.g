@@ -35,6 +35,13 @@ In       : 'in';
 Case     : 'case';
 When     : 'when';
 
+Cast: 'cast';
+Nullable: 'nullable';
+Repeat: 'repeat';
+As: 'as';
+
+INT		 : 'INT';
+BIGINT	 : 'BIGINT';
 
 Or       : '||' | 'or' | 'OR' | 'Or';
 And      : '&&' | 'and' | 'AND' ;
