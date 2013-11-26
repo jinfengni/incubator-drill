@@ -17,9 +17,11 @@
  */
 package org.apache.drill.common.expression;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.drill.common.expression.ValueExpressions.QuotedString;
 import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 
@@ -75,6 +77,22 @@ public class FunctionCall extends LogicalExpressionBase implements Iterable<Logi
         + (args != null ? args.subList(0, Math.min(args.size(), maxLen)) : null) + ", pos=" + pos + "]";
   }
 
-  
+  public FunctionCall convertIntoInternalCast() {
+    String targetType = "Int"; 
+    if (! (this.args.get(1) instanceof QuotedString)) {
+      
+    } else {
+      targetType = ((QuotedString) this.args.get(1)).value;
+    }
+    FunctionDefinition funcDef = FunctionDefinition.simple("cast"+targetType, this.getDefinition().getArgumentValidator(), new OutputTypeDeterminer.SameAsAnySoft()) ;
+    
+    List<LogicalExpression> newArgs = Lists.newArrayList();
+    
+    newArgs.add(this.args.get(0));
+    
+    return new FunctionCall(funcDef, newArgs, this.pos);
+    
+  }
+
   
 }

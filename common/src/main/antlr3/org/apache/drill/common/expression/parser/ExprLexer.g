@@ -40,8 +40,8 @@ Nullable: 'nullable';
 Repeat: 'repeat';
 As: 'as';
 
-INT		 : 'INT';
-BIGINT	 : 'BIGINT';
+INT		 : 'Int';
+BIGINT	 : 'BigInt';
 
 Or       : '||' | 'or' | 'OR' | 'Or';
 And      : '&&' | 'and' | 'AND' ;

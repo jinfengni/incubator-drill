@@ -43,9 +43,9 @@ public class FullEngineTPCHTest {
   }
 
   @Test
-  //this is used to test func with null input.
   @Ignore
-  public void testSimpleFuncArgValidator() throws Exception {
+  //this is used to test func with null input.
+    public void testSimpleCast() throws Exception {
     JdbcAssert.withFull("parquet-local")
     // .sql("select cast(_MAP['red'] as bigint) + 1 as red_inc from donuts ")
         .sql(  "select 3 + cast(_MAP['N_NATIONKEY'] as numeric) FROM \"/Users/jni//work/tpc-h-parquet/nation\""

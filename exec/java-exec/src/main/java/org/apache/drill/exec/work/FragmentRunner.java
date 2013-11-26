@@ -93,6 +93,7 @@ public class FragmentRunner implements Runnable, CancelableQuery, StatusProvider
       
     }catch(Exception ex){
       logger.debug("Caught exception while running fragment", ex);
+      ex.printStackTrace();
       internalFail(ex);
     }finally{
       t.stop();
