@@ -75,24 +75,5 @@ public class FunctionCall extends LogicalExpressionBase implements Iterable<Logi
     final int maxLen = 10;
     return "FunctionCall [func=" + func + ", args="
         + (args != null ? args.subList(0, Math.min(args.size(), maxLen)) : null) + ", pos=" + pos + "]";
-  }
-
-  public FunctionCall convertIntoInternalCast() {
-    String targetType = "Int"; 
-    if (! (this.args.get(1) instanceof QuotedString)) {
-      
-    } else {
-      targetType = ((QuotedString) this.args.get(1)).value;
-    }
-    FunctionDefinition funcDef = FunctionDefinition.simple("cast"+targetType, this.getDefinition().getArgumentValidator(), new OutputTypeDeterminer.SameAsAnySoft()) ;
-    
-    List<LogicalExpression> newArgs = Lists.newArrayList();
-    
-    newArgs.add(this.args.get(0));
-    
-    return new FunctionCall(funcDef, newArgs, this.pos);
-    
-  }
-
-  
+  }  
 }

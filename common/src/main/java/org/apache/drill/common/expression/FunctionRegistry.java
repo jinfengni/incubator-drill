@@ -27,8 +27,10 @@ import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.exceptions.ExpressionParsingException;
+import org.apache.drill.common.expression.ValueExpressions.QuotedString;
 import org.apache.drill.common.util.PathScanner;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 public class FunctionRegistry {
@@ -60,6 +62,28 @@ public class FunctionRegistry {
     }
   }
   
+  /*
+   * create a cast function specific to a target type. 
+   * The original input args :  LogicalExpression  input_expr, String target_type, Number target_type_length, Boolean repeat
+   * The new cast function's name : cast+target_type.
+   * The new cast function's args : input_expr. 
+   */
+  public LogicalExpression createCastExpression(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
+    Preconditions.checkArgument(args.size() == 4 && args.get(1) != null && args.get(1) instanceof QuotedString);
+    
+    String targetType = ((QuotedString) args.get(1)).value;
+    String castFuncWithType = functionName + targetType;
+    
+    FunctionDefinition d = funcMap.get(castFuncWithType);
+    if(d == null) throw new ExpressionParsingException(String.format("Unable to find function definition for function named '%s'", castFuncWithType));
+    
+    List<LogicalExpression> newArgs = Lists.newArrayList();
+    newArgs.add(args.get(0));
+    
+    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), new OutputTypeDeterminer.SameAsAnySoft()) ;   
+    
+    return new FunctionCall(castFuncDef, newArgs, ep);
+  }
   
   public LogicalExpression createExpression(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
     FunctionDefinition d = funcMap.get(functionName);

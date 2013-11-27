@@ -72,7 +72,7 @@ castCall returns [LogicalExpression e]
   	  List<LogicalExpression> exprs = new ArrayList<LogicalExpression>();
 	  ExpressionPosition p = null;
 	}  
-  :  Cast OParen expression As dataType repeat? CParen { exprs.add($expression.e); exprs.addAll($dataType.listE); exprs.addAll($repeat.listE); $e = registry.createExpression($Cast.text, p, exprs);  }
+  :  Cast OParen expression As dataType repeat? CParen { exprs.add($expression.e); exprs.addAll($dataType.listE); exprs.addAll($repeat.listE); $e = registry.createCastExpression($Cast.text, p, exprs);  }
   ;
 
 repeat returns [List<LogicalExpression> listE]

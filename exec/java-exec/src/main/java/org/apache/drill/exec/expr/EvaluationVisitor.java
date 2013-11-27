@@ -71,10 +71,6 @@ public class EvaluationVisitor {
     
     @Override
     public HoldingContainer visitFunctionCall(FunctionCall call, CodeGenerator<?> generator) throws RuntimeException {
-      if (call.getDefinition().getName().equals("cast")) {
-        call = call.convertIntoInternalCast();
-      }
-      
       DrillFuncHolder holder = registry.getFunction(call);
       JVar[] workspaceVars = holder.renderStart(generator, null);
 

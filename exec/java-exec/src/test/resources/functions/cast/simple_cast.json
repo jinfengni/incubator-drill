@@ -1,0 +1,38 @@
+{
+  head : {
+    version : 1,
+    generator : {
+      type : "optiq",
+      info : "na"
+    },
+    type : "APACHE_DRILL_PHYSICAL"
+  },
+  graph : [ {
+    pop : "parquet-scan",
+    @id : 1,
+    entries : [ {
+      path : "/Users/jni//work/tpc-h-parquet/supplier/part-m-00000.parquet"
+    } ],
+    storageengine : {
+      type : "parquet",
+      dfsName : "file:///"
+    },
+    ref : "_MAP",
+    fragmentPointer : 0
+  }, {
+    pop : "project",
+    @id : 2,
+    exprs : [ {
+      ref : "output0",
+      expr : " cast( _MAP.S_ACCTBAL as BigInt repeat)"
+    }, {
+      ref : "output1",
+      expr : " (_MAP.S_ACCTBAL) "
+    }  ],
+    child : 1
+  }, {
+    pop : "screen",
+    @id : 3,
+    child : 2
+  } ]
+}
