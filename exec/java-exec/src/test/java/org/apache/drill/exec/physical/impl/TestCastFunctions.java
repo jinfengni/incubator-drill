@@ -27,6 +27,7 @@ import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.expr.holders.BigIntHolder;
 import org.apache.drill.exec.expr.holders.Float8Holder;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.ops.FragmentContext;
@@ -37,6 +38,7 @@ import org.apache.drill.exec.proto.CoordinationProtos;
 import org.apache.drill.exec.proto.ExecProtos;
 import org.apache.drill.exec.rpc.user.UserServer;
 import org.apache.drill.exec.server.DrillbitContext;
+import org.apache.drill.exec.vector.BigIntVector;
 import org.apache.drill.exec.vector.Float8Vector;
 import org.junit.After;
 import org.junit.Ignore;
@@ -67,19 +69,20 @@ public class TestCastFunctions {
     SimpleRootExec exec = new SimpleRootExec(ImplCreator.getExec(context, (FragmentRoot) plan.getSortedOperators(false).iterator().next()));
 
     while(exec.next()){
-      Float8Vector c0 = exec.getValueVectorById(new SchemaPath("output0", ExpressionPosition.UNKNOWN), Float8Vector.class);
+      BigIntVector c0 = exec.getValueVectorById(new SchemaPath("output0", ExpressionPosition.UNKNOWN), BigIntVector.class);
       Float8Vector c1 = exec.getValueVectorById(new SchemaPath("output1", ExpressionPosition.UNKNOWN), Float8Vector.class);
-      Float8Vector.Accessor a0;
+      BigIntVector.Accessor a0;
       Float8Vector.Accessor a1;
       a0 = c0.getAccessor();
       a1 = c1.getAccessor();
       
       int count = 0;
       for(int i = 0; i < c0.getAccessor().getValueCount(); i++){        
-          Float8Holder holder0 = new Float8Holder();
+          BigIntHolder holder0 = new BigIntHolder();
           Float8Holder holder1 = new Float8Holder();
           a0.get(i, holder0);
           a1.get(i, holder1);
+          assertEquals(1, holder0.value);
           System.out.println("casted result : " + holder0.value + " original value :" + holder1.value);
           //assertEquals("aaaa", holder.toString());
           ++count;

@@ -72,7 +72,14 @@ castCall returns [LogicalExpression e]
   	  List<LogicalExpression> exprs = new ArrayList<LogicalExpression>();
 	  ExpressionPosition p = null;
 	}  
-  :  Cast OParen expression As dataType repeat? CParen { exprs.add($expression.e); exprs.addAll($dataType.listE); exprs.addAll($repeat.listE); $e = registry.createCastExpression($Cast.text, p, exprs);  }
+  :  Cast OParen expression As dataType repeat? CParen 
+      { exprs.add($expression.e); 
+        exprs.addAll($dataType.listE); 
+        if ($repeat.listE!=null) exprs.addAll($repeat.listE);
+        if ($dataType.listE.size() == 1 )  
+          $e = registry.createCastFixedSize($Cast.text, p, exprs);
+        else   
+          $e = registry.createCastVarSize($Cast.text, p, exprs);}
   ;
 
 repeat returns [List<LogicalExpression> listE]
@@ -89,8 +96,8 @@ dataType returns [List<LogicalExpression> listE]
 	  $listE = new ArrayList<LogicalExpression>();
 	  ExpressionPosition p = null;
 	}
-	: INT    {$listE.add( new ValueExpressions.QuotedString($INT.text, pos($INT) )); $listE.add(ValueExpressions.getNumericExpression("4", p)); }
-	| BIGINT {$listE.add( new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT) )); $listE.add(ValueExpressions.getNumericExpression("8", p)); }  
+	: INT    {$listE.add( new ValueExpressions.QuotedString($INT.text, pos($INT) )); }
+	| BIGINT {$listE.add( new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT) )); }  
 	; 
 	
 ifStatement returns [LogicalExpression e]

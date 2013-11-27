@@ -26,8 +26,12 @@ public class CastFunctionDefs implements CallProvider{
   @Override
   public FunctionDefinition[] getFunctionDefintions() {
     return new FunctionDefinition[]{
-        FunctionDefinition.simple("castBigInt", new ArgumentValidators.AnyTypeAllowed(1,5), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,5), new OutputTypeDeterminer.SameAsAnySoft())
+        FunctionDefinition.simple("castBigInt", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
+        FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
+        FunctionDefinition.simple("castFloat4", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
+        FunctionDefinition.simple("castFloat8", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
+        FunctionDefinition.simple("castVarchar", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
+        FunctionDefinition.simple("castVar16char", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft())
     };
   }
 }
