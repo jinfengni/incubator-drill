@@ -26,12 +26,12 @@ public class CastFunctionDefs implements CallProvider{
   @Override
   public FunctionDefinition[] getFunctionDefintions() {
     return new FunctionDefinition[]{
-        FunctionDefinition.simple("castBigInt", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castFloat4", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castFloat8", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castVarchar", new ArgumentValidators.AnyTypeAllowed(1,4), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castVar16char", new ArgumentValidators.AnyTypeAllowed(1,4), new OutputTypeDeterminer.SameAsAnySoft())
+        FunctionDefinition.simple("castBigInt", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_BIGINT),
+        FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_INT),
+        FunctionDefinition.simple("castFloat4", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_FLOAT4),
+        FunctionDefinition.simple("castFloat8", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_FLOAT8),
+        FunctionDefinition.simple("castVarchar", new ArgumentValidators.AnyTypeAllowed(1,4), OutputTypeDeterminer.FIXED_VARCHAR),
+        FunctionDefinition.simple("castVar16char", new ArgumentValidators.AnyTypeAllowed(1,4), OutputTypeDeterminer.FIXED_VAR16CHAR)
     };
   }
 }

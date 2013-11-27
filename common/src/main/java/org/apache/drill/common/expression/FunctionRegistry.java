@@ -85,6 +85,7 @@ public class FunctionRegistry {
     switch(targetType) {
     case "BigInt" : otd = OutputTypeDeterminer.FIXED_BIGINT; break;
     case "Int"    : otd = OutputTypeDeterminer.FIXED_INT; break;
+    case "Float4"    : otd = OutputTypeDeterminer.FIXED_FLOAT4; break;
     case "Float8"    : otd = OutputTypeDeterminer.FIXED_FLOAT8; break;
     default: otd = OutputTypeDeterminer.FIXED_BIGINT;
     }
