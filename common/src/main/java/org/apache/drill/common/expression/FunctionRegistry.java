@@ -69,7 +69,7 @@ public class FunctionRegistry {
    * The new cast function's args : input_expr. 
    */
   public LogicalExpression createCastFixedSize(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
-    Preconditions.checkArgument(args.size() >= 2 && args.get(1) != null && args.get(1) instanceof QuotedString);
+    Preconditions.checkArgument(args.size() >= 2 && args.get(1) != null && args.get(1) instanceof QuotedString, "Wrong arguments of cast functions.");
     
     String targetType = ((QuotedString) args.get(1)).value;
     String castFuncWithType = functionName + targetType;
@@ -80,28 +80,28 @@ public class FunctionRegistry {
     List<LogicalExpression> newArgs = Lists.newArrayList();
     newArgs.add(args.get(0));  //input_expr
     
-    OutputTypeDeterminer od;
+    OutputTypeDeterminer otd;
     
     switch(targetType) {
-    case "BigInt" : od = OutputTypeDeterminer.FIXED_BIGINT; break;
-    case "Int"    : od = OutputTypeDeterminer.FIXED_INT; break;
-    case "Float8"    : od = OutputTypeDeterminer.FIXED_FLOAT8; break;
-    default: od = OutputTypeDeterminer.FIXED_BIGINT;
+    case "BigInt" : otd = OutputTypeDeterminer.FIXED_BIGINT; break;
+    case "Int"    : otd = OutputTypeDeterminer.FIXED_INT; break;
+    case "Float8"    : otd = OutputTypeDeterminer.FIXED_FLOAT8; break;
+    default: otd = OutputTypeDeterminer.FIXED_BIGINT;
     }
     
-    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), od) ;   
+    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), otd) ;   
     
     return new FunctionCall(castFuncDef, newArgs, ep);
   }
   
   /*
-   * create a cast function specific to a target type with fixed size. 
-   * The original input args :  LogicalExpression  input_expr, String target_type, Boolean repeat ?
+   * create a cast function specific to a target type with var size. 
+   * The original input args :  LogicalExpression  input_expr, String target_type, Numeric target_type_length, Boolean repeat ?
    * The new cast function's name : cast+target_type.
-   * The new cast function's args : input_expr. 
+   * The new cast function's args : input_expr, target_type_length 
    */
   public LogicalExpression createCastVarSize(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
-    Preconditions.checkArgument(args.size() >= 3 && args.get(1) != null && args.get(1) instanceof QuotedString);
+    Preconditions.checkArgument(args.size() >= 3 && args.get(1) != null && args.get(1) instanceof QuotedString, "Wrong arguments of cast functions.");
     
     String targetType = ((QuotedString) args.get(1)).value;
     String castFuncWithType = functionName + targetType;
@@ -113,15 +113,15 @@ public class FunctionRegistry {
     newArgs.add(args.get(0));  //input_expr
     newArgs.add(args.get(2));  //type_length
     
-    OutputTypeDeterminer od;
+    OutputTypeDeterminer otd;
     
     switch(targetType) {
-    case "Varchar" : od = OutputTypeDeterminer.FIXED_VARCHAR; break;
-    case "Var16char" : od = OutputTypeDeterminer.FIXED_VAR16CHAR; break;
-    default: od = OutputTypeDeterminer.FIXED_VARCHAR;
+    case "Varchar" : otd = OutputTypeDeterminer.FIXED_VARCHAR; break;
+    case "Var16char" : otd = OutputTypeDeterminer.FIXED_VAR16CHAR; break;
+    default: otd = OutputTypeDeterminer.FIXED_VARCHAR;
     }
     
-    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), od) ;   
+    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), otd) ;   
     
     return new FunctionCall(castFuncDef, newArgs, ep);
   }
