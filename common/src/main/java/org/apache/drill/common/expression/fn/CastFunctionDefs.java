@@ -30,8 +30,8 @@ public class CastFunctionDefs implements CallProvider{
         FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
         FunctionDefinition.simple("castFloat4", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
         FunctionDefinition.simple("castFloat8", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castVarchar", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft()),
-        FunctionDefinition.simple("castVar16char", new ArgumentValidators.AnyTypeAllowed(1,3), new OutputTypeDeterminer.SameAsAnySoft())
+        FunctionDefinition.simple("castVarchar", new ArgumentValidators.AnyTypeAllowed(1,4), new OutputTypeDeterminer.SameAsAnySoft()),
+        FunctionDefinition.simple("castVar16char", new ArgumentValidators.AnyTypeAllowed(1,4), new OutputTypeDeterminer.SameAsAnySoft())
     };
   }
 }
