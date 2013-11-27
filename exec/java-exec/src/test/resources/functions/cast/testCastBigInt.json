@@ -23,7 +23,7 @@
             child: 1,
             pop:"project",
             exprs: [
-		{ ref: "output0", expr:"cast(1.2345678 as BigInt repeat)" },
+		{ ref: "output0", expr:"cast(1.2345678 as BigInt)" },
 		{ ref: "output1", expr:"1.2345678" }
 
             ]
