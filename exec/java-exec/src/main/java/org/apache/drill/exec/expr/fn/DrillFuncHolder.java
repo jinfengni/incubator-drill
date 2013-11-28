@@ -33,6 +33,7 @@ import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.record.NullExpression;
 import org.apache.drill.exec.resolver.ResolverTypePrecedence;
+import org.apache.drill.exec.resolver.TypeCastRules;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -165,6 +166,10 @@ public abstract class DrillFuncHolder {
 	    	
 	    	Integer paramval = ResolverTypePrecedence.precedenceMap.get(param.type.getMinorType().name());
 	    	Integer callval = null;
+	    	
+	    	if(!TypeCastRules.isCastable(param.type.getMinorType(), callarg.getMajorType().getMinorType())){
+	    		return -1;
+	    	}
 	    	
 	    	/** Allow NULL Expression/Arguments in casting **/
 	    	if(callarg == null || callarg instanceof NullExpression)

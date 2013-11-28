@@ -18,7 +18,8 @@ public class OperatorFunctionResolver implements FunctionResolver {
 		
 		if(args.size() != 2){
 			// TODO: Some Exception
-		}			
+		}	
+		
 		 
 		int bestcost = Integer.MAX_VALUE;
 		int currcost = Integer.MAX_VALUE;
