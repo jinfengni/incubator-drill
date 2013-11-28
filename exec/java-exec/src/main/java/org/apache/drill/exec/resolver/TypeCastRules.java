@@ -454,7 +454,7 @@ public class TypeCastRules {
         rule.add(MinorType.BIT);        
         rule.add(MinorType.VARBINARY);        
         rule.add(MinorType.FIXEDBINARY);        
-        rules.put(MinorType.FIXEDBINARY, rule);
+        rules.put(MinorType.VARBINARY, rule);
         
         
 	}
