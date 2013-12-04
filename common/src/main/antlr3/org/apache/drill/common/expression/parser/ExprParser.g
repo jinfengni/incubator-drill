@@ -97,7 +97,9 @@ dataType returns [List<LogicalExpression> listE]
 	  ExpressionPosition p = null;
 	}
 	: INT    {$listE.add( new ValueExpressions.QuotedString($INT.text, pos($INT) )); }
-	| BIGINT {$listE.add( new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT) )); }  
+	| BIGINT {$listE.add( new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT) )); }
+	| VARCHAR {$listE.add( new ValueExpressions.QuotedString($VARCHAR.text, pos($VARCHAR))); 
+	           $listE.add(ValueExpressions.getNumericExpression("30", p));}
 	; 
 	
 ifStatement returns [LogicalExpression e]

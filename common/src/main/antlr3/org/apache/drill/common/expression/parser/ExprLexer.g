@@ -42,6 +42,7 @@ As: 'as';
 
 INT		 : 'Int';
 BIGINT	 : 'BigInt';
+VARCHAR  : 'Varchar';
 
 Or       : '||' | 'or' | 'OR' | 'Or';
 And      : '&&' | 'and' | 'AND' ;

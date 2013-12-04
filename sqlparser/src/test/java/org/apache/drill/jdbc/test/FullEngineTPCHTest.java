@@ -43,6 +43,15 @@ public class FullEngineTPCHTest {
   }
 
   @Test
+  //this is used to test func with null input.
+    public void testSimpleTest() throws Exception {
+    JdbcAssert.withFull("parquet-local")
+    // .sql("select cast(_MAP['red'] as bigint) + 1 as red_inc from donuts ")
+        .sql(  "select _MAP['N_NAME'] FROM \"/Users/jni//work/tpc-h-parquet/nation\" where cast(_MAP['N_NAME'] as varchar(10))= cast(_MAP['N_NAME'] as varchar(10))"
+            ).displayResults(100);
+  }
+
+  @Test
   @Ignore
   //this is used to test func with null input.
     public void testSimpleCast() throws Exception {
