@@ -98,10 +98,14 @@ dataType returns [List<LogicalExpression> listE]
 	}
 	: INT    {$listE.add( new ValueExpressions.QuotedString($INT.text, pos($INT) )); }
 	| BIGINT {$listE.add( new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT) )); }
-	| VARCHAR {$listE.add( new ValueExpressions.QuotedString($VARCHAR.text, pos($VARCHAR))); 
-	           $listE.add(ValueExpressions.getNumericExpression("30", p));}
+	| VARCHAR typeLen {$listE.add(new ValueExpressions.QuotedString($VARCHAR.text, pos($VARCHAR))); 
+	                   $listE.add($typeLen.e);}
 	; 
-	
+
+typeLen returns [LogicalExpression e]
+    : OParen Number CParen {$e = ValueExpressions.getNumericExpression($Number.text, pos($Number));}
+    ;
+     	
 ifStatement returns [LogicalExpression e]
 	@init {
 	  IfExpression.Builder s = IfExpression.newBuilder();

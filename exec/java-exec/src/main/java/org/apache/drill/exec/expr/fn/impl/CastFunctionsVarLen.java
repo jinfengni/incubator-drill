@@ -27,6 +27,8 @@ import org.apache.drill.exec.expr.annotations.Output;
 import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.annotations.Workspace;
 import org.apache.drill.exec.expr.holders.BigIntHolder;
+import org.apache.drill.exec.expr.holders.Float4Holder;
+import org.apache.drill.exec.expr.holders.Float8Holder;
 import org.apache.drill.exec.expr.holders.IntHolder;
 import org.apache.drill.exec.expr.holders.VarBinaryHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
@@ -67,10 +69,14 @@ public class CastFunctionsVarLen {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // target_type : Varchar
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @FunctionTemplate(name = "castVarchar", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
   public static class CastIntToVarchar implements DrillSimpleFunc{
 
     @Param IntHolder in;
+    @Param BigIntHolder len;
     @Workspace ByteBuf buffer;     
     @Output VarCharHolder out;
 
@@ -83,8 +89,8 @@ public class CastFunctionsVarLen {
       String istr = (new Integer(in.value)).toString();
       out.buffer = buffer;
       out.start = 0;
-      out.end = istr.length();
-      out.buffer.setBytes(0, istr.getBytes());      
+      out.end = Math.min((int)len.value, istr.length()); // truncate if target varchar has length smaller than # of input's digits      
+      out.buffer.setBytes(0, istr.substring(0,out.end).getBytes());      
     }
   }
   
@@ -105,9 +111,53 @@ public class CastFunctionsVarLen {
       String lstr = (new Long(in.value)).toString();
       out.buffer = buffer;
       out.start = 0;
-      out.end = lstr.length();
-      out.buffer.setBytes(0, lstr.getBytes());      
+      out.end = Math.min((int)len.value, lstr.length()); // truncate if target varchar has length smaller than # of input's digits 
+      out.buffer.setBytes(0, lstr.substring(0, out.end).getBytes());      
     }
   }
 
+  @FunctionTemplate(name = "castVarchar", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastFloat4ToVarchar implements DrillSimpleFunc{
+
+    @Param Float4Holder in;
+    @Param BigIntHolder len;
+    @Workspace ByteBuf buffer;     
+    @Output VarCharHolder out;
+
+    public void setup(RecordBatch incoming) {
+      //TODO: assume float4 has 100 digits
+      buffer = incoming.getContext().getAllocator().buffer(100);      
+    }
+
+    public void eval() {      
+      String fstr = (new Float(in.value)).toString();
+      out.buffer = buffer;
+      out.start = 0;
+      out.end = Math.min((int)len.value, fstr.length()); // truncate if target varchar has length smaller than # of input's digits      
+      out.buffer.setBytes(0, fstr.substring(0,out.end).getBytes());      
+    }
+  }
+  
+  @FunctionTemplate(name = "castVarchar", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastFloat8ToVarchar implements DrillSimpleFunc{
+
+    @Param Float8Holder in;
+    @Param BigIntHolder len;
+    @Workspace ByteBuf buffer;     
+    @Output VarCharHolder out;
+
+    public void setup(RecordBatch incoming) {
+      //TODO: assume float4 has 100 digits
+      buffer = incoming.getContext().getAllocator().buffer(100);      
+    }
+
+    public void eval() {      
+      String fstr = (new Double(in.value)).toString();
+      out.buffer = buffer;
+      out.start = 0;
+      out.end = Math.min((int)len.value, fstr.length()); // truncate if target varchar has length smaller than # of input's digits      
+      out.buffer.setBytes(0, fstr.substring(0,out.end).getBytes());      
+    }
+  }
+  
 }

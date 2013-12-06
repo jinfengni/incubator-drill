@@ -1,0 +1,46 @@
+{
+    head:{
+        type:"APACHE_DRILL_PHYSICAL",
+        version:"1",
+        generator:{
+            type:"manual"
+        }
+    },
+    graph:[
+        {
+            @id:1,
+            pop:"mock-scan",
+            url: "http://apache.org",
+            entries:[
+            	{records: 5, types: [
+            	  {name: "float4col", type: "FLOAT4", mode: "REQUIRED"},
+            	  {name: "bigintcol", type: "BIGINT", mode: "REQUIRED"},
+            	  {name: "intcol", type: "INT", mode: "REQUIRED"},
+            	  {name: "float4col", type: "FLOAT4", mode: "REQUIRED"},
+            	  {name: "float8col", type: "FLOAT8", mode: "REQUIRED"}
+         	]}
+            ]
+        },
+        {
+            @id:2,
+            child: 1,
+            pop:"project",
+            exprs: [
+		{ ref: "bigint1", expr:"cast(bigintcol as Varchar(10))" },
+		{ ref: "bigint2", expr:"cast(bigintcol as Varchar(30))" },
+		{ ref: "bigint3", expr:"cast(bigintcol as Varchar(2))" },
+		{ ref: "int1", expr:"cast(intcol as Varchar(10))" },
+		{ ref: "int2", expr:"cast(intcol as Varchar(2))" },
+		{ ref: "float4_1", expr:"cast(float4col as Varchar(2))" },
+		{ ref: "float4_2", expr:"cast(float4col as Varchar(15))" },
+		{ ref: "float8_1", expr:"cast(float8col as Varchar(2))" },
+		{ ref: "float8_2", expr:"cast(float8col as Varchar(15))" }
+            ]
+        },
+        {
+            @id: 3,
+            child: 2,
+            pop: "screen"
+        }
+    ]
+}
