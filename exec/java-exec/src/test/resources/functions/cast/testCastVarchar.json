@@ -26,15 +26,15 @@
             child: 1,
             pop:"project",
             exprs: [
-		{ ref: "bigint1", expr:"cast(bigintcol as Varchar(10))" },
-		{ ref: "bigint2", expr:"cast(bigintcol as Varchar(30))" },
-		{ ref: "bigint3", expr:"cast(bigintcol as Varchar(2))" },
-		{ ref: "int1", expr:"cast(intcol as Varchar(10))" },
-		{ ref: "int2", expr:"cast(intcol as Varchar(2))" },
-		{ ref: "float4_1", expr:"cast(float4col as Varchar(2))" },
-		{ ref: "float4_2", expr:"cast(float4col as Varchar(15))" },
-		{ ref: "float8_1", expr:"cast(float8col as Varchar(2))" },
-		{ ref: "float8_2", expr:"cast(float8col as Varchar(15))" }
+		{ ref: "bigint1", expr:"cast(bigintcol as varchar(10))" },
+		{ ref: "bigint2", expr:"cast(bigintcol as varchar(30))" },
+		{ ref: "bigint3", expr:"cast(bigintcol as varchar(2))" },
+		{ ref: "int1", expr:"cast(intcol as varchar(10))" },
+		{ ref: "int2", expr:"cast(intcol as varchar(2))" },
+		{ ref: "float4_1", expr:"cast(float4col as varchar(2))" },
+		{ ref: "float4_2", expr:"cast(float4col as varchar(15))" },
+		{ ref: "float8_1", expr:"cast(float8col as varchar(2))" },
+		{ ref: "float8_2", expr:"cast(float8col as varchar(15))" }
             ]
         },
         {

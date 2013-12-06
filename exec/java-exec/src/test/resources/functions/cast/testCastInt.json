@@ -26,13 +26,12 @@
             pop:"project",
             exprs: [
 		{ ref: "float4col", expr:"float4col" },
-		{ ref: "float4_cast", expr:"cast(float4col as bigint)" },
+		{ ref: "float4_cast", expr:"cast(float4col as int)" },
 		{ ref: "float8col", expr:"float8col" },
-		{ ref: "float8_cast", expr:"cast(float8col as bigint)" },
-		{ ref: "intcol", expr:"intcol"  },
-		{ ref: "int", expr:"cast(intcol as bigint)" },
-		{ ref: "bigint_cast", expr:"cast(bigintcol as bigint)" },
-		{ ref: "varchar_cast", expr:"cast(\"1256\" as bigint)" }
+		{ ref: "float8_cast", expr:"cast(float8col as int)" },
+		{ ref: "bigintcol", expr:"bigintcol"  },
+		{ ref: "bigint_cast", expr:"cast(bigintcol as int)" },
+		{ ref: "varchar_cast", expr:"cast(\"1256\" as int)" }
             ]
         },
         {

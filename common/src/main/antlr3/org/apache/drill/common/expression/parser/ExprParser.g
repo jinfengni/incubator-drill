@@ -90,15 +90,27 @@ repeat returns [List<LogicalExpression> listE]
   }
   : Repeat {$listE.clear(); $listE.add(new ValueExpressions.BooleanExpression("true", p));}
   ;
-  
+
 dataType returns [List<LogicalExpression> listE]
+	: numType  {$listE =$numType.listE;}
+	| charType {$listE =$charType.listE;}
+	; 
+  
+numType returns [List<LogicalExpression> listE]
 	@init{
 	  $listE = new ArrayList<LogicalExpression>();
-	  ExpressionPosition p = null;
 	}
 	: INT    {$listE.add( new ValueExpressions.QuotedString($INT.text, pos($INT) )); }
 	| BIGINT {$listE.add( new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT) )); }
-	| VARCHAR typeLen {$listE.add(new ValueExpressions.QuotedString($VARCHAR.text, pos($VARCHAR))); 
+	| FLOAT4 {$listE.add( new ValueExpressions.QuotedString($FLOAT4.text, pos($FLOAT4) )); }
+	| FLOAT8 {$listE.add( new ValueExpressions.QuotedString($FLOAT8.text, pos($FLOAT8) )); }
+	; 
+
+charType returns [List<LogicalExpression> listE]
+	@init{
+	  $listE = new ArrayList<LogicalExpression>();
+	}
+	:  VARCHAR typeLen {$listE.add(new ValueExpressions.QuotedString($VARCHAR.text, pos($VARCHAR))); 
 	                   $listE.add($typeLen.e);}
 	; 
 

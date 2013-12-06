@@ -38,6 +38,15 @@ public class FunctionRegistry {
   
   private final Map<String, FunctionDefinition> funcMap;
 
+  private static final Map<String, String> typeNameMap;
+  static {
+    typeNameMap = new HashMap<String, String> ();
+    typeNameMap.put("int", "Int");
+    typeNameMap.put("bigint", "BigInt");
+    typeNameMap.put("float4", "Float4");
+    typeNameMap.put("float8", "Float8");
+    typeNameMap.put("varchar", "Varchar");
+  }
   public FunctionRegistry(DrillConfig config){
     try{
       Set<Class<? extends CallProvider>> providerClasses = PathScanner.scanForImplementations(CallProvider.class, config.getStringList(CommonConstants.LOGICAL_FUNCTION_SCAN_PACKAGES));
@@ -71,7 +80,7 @@ public class FunctionRegistry {
   public LogicalExpression createCastFixedSize(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
     Preconditions.checkArgument(args.size() >= 2 && args.get(1) != null && args.get(1) instanceof QuotedString, "Wrong arguments of cast functions.");
     
-    String targetType = ((QuotedString) args.get(1)).value;
+    String targetType = typeNameMap.get(((QuotedString) args.get(1)).value);
     String castFuncWithType = functionName + targetType;
     
     FunctionDefinition d = funcMap.get(castFuncWithType);
@@ -104,7 +113,7 @@ public class FunctionRegistry {
   public LogicalExpression createCastVarSize(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
     Preconditions.checkArgument(args.size() >= 3 && args.get(1) != null && args.get(1) instanceof QuotedString, "Wrong arguments of cast functions.");
     
-    String targetType = ((QuotedString) args.get(1)).value;
+    String targetType = typeNameMap.get(((QuotedString) args.get(1)).value);     
     String castFuncWithType = functionName + targetType;
     
     FunctionDefinition d = funcMap.get(castFuncWithType);

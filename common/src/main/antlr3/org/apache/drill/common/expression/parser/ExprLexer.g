@@ -40,9 +40,11 @@ Nullable: 'nullable';
 Repeat: 'repeat';
 As: 'as';
 
-INT		 : 'Int';
-BIGINT	 : 'BigInt';
-VARCHAR  : 'Varchar';
+INT		 : 'int';
+BIGINT	 : 'bigint';
+FLOAT4   : 'float4';
+FLOAT8   : 'float8';
+VARCHAR  : 'varchar';
 
 Or       : '||' | 'or' | 'OR' | 'Or';
 And      : '&&' | 'and' | 'AND' ;

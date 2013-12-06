@@ -39,6 +39,9 @@ public class CastFunctionsVarLen {
   
   private CastFunctionsVarLen(){}
   
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // target_type : BigInt
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
   @FunctionTemplate(name = "castBigInt", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
   public static class CastVarBinaryToBigInt implements DrillSimpleFunc{
 
@@ -69,6 +72,105 @@ public class CastFunctionsVarLen {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // target_type : Int
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+  @FunctionTemplate(name = "castInt", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastVarBinaryToInt implements DrillSimpleFunc{
+
+    @Param VarBinaryHolder in;
+    @Output IntHolder out;
+
+    public void setup(RecordBatch b) {}
+
+    public void eval() {
+      byte[] buf = new byte[in.end - in.start];
+      in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+      out.value = Integer.parseInt(new String(buf));
+    }
+  }
+
+  @FunctionTemplate(name = "castInt", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastVarCharToInt implements DrillSimpleFunc{
+    @Param VarCharHolder in;
+    @Output IntHolder out;
+
+    public void setup(RecordBatch b) {}
+
+    public void eval() {
+       byte[] buf = new byte[in.end - in.start];
+      in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+      out.value = Integer.parseInt(new String(buf));
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // target_type : Float4
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+  @FunctionTemplate(name = "castFloat4", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastVarBinaryToFloat4 implements DrillSimpleFunc{
+
+    @Param VarBinaryHolder in;
+    @Output Float4Holder out;
+
+    public void setup(RecordBatch b) {}
+
+    public void eval() {
+      byte[] buf = new byte[in.end - in.start];
+      in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+      out.value = Float.parseFloat(new String(buf));
+    }
+  }
+
+  @FunctionTemplate(name = "castFloat4", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastVarCharToFloat4 implements DrillSimpleFunc{
+
+    @Param VarCharHolder in;
+    @Output Float4Holder out;
+
+    public void setup(RecordBatch b) {}
+
+    public void eval() {
+       byte[] buf = new byte[in.end - in.start];
+      in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+      out.value = Float.parseFloat(new String(buf));
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // target_type : Float8
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+  @FunctionTemplate(name = "castFloat8", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastVarBinaryToFloat8 implements DrillSimpleFunc{
+
+    @Param VarBinaryHolder in;
+    @Output Float8Holder out;
+
+    public void setup(RecordBatch b) {}
+
+    public void eval() {
+      byte[] buf = new byte[in.end - in.start];
+      in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+      out.value = Double.parseDouble(new String(buf));
+    }
+  }
+
+  @FunctionTemplate(name = "castFloat8", scope = FunctionTemplate.FunctionScope.SIMPLE, nulls=NullHandling.NULL_IF_NULL)
+  public static class CastVarCharToFloat8 implements DrillSimpleFunc{
+
+    @Param VarCharHolder in;
+    @Output Float8Holder out;
+
+    public void setup(RecordBatch b) {}
+
+    public void eval() {
+       byte[] buf = new byte[in.end - in.start];
+      in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+      out.value = Double.parseDouble(new String(buf));
+    }
+  }
+  
+  
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // target_type : Varchar
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
