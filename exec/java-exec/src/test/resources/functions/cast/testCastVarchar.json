@@ -17,7 +17,8 @@
             	  {name: "bigintcol", type: "BIGINT", mode: "REQUIRED"},
             	  {name: "intcol", type: "INT", mode: "REQUIRED"},
             	  {name: "float4col", type: "FLOAT4", mode: "REQUIRED"},
-            	  {name: "float8col", type: "FLOAT8", mode: "REQUIRED"}
+            	  {name: "float8col", type: "FLOAT8", mode: "REQUIRED"},
+                  {name: "varbinarycol", type: "VARBINARY", mode: "REQUIRED"}
          	]}
             ]
         },
@@ -34,7 +35,10 @@
 		{ ref: "float4_1", expr:"cast(float4col as varchar(2))" },
 		{ ref: "float4_2", expr:"cast(float4col as varchar(15))" },
 		{ ref: "float8_1", expr:"cast(float8col as varchar(2))" },
-		{ ref: "float8_2", expr:"cast(float8col as varchar(15))" }
+		{ ref: "float8_2", expr:"cast(float8col as varchar(15))" },
+		{ ref: "varbinarycol", expr:"varbinarycol"},
+		{ ref: "varbinary_cast1", expr:"cast(varbinarycol as varchar(15))" },
+		{ ref: "varbinary_cast2", expr:"cast(varbinarycol as varchar(2))" }
             ]
         },
         {

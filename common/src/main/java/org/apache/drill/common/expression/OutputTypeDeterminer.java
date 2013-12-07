@@ -32,6 +32,7 @@ public interface OutputTypeDeterminer {
   public static OutputTypeDeterminer FIXED_FLOAT4 = new FixedType(Types.required(MinorType.FLOAT4));
   public static OutputTypeDeterminer FIXED_FLOAT8 = new FixedType(Types.required(MinorType.FLOAT8)); 
   public static OutputTypeDeterminer FIXED_VARCHAR = new FixedType(Types.required(MinorType.VARCHAR));
+  public static OutputTypeDeterminer FIXED_VARBINARY = new FixedType(Types.required(MinorType.VARBINARY));
   public static OutputTypeDeterminer FIXED_VAR16CHAR = new FixedType(Types.required(MinorType.VAR16CHAR));
   
   public MajorType getOutputType(List<LogicalExpression> expressions);

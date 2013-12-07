@@ -20,7 +20,7 @@
 
 
 <#list cast.types as type>
-<#if type.major == "Fixed">
+<#if type.major == "SrcVarlen">
 
 <@pp.changeOutputFile name="/org/apache/drill/exec/expr/fn/impl/gcast/Cast${type.from}${type.to}.java" />
 
@@ -46,11 +46,9 @@ public class Cast${type.from}${type.to} implements DrillSimpleFunc{
   public void setup(RecordBatch incoming) {}
 
   public void eval() {
-    <#if type.explicit??>
-    out.value = (${type.explicit}) in.value;
-    <#else>
-    out.value = in.value;
-    </#if>
+    byte[] buf = new byte[in.end - in.start];
+    in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+    out.value = ${type.javaType}.parse${type.parse}(new String(buf));
   }
 }
 

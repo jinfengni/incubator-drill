@@ -45,6 +45,7 @@ BIGINT	 : 'bigint';
 FLOAT4   : 'float4';
 FLOAT8   : 'float8';
 VARCHAR  : 'varchar';
+VARBINARY: 'varbinary';
 
 Or       : '||' | 'or' | 'OR' | 'Or';
 And      : '&&' | 'and' | 'AND' ;

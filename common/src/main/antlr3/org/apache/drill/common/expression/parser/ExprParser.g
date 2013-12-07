@@ -112,6 +112,8 @@ charType returns [List<LogicalExpression> listE]
 	}
 	:  VARCHAR typeLen {$listE.add(new ValueExpressions.QuotedString($VARCHAR.text, pos($VARCHAR))); 
 	                   $listE.add($typeLen.e);}
+	|  VARBINARY typeLen {$listE.add(new ValueExpressions.QuotedString($VARBINARY.text, pos($VARBINARY))); 
+	                   $listE.add($typeLen.e);}	
 	; 
 
 typeLen returns [LogicalExpression e]

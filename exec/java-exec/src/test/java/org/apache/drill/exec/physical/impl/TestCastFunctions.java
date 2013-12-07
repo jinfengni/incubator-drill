@@ -54,6 +54,7 @@ public class TestCastFunctions {
   DrillConfig c = DrillConfig.create();
 
   @Test
+  @Ignore
   public void testCastBigInt(@Injectable final DrillbitContext bitContext,
                             @Injectable UserServer.UserClientConnection connection) throws Throwable{
 

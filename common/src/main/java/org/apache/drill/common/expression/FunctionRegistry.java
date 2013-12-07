@@ -45,7 +45,8 @@ public class FunctionRegistry {
     typeNameMap.put("bigint", "BigInt");
     typeNameMap.put("float4", "Float4");
     typeNameMap.put("float8", "Float8");
-    typeNameMap.put("varchar", "Varchar");
+    typeNameMap.put("varchar", "VarChar");
+    typeNameMap.put("varbinary", "VarBinary");
   }
   public FunctionRegistry(DrillConfig config){
     try{
@@ -88,7 +89,7 @@ public class FunctionRegistry {
     
     List<LogicalExpression> newArgs = Lists.newArrayList();
     newArgs.add(args.get(0));  //input_expr
-    
+    /*
     OutputTypeDeterminer otd;
     
     switch(targetType) {
@@ -98,8 +99,8 @@ public class FunctionRegistry {
     case "Float8"    : otd = OutputTypeDeterminer.FIXED_FLOAT8; break;
     default: otd = OutputTypeDeterminer.FIXED_BIGINT;
     }
-    
-    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), otd) ;   
+    */
+    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), d.getOutputTypeDeterminer()) ;   
     
     return new FunctionCall(castFuncDef, newArgs, ep);
   }
@@ -122,16 +123,17 @@ public class FunctionRegistry {
     List<LogicalExpression> newArgs = Lists.newArrayList();
     newArgs.add(args.get(0));  //input_expr
     newArgs.add(args.get(2));  //type_length
-    
+    /*
     OutputTypeDeterminer otd;
-    
     switch(targetType) {
-    case "Varchar" : otd = OutputTypeDeterminer.FIXED_VARCHAR; break;
-    case "Var16char" : otd = OutputTypeDeterminer.FIXED_VAR16CHAR; break;
+    case "VarChar" : otd = OutputTypeDeterminer.FIXED_VARCHAR; break;
+    case "Var16Char" : otd = OutputTypeDeterminer.FIXED_VAR16CHAR; break;
+    case "VarBinary" : otd = OutputTypeDeterminer.FIXED_VARBINARY; break;
     default: otd = OutputTypeDeterminer.FIXED_VARCHAR;
     }
+    */
     
-    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), otd) ;   
+    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), d.getOutputTypeDeterminer()) ;   
     
     return new FunctionCall(castFuncDef, newArgs, ep);
   }
