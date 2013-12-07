@@ -48,6 +48,8 @@ public class Cast${type.from}${type.to} implements DrillSimpleFunc{
   public void eval() {
     byte[] buf = new byte[in.end - in.start];
     in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+    
+    //TODO: need capture format exception, and issue SQLERR code.
     out.value = ${type.javaType}.parse${type.parse}(new String(buf));
   }
 }
