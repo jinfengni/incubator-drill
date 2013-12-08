@@ -38,6 +38,7 @@ public class FunctionRegistry {
   
   private final Map<String, FunctionDefinition> funcMap;
 
+  //map from lowcase type name to drill internal type name.
   private static final Map<String, String> typeNameMap;
   static {
     typeNameMap = new HashMap<String, String> ();
@@ -89,17 +90,7 @@ public class FunctionRegistry {
     
     List<LogicalExpression> newArgs = Lists.newArrayList();
     newArgs.add(args.get(0));  //input_expr
-    /*
-    OutputTypeDeterminer otd;
-    
-    switch(targetType) {
-    case "BigInt" : otd = OutputTypeDeterminer.FIXED_BIGINT; break;
-    case "Int"    : otd = OutputTypeDeterminer.FIXED_INT; break;
-    case "Float4"    : otd = OutputTypeDeterminer.FIXED_FLOAT4; break;
-    case "Float8"    : otd = OutputTypeDeterminer.FIXED_FLOAT8; break;
-    default: otd = OutputTypeDeterminer.FIXED_BIGINT;
-    }
-    */
+
     FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), d.getOutputTypeDeterminer()) ;   
     
     return new FunctionCall(castFuncDef, newArgs, ep);
@@ -123,15 +114,6 @@ public class FunctionRegistry {
     List<LogicalExpression> newArgs = Lists.newArrayList();
     newArgs.add(args.get(0));  //input_expr
     newArgs.add(args.get(2));  //type_length
-    /*
-    OutputTypeDeterminer otd;
-    switch(targetType) {
-    case "VarChar" : otd = OutputTypeDeterminer.FIXED_VARCHAR; break;
-    case "Var16Char" : otd = OutputTypeDeterminer.FIXED_VAR16CHAR; break;
-    case "VarBinary" : otd = OutputTypeDeterminer.FIXED_VARBINARY; break;
-    default: otd = OutputTypeDeterminer.FIXED_VARCHAR;
-    }
-    */
     
     FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), d.getOutputTypeDeterminer()) ;   
     
