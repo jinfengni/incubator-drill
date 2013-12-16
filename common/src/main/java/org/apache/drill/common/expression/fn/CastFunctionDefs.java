@@ -21,6 +21,7 @@ import org.apache.drill.common.expression.ArgumentValidators;
 import org.apache.drill.common.expression.CallProvider;
 import org.apache.drill.common.expression.FunctionDefinition;
 import org.apache.drill.common.expression.OutputTypeDeterminer;
+import org.apache.drill.common.types.TypeProtos.MinorType;
 
 public class CastFunctionDefs implements CallProvider{
   @Override
@@ -34,5 +35,17 @@ public class CastFunctionDefs implements CallProvider{
         FunctionDefinition.simple("castVARBINARY", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_VARBINARY),
         FunctionDefinition.simple("castVAR16CHAR", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_VAR16CHAR)
     };
+  }
+  
+  public static FunctionDefinition getCastFuncDef(MinorType targetMinorType) {
+    switch (targetMinorType) {
+      case BIGINT : 
+        return FunctionDefinition.simple("castBigInt", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_BIGINT);
+      case INT :
+        return FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_INT);
+      default:
+        return FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_INT);       
+    }
+    
   }
 }

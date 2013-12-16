@@ -21,16 +21,18 @@ package org.apache.drill.exec.expr;
 import java.util.List;
 
 import org.apache.drill.common.expression.ErrorCollector;
+import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.ExpressionValidator;
 import org.apache.drill.common.expression.FunctionCall;
+import org.apache.drill.common.expression.FunctionDefinition;
 import org.apache.drill.common.expression.IfExpression;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.common.expression.fn.CastFunctionDefs;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.expression.visitors.SimpleExprVisitor;
 import org.apache.drill.common.types.Types;
-
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
@@ -47,65 +49,72 @@ public class ImplicitCastBuilder {
     
   }
   
-  public static LogicalExpression injectImplicitCast(LogicalExpression expr, FunctionImplementationRegistry registry, ErrorCollector errorCollector) {
-    return expr.accept(new ImplicitCastVisitor(errorCollector), registry);
+  public static LogicalExpression injectImplicitCast(LogicalExpression expr, FunctionImplementationRegistry registry) {
+    return expr.accept(new ImplicitCastVisitor(), registry);
   }
 
   
   private static class ImplicitCastVisitor extends AbstractExprVisitor<LogicalExpression, FunctionImplementationRegistry, RuntimeException> {
-    private final ErrorCollector errorCollector;
-    private ExpressionValidator validator = new ExpressionValidator();
+    //private final ErrorCollector errorCollector;
+    //private ExpressionValidator validator = new ExpressionValidator();
 
-    public ImplicitCastVisitor(ErrorCollector errorCollector) {
-          this.errorCollector = errorCollector;
+    public ImplicitCastVisitor() {
     }
-  
+    
+    /*
     private LogicalExpression validateNewExpr(LogicalExpression newExpr) {
       newExpr.accept(validator, errorCollector);
       return newExpr;
     }
-
+    */
     @Override
     public LogicalExpression visitUnknown(LogicalExpression e, FunctionImplementationRegistry registry) throws RuntimeException {
-      throw new UnsupportedOperationException(String.format("ImplicitCastVisitor does not currently support type %s.", e.getClass().getCanonicalName()));
+      //throw new UnsupportedOperationException(String.format("ImplicitCastVisitor does not currently support type %s.", e.getClass().getCanonicalName()));
+      /*if (e instanceof ValueVectorWriteExpression) {
+        LogicalExpression child = ((ValueVectorWriteExpression) e).getChild().accept(this, registry);
+        return new ValueVectorWriteExpression(((ValueVectorWriteExpression) e).getFieldId(),child); 
+      } else
+      */
+        return e;
     }
 
     @Override
-    public LogicalExpression visitFunctionCall(FunctionCall call, FunctionImplementationRegistry registry) {
-      
+    public LogicalExpression visitFunctionCall(FunctionCall call, FunctionImplementationRegistry registry) {      
       List<LogicalExpression> args = Lists.newArrayList();
       for (int i = 0; i < call.args.size(); ++i) {
         LogicalExpression newExpr = call.args.get(i).accept(this, registry);
         args.add(newExpr);
       }
-
-      //TODO : call function resolver, get the best match. Insert cast if necessary
-
+          
+      //call function resolver, get the best match. 
       FunctionResolver resolver = FunctionResolverFactory.getResolver(call);    
-      //create a new function call, since the argument(s) may be changed. 
-      FunctionCall newCall = new FunctionCall(call.getDefinition(), args, call.getPosition()); 
-      DrillFuncHolder matchedFuncHolder = resolver.getBestMatch(registry.getMethods().get(call.getDefinition().getName()), newCall); 
+      DrillFuncHolder matchedFuncHolder = resolver.getBestMatch(registry.getMethods().get(call.getDefinition().getName()), call); 
       
-      if (matchedFuncHolder==null) {           
-        return validateNewExpr(newCall);
-      } else {
-        List<LogicalExpression> argsWithCast = Lists.newArrayList();
-        
+      List<LogicalExpression> newArgs = Lists.newArrayList();
+           
+      if (matchedFuncHolder==null) {  
+        //TODO: found no matched funcholder. Raise exception here?
+        return new FunctionCall(call.getDefinition(), args, call.getPosition());
+      } else {       
         ValueReference[] parms = matchedFuncHolder.getParameters();
         assert parms.length == call.args.size();
         
+        //Compare parm type against arg type. Insert cast if necessary
         for (int i = 0; i < call.args.size(); ++i) {
           ValueReference param = parms[i];
           if (Types.softEquals(param.getMajorType(), call.args.get(i).getMajorType(), matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL))
-            argsWithCast.add(call.args.get(i));
+            newArgs.add(call.args.get(i));
           else {
-            String castFuncName = "cast" + param.getMajorType().getMinorType().name();
-            
-            argsWithCast.add();
+            //Insert cast if param type is different from arg type.             
+            FunctionDefinition castFuncDef = CastFunctionDefs.getCastFuncDef(param.getMajorType().getMinorType());
+            List<LogicalExpression> castArgs = Lists.newArrayList();
+            castArgs.add(call.args.get(i));  //input_expr
+            newArgs.add(new FunctionCall(castFuncDef, castArgs, ExpressionPosition.UNKNOWN));
           }
         }  
-        return null;
       }
+      
+      return new FunctionCall(call.getDefinition(), newArgs, call.getPosition());
     }
 
     @Override
@@ -121,7 +130,7 @@ public class ImplicitCastBuilder {
         conditions.set(i, new IfExpression.IfCondition(newCondition, newExpr));
       }
 
-      return validateNewExpr(IfExpression.newBuilder().setElse(newElseExpr).addConditions(conditions).build());
+      return IfExpression.newBuilder().setElse(newElseExpr).addConditions(conditions).build();
     }
 
     @Override
@@ -148,5 +157,6 @@ public class ImplicitCastBuilder {
     public LogicalExpression visitQuotedStringConstant(ValueExpressions.QuotedString e, FunctionImplementationRegistry registry) {
       return e;
     }
+
   }
 }

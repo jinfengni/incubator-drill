@@ -56,9 +56,13 @@ public class FunctionImplementationRegistry {
     return this.methods;
   }
   
-  public DrillFuncHolder getFunction(FunctionCall call){
-	  
-	  
+  public DrillFuncHolder getFunction(FunctionCall call){	  
+    for(DrillFuncHolder h : methods.get(call.getDefinition().getName())){
+      if(h.matches(call)){
+        return h;
+      }
+    }
+    /*
 	FunctionResolver resolver = FunctionResolverFactory.getResolver(call);	  
 	DrillFuncHolder matchedFuncHolder = resolver.getBestMatch(methods.get(call.getDefinition().getName()), call); 
 	
@@ -66,8 +70,7 @@ public class FunctionImplementationRegistry {
 	if(null != matchedFuncHolder){
 	   return matchedFuncHolder;
 	} 
-    
-    
+    */
     
     List<MajorType> types = Lists.newArrayList();
     for(LogicalExpression e : call.args){
