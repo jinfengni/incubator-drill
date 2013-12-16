@@ -27,23 +27,32 @@ import org.apache.drill.common.expression.IfExpression;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.expression.visitors.SimpleExprVisitor;
+import org.apache.drill.common.types.Types;
+
+import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
+import org.apache.drill.exec.expr.fn.DrillFuncHolder;
+import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.expr.fn.DrillFuncHolder.ValueReference;
+import org.apache.drill.exec.resolver.FunctionResolver;
+import org.apache.drill.exec.resolver.FunctionResolverFactory;
 
 import com.google.common.collect.Lists;
 
 public class ImplicitCastBuilder {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ImplicitCastBuilder.class);
-  
+   
   private ImplicitCastBuilder() {
     
   }
   
-  public static LogicalExpression injectImplicitCast(LogicalExpression expr, ErrorCollector errorCollector) {
-    return expr.accept(new ImplicitCastVisitor(errorCollector), null);
+  public static LogicalExpression injectImplicitCast(LogicalExpression expr, FunctionImplementationRegistry registry, ErrorCollector errorCollector) {
+    return expr.accept(new ImplicitCastVisitor(errorCollector), registry);
   }
 
   
-  private static class ImplicitCastVisitor extends SimpleExprVisitor<LogicalExpression> {
+  private static class ImplicitCastVisitor extends AbstractExprVisitor<LogicalExpression, FunctionImplementationRegistry, RuntimeException> {
     private final ErrorCollector errorCollector;
     private ExpressionValidator validator = new ExpressionValidator();
 
@@ -57,33 +66,58 @@ public class ImplicitCastBuilder {
     }
 
     @Override
-    public LogicalExpression visitUnknown(LogicalExpression e, Void value) throws RuntimeException {
-      throw new UnsupportedOperationException(String.format("Expression tree materializer does not currently support materializing nodes of type %s.", e.getClass().getCanonicalName()));
+    public LogicalExpression visitUnknown(LogicalExpression e, FunctionImplementationRegistry registry) throws RuntimeException {
+      throw new UnsupportedOperationException(String.format("ImplicitCastVisitor does not currently support type %s.", e.getClass().getCanonicalName()));
     }
 
     @Override
-    public LogicalExpression visitFunctionCall(FunctionCall call) {
-      //TODO : call function resolver, get the best match. Insert cast if necessary
+    public LogicalExpression visitFunctionCall(FunctionCall call, FunctionImplementationRegistry registry) {
       
       List<LogicalExpression> args = Lists.newArrayList();
       for (int i = 0; i < call.args.size(); ++i) {
-        LogicalExpression newExpr = call.args.get(i).accept(this, null);
+        LogicalExpression newExpr = call.args.get(i).accept(this, registry);
         args.add(newExpr);
       }
 
-      return validateNewExpr(new FunctionCall(call.getDefinition(), args, call.getPosition()));
+      //TODO : call function resolver, get the best match. Insert cast if necessary
+
+      FunctionResolver resolver = FunctionResolverFactory.getResolver(call);    
+      //create a new function call, since the argument(s) may be changed. 
+      FunctionCall newCall = new FunctionCall(call.getDefinition(), args, call.getPosition()); 
+      DrillFuncHolder matchedFuncHolder = resolver.getBestMatch(registry.getMethods().get(call.getDefinition().getName()), newCall); 
+      
+      if (matchedFuncHolder==null) {           
+        return validateNewExpr(newCall);
+      } else {
+        List<LogicalExpression> argsWithCast = Lists.newArrayList();
+        
+        ValueReference[] parms = matchedFuncHolder.getParameters();
+        assert parms.length == call.args.size();
+        
+        for (int i = 0; i < call.args.size(); ++i) {
+          ValueReference param = parms[i];
+          if (Types.softEquals(param.getMajorType(), call.args.get(i).getMajorType(), matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL))
+            argsWithCast.add(call.args.get(i));
+          else {
+            String castFuncName = "cast" + param.getMajorType().getMinorType().name();
+            
+            argsWithCast.add();
+          }
+        }  
+        return null;
+      }
     }
 
     @Override
-    public LogicalExpression visitIfExpression(IfExpression ifExpr) {
+    public LogicalExpression visitIfExpression(IfExpression ifExpr, FunctionImplementationRegistry registry) {
       List<IfExpression.IfCondition> conditions = Lists.newArrayList(ifExpr.conditions);
-      LogicalExpression newElseExpr = ifExpr.elseExpression.accept(this, null);
+      LogicalExpression newElseExpr = ifExpr.elseExpression.accept(this, registry);
 
       for (int i = 0; i < conditions.size(); ++i) {
         IfExpression.IfCondition condition = conditions.get(i);
 
-        LogicalExpression newCondition = condition.condition.accept(this, null);
-        LogicalExpression newExpr = condition.expression.accept(this, null);
+        LogicalExpression newCondition = condition.condition.accept(this, registry);
+        LogicalExpression newExpr = condition.expression.accept(this, registry);
         conditions.set(i, new IfExpression.IfCondition(newCondition, newExpr));
       }
 
@@ -91,27 +125,27 @@ public class ImplicitCastBuilder {
     }
 
     @Override
-    public LogicalExpression visitSchemaPath(SchemaPath path) {
+    public LogicalExpression visitSchemaPath(SchemaPath path, FunctionImplementationRegistry registry) {
       return path; 
     }
 
     @Override
-    public LogicalExpression visitLongConstant(ValueExpressions.LongExpression intExpr) {
+    public LogicalExpression visitLongConstant(ValueExpressions.LongExpression intExpr, FunctionImplementationRegistry registry) {
       return intExpr;
     }
 
     @Override
-    public LogicalExpression visitDoubleConstant(ValueExpressions.DoubleExpression dExpr) {
+    public LogicalExpression visitDoubleConstant(ValueExpressions.DoubleExpression dExpr, FunctionImplementationRegistry registry) {
       return dExpr;
     }
 
     @Override
-    public LogicalExpression visitBooleanConstant(ValueExpressions.BooleanExpression e) {
+    public LogicalExpression visitBooleanConstant(ValueExpressions.BooleanExpression e, FunctionImplementationRegistry registry) {
       return e;
     }
 
     @Override
-    public LogicalExpression visitQuotedStringConstant(ValueExpressions.QuotedString e) {
+    public LogicalExpression visitQuotedStringConstant(ValueExpressions.QuotedString e, FunctionImplementationRegistry registry) {
       return e;
     }
   }

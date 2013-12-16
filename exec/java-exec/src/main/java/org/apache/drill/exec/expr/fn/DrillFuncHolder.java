@@ -196,7 +196,17 @@ public abstract class DrillFuncHolder {
 	    return cost;
 	  }
 	  
+  public ValueReference[] getParameters() {
+    return this.parameters;
+  }
   
+  public ValueReference getReturnValue() {
+    return this.returnValue;
+  }
+  
+  public NullHandling getNullHandling() {
+    return this.nullHandling ;
+  }
   
   private boolean softCompare(MajorType a, MajorType b){
     return Types.softEquals(a, b, nullHandling == NullHandling.NULL_IF_NULL);
@@ -219,6 +229,10 @@ public abstract class DrillFuncHolder {
     @Override
     public String toString() {
       return "ValueReference [type=" + type + ", name=" + name + "]";
+    }
+    
+    public MajorType getMajorType() {
+      return this.type;
     }
   }
 

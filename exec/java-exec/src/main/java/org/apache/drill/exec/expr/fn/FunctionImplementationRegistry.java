@@ -52,6 +52,9 @@ public class FunctionImplementationRegistry {
     }
   }
   
+  public ArrayListMultimap<String, DrillFuncHolder> getMethods() {
+    return this.methods;
+  }
   
   public DrillFuncHolder getFunction(FunctionCall call){
 	  
