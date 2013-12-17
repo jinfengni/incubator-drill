@@ -27,16 +27,7 @@
             pop:"project",
             exprs: [
 			{ ref: "intnullcol", expr:"intnullcol" },
-			{ ref: "intcol", expr:"intcol" },
-			{ ref: "c1", expr:"intcol < intcol" },
-			{ ref: "c2", expr:"intnullcol < intcol" },
-			{ ref: "c3", expr:"intcol < intnullcol" },
-			{ ref: "c4", expr:"10 + 20.3" },
-			{ ref: "c5", expr:"20.3 + 10" },
-			{ ref: "c6", expr:"\"20\" + 10" },
-			{ ref: "c7", expr:"\"10\" + 20.3" },
-			{ ref: "c8", expr:"\"10.5\" + 20.3" }
-
+			{ ref: "intcol", expr:"intcol" }
             ]
         },
         {

@@ -45,36 +45,30 @@ import com.google.common.collect.Lists;
 public class ImplicitCastBuilder {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ImplicitCastBuilder.class);
    
-  private ImplicitCastBuilder() {
-    
+  private ImplicitCastBuilder() {  
   }
   
-  public static LogicalExpression injectImplicitCast(LogicalExpression expr, FunctionImplementationRegistry registry) {
-    return expr.accept(new ImplicitCastVisitor(), registry);
+  public static LogicalExpression injectImplicitCast(LogicalExpression expr, ErrorCollector errorCollector, FunctionImplementationRegistry registry) {
+    return expr.accept(new ImplicitCastVisitor(errorCollector), registry);
   }
 
   
   private static class ImplicitCastVisitor extends AbstractExprVisitor<LogicalExpression, FunctionImplementationRegistry, RuntimeException> {
-    //private final ErrorCollector errorCollector;
-    //private ExpressionValidator validator = new ExpressionValidator();
+    private final ErrorCollector errorCollector;
+    private ExpressionValidator validator = new ExpressionValidator();
 
-    public ImplicitCastVisitor() {
+    public ImplicitCastVisitor(ErrorCollector errorCollector) {
+      this.errorCollector = errorCollector;
     }
     
-    /*
+    
     private LogicalExpression validateNewExpr(LogicalExpression newExpr) {
       newExpr.accept(validator, errorCollector);
       return newExpr;
     }
-    */
+    
     @Override
     public LogicalExpression visitUnknown(LogicalExpression e, FunctionImplementationRegistry registry) throws RuntimeException {
-      //throw new UnsupportedOperationException(String.format("ImplicitCastVisitor does not currently support type %s.", e.getClass().getCanonicalName()));
-      /*if (e instanceof ValueVectorWriteExpression) {
-        LogicalExpression child = ((ValueVectorWriteExpression) e).getChild().accept(this, registry);
-        return new ValueVectorWriteExpression(((ValueVectorWriteExpression) e).getFieldId(),child); 
-      } else
-      */
         return e;
     }
 
@@ -94,7 +88,7 @@ public class ImplicitCastBuilder {
            
       if (matchedFuncHolder==null) {  
         //TODO: found no matched funcholder. Raise exception here?
-        return new FunctionCall(call.getDefinition(), args, call.getPosition());
+        return validateNewExpr(new FunctionCall(call.getDefinition(), args, call.getPosition()));
       } else {       
         ValueReference[] parms = matchedFuncHolder.getParameters();
         assert parms.length == call.args.size();
@@ -114,7 +108,7 @@ public class ImplicitCastBuilder {
         }  
       }
       
-      return new FunctionCall(call.getDefinition(), newArgs, call.getPosition());
+      return validateNewExpr(new FunctionCall(call.getDefinition(), newArgs, call.getPosition()));
     }
 
     @Override
@@ -130,7 +124,7 @@ public class ImplicitCastBuilder {
         conditions.set(i, new IfExpression.IfCondition(newCondition, newExpr));
       }
 
-      return IfExpression.newBuilder().setElse(newElseExpr).addConditions(conditions).build();
+      return validateNewExpr(IfExpression.newBuilder().setElse(newElseExpr).addConditions(conditions).build());
     }
 
     @Override

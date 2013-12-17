@@ -99,8 +99,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
     
     for(int i = 0; i < exprs.size(); i++){
       final NamedExpression namedExpression = exprs.get(i);
-      final LogicalExpression materializedExpr = ExpressionTreeMaterializer.materialize(namedExpression.getExpr(), incoming, collector);
-      final LogicalExpression expr = ImplicitCastBuilder.injectImplicitCast(materializedExpr, context.getFunctionRegistry());
+      final LogicalExpression expr = ExpressionTreeMaterializer.materialize(namedExpression.getExpr(), incoming, collector, context.getFunctionRegistry());
       final MaterializedField outputField = MaterializedField.create(getRef(namedExpression), expr.getMajorType());
       if(collector.hasErrors()){
         throw new SchemaChangeException(String.format("Failure while trying to materialize incoming schema.  Errors:\n %s.", collector.toErrorString()));

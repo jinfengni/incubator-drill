@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 
 public class TypeCastRules {
@@ -12,9 +13,13 @@ public class TypeCastRules {
 	private static Map<MinorType, Set<MinorType>> rules;
 	
 	public TypeCastRules(){
-		
-		
-		rules = new HashMap<MinorType, Set<MinorType>>();
+	}
+	static {
+	  initRules();
+	}
+	
+	private static void initRules(){	
+		    rules = new HashMap<MinorType, Set<MinorType>>();
 
         Set<MinorType> rule;
 
@@ -459,8 +464,9 @@ public class TypeCastRules {
         
 	}
 	
-	public static boolean isCastable(MinorType from, MinorType to){		
-		return rules.get(from)==null ? false: rules.get(from).contains(to);
+	public static boolean isCastable(MajorType from, MajorType to){	  
+		return (from.getMode().compareTo(to.getMode())>=0) && 
+		       (rules.get(from.getMinorType())==null ? false: rules.get(from.getMinorType()).contains(to.getMinorType()));
 	}
 
 }

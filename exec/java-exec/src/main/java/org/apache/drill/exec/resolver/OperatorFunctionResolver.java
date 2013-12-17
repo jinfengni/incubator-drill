@@ -27,12 +27,13 @@ public class OperatorFunctionResolver implements FunctionResolver {
 		
 		for(DrillFuncHolder h : methods){
 			currcost = h.getCost(call);
-			/*
+			
+		  //check for explicit type cast here
 			if(currcost == -1){
-				//TODO: check for explicit type cast here
+				
 				continue;
 			}
-			*/
+			
 			if(currcost < bestcost){
 				bestcost = currcost;
 				bestmatch = h;

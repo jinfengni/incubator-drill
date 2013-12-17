@@ -27,11 +27,13 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.visitors.SimpleExprVisitor;
+import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.apache.drill.exec.record.NullExpression;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.record.TypedFieldId;
 
 import com.google.common.collect.Lists;
+
 import org.apache.drill.exec.record.VectorAccessible;
 
 public class ExpressionTreeMaterializer {
@@ -43,22 +45,23 @@ public class ExpressionTreeMaterializer {
   private ExpressionTreeMaterializer() {
   };
 
-  public static LogicalExpression materialize(LogicalExpression expr, VectorAccessible batch, ErrorCollector errorCollector) {
-    return expr.accept(new MaterializeVisitor(batch, errorCollector), null);
+  public static LogicalExpression materialize(LogicalExpression expr, VectorAccessible batch, ErrorCollector errorCollector, FunctionImplementationRegistry registry) {
+    LogicalExpression materializedExpr = expr.accept(new MaterializeVisitor(batch, errorCollector), null);
+    return ImplicitCastBuilder.injectImplicitCast(materializedExpr, errorCollector, registry);
   }
 
   private static class MaterializeVisitor extends SimpleExprVisitor<LogicalExpression> {
-    private final ErrorCollector errorCollector;
+    //private final ErrorCollector errorCollector;
     private final VectorAccessible batch;
-    private ExpressionValidator validator = new ExpressionValidator();
+    //private ExpressionValidator validator = new ExpressionValidator();
 
     public MaterializeVisitor(VectorAccessible batch, ErrorCollector errorCollector) {
       this.batch = batch;
-      this.errorCollector = errorCollector;
+      //this.errorCollector = errorCollector;
     }
 
     private LogicalExpression validateNewExpr(LogicalExpression newExpr) {
-      newExpr.accept(validator, errorCollector);
+      //newExpr.accept(validator, errorCollector);
       return newExpr;
     }
 

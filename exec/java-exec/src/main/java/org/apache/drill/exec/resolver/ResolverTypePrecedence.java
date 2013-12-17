@@ -8,34 +8,39 @@ public class ResolverTypePrecedence {
 
 public static final Map<String, Integer> precedenceMap;
     
-    static {
-
-   	 precedenceMap = new HashMap<String, Integer>();
-   	 precedenceMap.put("NULLEXPRESSION", 0);	 
-  	 precedenceMap.put("FIXEDBINARY", 1);
-  	 precedenceMap.put("VARBINARY", 2);
-   	 precedenceMap.put("VARCHAR", 3);
-   	 precedenceMap.put("VAR16CHAR", 4);
-   	 precedenceMap.put("FIXEDCHAR", 5);
-   	 precedenceMap.put("FIXED16CHAR", 6);
-   	 precedenceMap.put("BIT", 7);
-   	 precedenceMap.put("TINYINT", 8);
-   	 precedenceMap.put("SMALLINT", 9);
-  	 precedenceMap.put("INT", 10);
-  	 precedenceMap.put("BIGINT", 11);
-  	 precedenceMap.put("MONEY", 12);
-  	 precedenceMap.put("DECIMAL4", 13);
-  	 precedenceMap.put("DECIMAL8", 14);
-  	 precedenceMap.put("DECIMAL12", 15);
-  	 precedenceMap.put("DECIMAL16", 16);
-  	 precedenceMap.put("FLOAT4", 17);
-  	 precedenceMap.put("FLOAT8", 18);
-  	 precedenceMap.put("TIMETZ", 19);
-  	 precedenceMap.put("TIME", 20);
-  	 precedenceMap.put("DATE", 21);
-  	 precedenceMap.put("DATETIME", 22);
-  	 
-    }
+  static {
+    
+    /* Note: the order that each type is inserted into hashmap determins
+     * it's precedence. First in ==> lowest precedence. 
+     * A type of lower precedence can be implicitly "promoted" to type of higher precedence 
+     */
+    
+    precedenceMap = new HashMap<String, Integer>();
+   	precedenceMap.put("NULLEXPRESSION", precedenceMap.size());	 
+  	precedenceMap.put("FIXEDBINARY", precedenceMap.size());
+  	precedenceMap.put("VARBINARY", precedenceMap.size());
+    precedenceMap.put("FIXEDCHAR", precedenceMap.size());
+   	precedenceMap.put("VARCHAR", precedenceMap.size());
+    precedenceMap.put("FIXED16CHAR", precedenceMap.size());
+   	precedenceMap.put("VAR16CHAR", precedenceMap.size());
+   	precedenceMap.put("BIT", precedenceMap.size());
+   	precedenceMap.put("TINYINT", precedenceMap.size());
+   	precedenceMap.put("SMALLINT", precedenceMap.size());
+  	precedenceMap.put("INT", precedenceMap.size());
+  	precedenceMap.put("BIGINT", precedenceMap.size());
+  	precedenceMap.put("MONEY", precedenceMap.size());
+  	precedenceMap.put("DECIMAL4", precedenceMap.size());
+  	precedenceMap.put("DECIMAL8", precedenceMap.size());
+  	precedenceMap.put("DECIMAL12", precedenceMap.size());
+  	precedenceMap.put("DECIMAL16", precedenceMap.size());
+  	precedenceMap.put("FLOAT4", precedenceMap.size());
+  	precedenceMap.put("FLOAT8", precedenceMap.size());
+  	precedenceMap.put("TIME", precedenceMap.size());
+  	precedenceMap.put("DATE", precedenceMap.size());
+  	precedenceMap.put("DATETIME", precedenceMap.size());
+    precedenceMap.put("TIMETZ", precedenceMap.size());
+  	
+  }
 
 
 }

@@ -154,43 +154,47 @@ public abstract class DrillFuncHolder {
   }
   
   
+  /*
+   * -1 : not allowed for implicit cast
+   * >=-0: cost associated with implicit cast.
+   */
   public int getCost(FunctionCall call){
 	  	int cost = 0;	  
 	    
-	    if(call.args.size() != parameters.length){
+	    if (call.args.size() != parameters.length) {
 	    	return -1;
 	    }
-	    for(int i =0; i < parameters.length; i++){
+	    for (int i =0; i < parameters.length; i++){
 	    	ValueReference param = parameters[i];
 	    	LogicalExpression callarg = call.args.get(i);	    	
 	    	
 	    	Integer paramval = ResolverTypePrecedence.precedenceMap.get(param.type.getMinorType().name());
 	    	Integer callval = null;
 	    	
-	    	if(!TypeCastRules.isCastable(param.type.getMinorType(), callarg.getMajorType().getMinorType())){
+	    	if (!TypeCastRules.isCastable(callarg.getMajorType(), param.type)){
 	    		return -1;
 	    	}
 	    	
 	    	/** Allow NULL Expression/Arguments in casting **/
-	    	if(callarg == null || callarg instanceof NullExpression)
-	    	{
+	    	if (callarg instanceof NullExpression) {
 	    		callval = ResolverTypePrecedence.precedenceMap.get(ExecConstants.NULL_EXPRESSION);
-	    	}
-	    	else
-	    	{
+	    	}	else {
 	    		callval = ResolverTypePrecedence.precedenceMap.get(callarg.getMajorType().getMinorType().name());
 	    	}
 	    	
-	    	if(paramval==null || callval==null){
-	    		// TODO: Throw exception, Compatibility precedence not defined
-	    		return -1;
+	    	if(paramval==null){
+	    	  throw new RuntimeException(String.format("Precedence for type %s is not defined", param.getMajorType().getMinorType().name()));
 	    	}
 	    	
-	    	if(paramval - callval<0){
+	    	if(callval==null){
+          throw new RuntimeException(String.format("Precedence for type %s is not defined", callarg.getMajorType().getMinorType().name()));
+        }
+        
+	    	if (paramval - callval < 0) {
 	    		return -1;
 	    	}	    	
 	    	
-			cost += paramval - callval;
+	    	cost += (paramval - callval) * 10 + callarg.getMajorType().getMode().ordinal() - param.type.getMode().ordinal() ;
 			    
 	    }	    
 	    return cost;
@@ -199,11 +203,7 @@ public abstract class DrillFuncHolder {
   public ValueReference[] getParameters() {
     return this.parameters;
   }
-  
-  public ValueReference getReturnValue() {
-    return this.returnValue;
-  }
-  
+    
   public NullHandling getNullHandling() {
     return this.nullHandling ;
   }
