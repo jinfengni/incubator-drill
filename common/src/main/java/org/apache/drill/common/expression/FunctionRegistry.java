@@ -27,28 +27,17 @@ import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.exceptions.ExpressionParsingException;
-import org.apache.drill.common.expression.ValueExpressions.QuotedString;
+import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.PathScanner;
+import org.apache.drill.common.types.Types;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 public class FunctionRegistry {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionRegistry.class);
   
   private final Map<String, FunctionDefinition> funcMap;
-
-  //map from lowcase type name to drill internal type name.
-  private static final Map<String, String> typeNameMap;
-  static {
-    typeNameMap = new HashMap<String, String> ();
-    typeNameMap.put("int", "Int");
-    typeNameMap.put("bigint", "BigInt");
-    typeNameMap.put("float4", "Float4");
-    typeNameMap.put("float8", "Float8");
-    typeNameMap.put("varchar", "VarChar");
-    typeNameMap.put("varbinary", "VarBinary");
-  }
+ 
   public FunctionRegistry(DrillConfig config){
     try{
       Set<Class<? extends CallProvider>> providerClasses = PathScanner.scanForImplementations(CallProvider.class, config.getStringList(CommonConstants.LOGICAL_FUNCTION_SCAN_PACKAGES));
@@ -74,51 +63,30 @@ public class FunctionRegistry {
   }
   
   /*
-   * create a cast function specific to a target type with fixed size. 
-   * The original input args :  LogicalExpression  input_expr, String target_type, Boolean repeat ?
-   * The new cast function's name : cast+target_type.
-   * The new cast function's args : input_expr. 
+   * create a cast function.
+   * arguments : type -- targetType
+   *             ep   -- input expression position
+   *             expr -- input expression  
    */
-  public LogicalExpression createCastFixedSize(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
-    Preconditions.checkArgument(args.size() >= 2 && args.get(1) != null && args.get(1) instanceof QuotedString, "Wrong arguments of cast functions.");
-    
-    String targetType = typeNameMap.get(((QuotedString) args.get(1)).value);
-    String castFuncWithType = functionName + targetType;
+  public LogicalExpression createCast(MajorType type, ExpressionPosition ep, LogicalExpression expr){    
+    String castFuncWithType = "cast" + type.getMinorType().name();
     
     FunctionDefinition d = funcMap.get(castFuncWithType);
     if(d == null) throw new ExpressionParsingException(String.format("Unable to find function definition for function named '%s'", castFuncWithType));
     
     List<LogicalExpression> newArgs = Lists.newArrayList();
-    newArgs.add(args.get(0));  //input_expr
+    newArgs.add(expr);  //input_expr
 
-    FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), d.getOutputTypeDeterminer()) ;   
-    
-    return new FunctionCall(castFuncDef, newArgs, ep);
-  }
-  
-  /*
-   * create a cast function specific to a target type with var size. 
-   * The original input args :  LogicalExpression  input_expr, String target_type, Numeric target_type_length, Boolean repeat ?
-   * The new cast function's name : cast+target_type.
-   * The new cast function's args : input_expr, target_type_length 
-   */
-  public LogicalExpression createCastVarSize(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
-    Preconditions.checkArgument(args.size() >= 3 && args.get(1) != null && args.get(1) instanceof QuotedString, "Wrong arguments of cast functions.");
-    
-    String targetType = typeNameMap.get(((QuotedString) args.get(1)).value);     
-    String castFuncWithType = functionName + targetType;
-    
-    FunctionDefinition d = funcMap.get(castFuncWithType);
-    if(d == null) throw new ExpressionParsingException(String.format("Unable to find function definition for function named '%s'", castFuncWithType));
-    
-    List<LogicalExpression> newArgs = Lists.newArrayList();
-    newArgs.add(args.get(0));  //input_expr
-    newArgs.add(args.get(2));  //type_length
+    //VarLen type
+    if (!Types.isFixedWidthType(type)) {
+      newArgs.add(new ValueExpressions.LongExpression(type.getWidth(), null));
+    }
     
     FunctionDefinition castFuncDef = FunctionDefinition.simple(castFuncWithType, d.getArgumentValidator(), d.getOutputTypeDeterminer()) ;   
     
     return new FunctionCall(castFuncDef, newArgs, ep);
   }
+
   
   public LogicalExpression createExpression(String functionName, ExpressionPosition ep, List<LogicalExpression> args){
     FunctionDefinition d = funcMap.get(functionName);

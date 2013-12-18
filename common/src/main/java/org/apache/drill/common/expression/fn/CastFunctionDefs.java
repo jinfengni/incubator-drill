@@ -26,13 +26,13 @@ public class CastFunctionDefs implements CallProvider{
   @Override
   public FunctionDefinition[] getFunctionDefintions() {
     return new FunctionDefinition[]{
-        FunctionDefinition.simple("castBigInt", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_BIGINT),
-        FunctionDefinition.simple("castInt", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_INT),
-        FunctionDefinition.simple("castFloat4", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_FLOAT4),
-        FunctionDefinition.simple("castFloat8", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_FLOAT8),
-        FunctionDefinition.simple("castVarChar", new ArgumentValidators.AnyTypeAllowed(1,4), OutputTypeDeterminer.FIXED_VARCHAR),
-        FunctionDefinition.simple("castVarBinary", new ArgumentValidators.AnyTypeAllowed(1,4), OutputTypeDeterminer.FIXED_VARBINARY),
-        FunctionDefinition.simple("castVar16Char", new ArgumentValidators.AnyTypeAllowed(1,4), OutputTypeDeterminer.FIXED_VAR16CHAR)
+        FunctionDefinition.simple("castBIGINT", new ArgumentValidators.AnyTypeAllowed(1,2), OutputTypeDeterminer.FIXED_BIGINT),
+        FunctionDefinition.simple("castINT", new ArgumentValidators.AnyTypeAllowed(1,2), OutputTypeDeterminer.FIXED_INT),
+        FunctionDefinition.simple("castFLOAT4", new ArgumentValidators.AnyTypeAllowed(1,2), OutputTypeDeterminer.FIXED_FLOAT4),
+        FunctionDefinition.simple("castFLOAT8", new ArgumentValidators.AnyTypeAllowed(1,2), OutputTypeDeterminer.FIXED_FLOAT8),
+        FunctionDefinition.simple("castVARCHAR", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_VARCHAR),
+        FunctionDefinition.simple("castVARBINARY", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_VARBINARY),
+        FunctionDefinition.simple("castVAR16CHAR", new ArgumentValidators.AnyTypeAllowed(1,3), OutputTypeDeterminer.FIXED_VAR16CHAR)
     };
   }
 }

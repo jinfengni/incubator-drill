@@ -35,6 +35,8 @@ package org.apache.drill.common.expression.parser;
 import org.antlr.runtime.BitSet;
 import java.util.*;
 import org.apache.drill.common.expression.*;
+import org.apache.drill.common.types.*;
+import org.apache.drill.common.types.TypeProtos.*;
 
 }
 
@@ -73,51 +75,35 @@ castCall returns [LogicalExpression e]
 	  ExpressionPosition p = null;
 	}  
   :  Cast OParen expression As dataType repeat? CParen 
-      { exprs.add($expression.e); 
-        exprs.addAll($dataType.listE); 
-        if ($repeat.listE!=null) exprs.addAll($repeat.listE);
-        if ($dataType.listE.size() == 1 )  
-          $e = registry.createCastFixedSize($Cast.text, p, exprs);
-        else   
-          $e = registry.createCastVarSize($Cast.text, p, exprs);}
+      {  if ($repeat.isRep!=null && $repeat.isRep.compareTo(Boolean.TRUE)==0)
+      	 	$e = registry.createCast(TypeProtos.MajorType.newBuilder().mergeFrom($dataType.type).setMode(DataMode.REPEATED).build(), null, $expression.e);
+      	 else 
+         	$e = registry.createCast($dataType.type, null, $expression.e);}
   ;
 
-repeat returns [List<LogicalExpression> listE]
-  	@init{
-  	ExpressionPosition p = null;
-    $listE = new ArrayList<LogicalExpression>();   
-  	$listE.add(new ValueExpressions.BooleanExpression("false", p));
-  }
-  : Repeat {$listE.clear(); $listE.add(new ValueExpressions.BooleanExpression("true", p));}
+repeat returns [Boolean isRep]
+  : Repeat { $isRep = Boolean.TRUE;}
   ;
 
-dataType returns [List<LogicalExpression> listE]
-	: numType  {$listE =$numType.listE;}
-	| charType {$listE =$charType.listE;}
+dataType returns [MajorType type]
+	: numType  {$type =$numType.type;}
+	| charType {$type =$charType.type;}
 	; 
   
-numType returns [List<LogicalExpression> listE]
-	@init{
-	  $listE = new ArrayList<LogicalExpression>();
-	}
-	: INT    {$listE.add( new ValueExpressions.QuotedString($INT.text, pos($INT) )); }
-	| BIGINT {$listE.add( new ValueExpressions.QuotedString($BIGINT.text, pos($BIGINT) )); }
-	| FLOAT4 {$listE.add( new ValueExpressions.QuotedString($FLOAT4.text, pos($FLOAT4) )); }
-	| FLOAT8 {$listE.add( new ValueExpressions.QuotedString($FLOAT8.text, pos($FLOAT8) )); }
+numType returns [MajorType type]
+	: INT    { $type = Types.required(TypeProtos.MinorType.INT); }
+	| BIGINT { $type = Types.required(TypeProtos.MinorType.BIGINT); }
+	| FLOAT4 { $type = Types.required(TypeProtos.MinorType.FLOAT4); }
+	| FLOAT8 { $type = Types.required(TypeProtos.MinorType.FLOAT8); }
 	; 
 
-charType returns [List<LogicalExpression> listE]
-	@init{
-	  $listE = new ArrayList<LogicalExpression>();
-	}
-	:  VARCHAR typeLen {$listE.add(new ValueExpressions.QuotedString($VARCHAR.text, pos($VARCHAR))); 
-	                   $listE.add($typeLen.e);}
-	|  VARBINARY typeLen {$listE.add(new ValueExpressions.QuotedString($VARBINARY.text, pos($VARBINARY))); 
-	                   $listE.add($typeLen.e);}	
+charType returns [MajorType type]
+	:  VARCHAR typeLen {$type = TypeProtos.MajorType.newBuilder().setMinorType(TypeProtos.MinorType.VARCHAR).setMode(DataMode.REQUIRED).setWidth($typeLen.length.intValue()).build(); }
+	|  VARBINARY typeLen {$type = TypeProtos.MajorType.newBuilder().setMinorType(TypeProtos.MinorType.VARBINARY).setMode(DataMode.REQUIRED).setWidth($typeLen.length.intValue()).build();}	
 	; 
 
-typeLen returns [LogicalExpression e]
-    : OParen Number CParen {$e = ValueExpressions.getNumericExpression($Number.text, pos($Number));}
+typeLen returns [Integer length]
+    : OParen Number CParen {$length = Integer.parseInt($Number.text);}
     ;
      	
 ifStatement returns [LogicalExpression e]
