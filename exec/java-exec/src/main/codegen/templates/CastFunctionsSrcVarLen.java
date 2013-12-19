@@ -17,6 +17,14 @@
  */
 <@pp.dropOutputFile />
 
+<#macro doError>
+  { 
+    byte[] buf = new byte[in.end - in.start];
+    in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+    throw new NumberFormatException(new String(buf));
+  }  
+</#macro>
+
 <#list cast.types as type>
 <#if type.major == "SrcVarlen">
 
@@ -44,11 +52,69 @@ public class Cast${type.from}${type.to} implements DrillSimpleFunc{
   public void setup(RecordBatch incoming) {}
 
   public void eval() {
-    byte[] buf = new byte[in.end - in.start];
-    in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
+    <#if type.to == "Float4" || type.to == "Float8">
+      
+      byte[] buf = new byte[in.end - in.start];
+      in.buffer.getBytes(in.start, buf, 0, in.end - in.start);
     
-    //TODO: need capture format exception, and issue SQLERR code.
-    out.value = ${type.javaType}.parse${type.parse}(new String(buf));
+      //TODO: need capture format exception, and issue SQLERR code.
+      out.value = ${type.javaType}.parse${type.parse}(new String(buf));
+      
+    <#elseif type.to=="Int" || type.to == "BigInt">
+      ${type.primeType} result = 0;
+      boolean negative = false;
+      int i = 0, len = in.end - in.start;
+      ${type.primeType} limit = -${type.javaType}.MAX_VALUE;
+      ${type.primeType} multmin;
+      int digit;
+      int radix = 10;
+      
+      if (len > 0) {
+        byte firstChar = in.buffer.getByte(0);
+        if (firstChar < '0') { // Possible leading "-"
+            if (firstChar == '-') {
+                negative = true;
+                limit = ${type.javaType}.MIN_VALUE;
+            } else {
+              byte[] buf = new byte[in.end - in.start];
+              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+              throw new NumberFormatException(new String(buf));
+            }
+            if (len == 1)  { // Cannot have lone "-"
+              byte[] buf = new byte[in.end - in.start];
+              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+              throw new NumberFormatException(new String(buf));
+            }  
+            i++;
+        }
+        multmin = limit / radix;
+        while (i < len) {
+            // Accumulating negatively avoids surprises near MAX_VALUE
+            digit = Character.digit(in.buffer.getByte(i++),radix);
+            if (digit < 0 || result < multmin) { 
+              byte[] buf = new byte[in.end - in.start];
+              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+              throw new NumberFormatException(new String(buf));  
+            }
+            result *= radix;
+            if (result < limit + digit) {
+              byte[] buf = new byte[in.end - in.start];
+              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+              throw new NumberFormatException(new String(buf));
+            }
+            
+            result -= digit;
+        }
+      } else { 
+        byte[] buf = new byte[in.end - in.start];
+        in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+        throw new NumberFormatException(new String(buf));
+      }
+      
+      
+      out.value = negative ? result : -result;
+    
+    </#if>
   }
 }
 
