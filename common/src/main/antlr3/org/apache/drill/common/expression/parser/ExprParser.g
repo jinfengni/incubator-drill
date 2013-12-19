@@ -76,9 +76,9 @@ castCall returns [LogicalExpression e]
 	}  
   :  Cast OParen expression As dataType repeat? CParen 
       {  if ($repeat.isRep!=null && $repeat.isRep.compareTo(Boolean.TRUE)==0)
-      	 	$e = registry.createCast(TypeProtos.MajorType.newBuilder().mergeFrom($dataType.type).setMode(DataMode.REPEATED).build(), null, $expression.e);
+      	 	$e = registry.createCast(TypeProtos.MajorType.newBuilder().mergeFrom($dataType.type).setMode(DataMode.REPEATED).build(), pos($Cast), $expression.e);
       	 else 
-         	$e = registry.createCast($dataType.type, null, $expression.e);}
+         	$e = registry.createCast($dataType.type, pos($Cast), $expression.e);}
   ;
 
 repeat returns [Boolean isRep]
