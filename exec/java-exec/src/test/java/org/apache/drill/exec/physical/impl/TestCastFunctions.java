@@ -340,6 +340,35 @@ public class TestCastFunctions {
     }
     assertTrue(!context.isFailed());
   }
+
+  @Test(expected = NumberFormatException.class)
+  //nested: cast is nested in another cast, or another function.
+  public void testCastNumException(@Injectable final DrillbitContext bitContext,
+                            @Injectable UserServer.UserClientConnection connection) throws Throwable{
+
+    new NonStrictExpectations(){{
+      bitContext.getMetrics(); result = new MetricRegistry();
+      bitContext.getAllocator(); result = BufferAllocator.getAllocator(c);
+      bitContext.getConfig(); result = c;
+      bitContext.getOperatorCreatorRegistry(); result = new OperatorCreatorRegistry(c);
+    }};
+
+    PhysicalPlanReader reader = new PhysicalPlanReader(c, c.getMapper(), CoordinationProtos.DrillbitEndpoint.getDefaultInstance());
+    PhysicalPlan plan = reader.readPhysicalPlan(Files.toString(FileUtils.getResourceAsFile("/functions/cast/testCastNumException.json"), Charsets.UTF_8));
+    FunctionImplementationRegistry registry = new FunctionImplementationRegistry(c);
+    FragmentContext context = new FragmentContext(bitContext, FragmentHandle.getDefaultInstance(), connection, registry);
+    SimpleRootExec exec = new SimpleRootExec(ImplCreator.getExec(context, (FragmentRoot) plan.getSortedOperators(false).iterator().next()));
+    
+    while(exec.next()){
+    }
+
+    assertTrue(context.isFailed());
+    
+    if(context.getFailureCause() != null){
+      throw context.getFailureCause();
+    }
+
+  }
   
   @After
   public void tearDown() throws Exception{
