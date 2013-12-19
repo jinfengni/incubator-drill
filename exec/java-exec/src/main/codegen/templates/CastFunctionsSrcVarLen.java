@@ -61,58 +61,66 @@ public class Cast${type.from}${type.to} implements DrillSimpleFunc{
       out.value = ${type.javaType}.parse${type.parse}(new String(buf));
       
     <#elseif type.to=="Int" || type.to == "BigInt">
-      ${type.primeType} result = 0;
-      boolean negative = false;
-      int i = 0, len = in.end - in.start;
-      ${type.primeType} limit = -${type.javaType}.MAX_VALUE;
-      ${type.primeType} multmin;
-      int digit;
-      int radix = 10;
+      int i = 0;
+      int length = in.end - in.start;    
       
-      if (len > 0) {
-        byte firstChar = in.buffer.getByte(0);
-        if (firstChar < '0') { // Possible leading "-"
-            if (firstChar == '-') {
-                negative = true;
-                limit = ${type.javaType}.MIN_VALUE;
-            } else {
-              byte[] buf = new byte[in.end - in.start];
-              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
-              throw new NumberFormatException(new String(buf));
-            }
-            if (len == 1)  { // Cannot have lone "-"
-              byte[] buf = new byte[in.end - in.start];
-              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
-              throw new NumberFormatException(new String(buf));
-            }  
-            i++;
-        }
-        multmin = limit / radix;
-        while (i < len) {
-            // Accumulating negatively avoids surprises near MAX_VALUE
-            digit = Character.digit(in.buffer.getByte(i++),radix);
-            if (digit < 0 || result < multmin) { 
-              byte[] buf = new byte[in.end - in.start];
-              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
-              throw new NumberFormatException(new String(buf));  
-            }
-            result *= radix;
-            if (result < limit + digit) {
-              byte[] buf = new byte[in.end - in.start];
-              in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
-              throw new NumberFormatException(new String(buf));
-            }
-            
-            result -= digit;
-        }
-      } else { 
+      if (length==0) {
+        //empty, not a valid number
         byte[] buf = new byte[in.end - in.start];
         in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
-        throw new NumberFormatException(new String(buf));
+        throw new NumberFormatException(new String(buf));  
       }
       
+      boolean negative = in.buffer.getByte(0)=='-';
       
-      out.value = negative ? result : -result;
+      if (negative && ++i == length ) {
+        //only one single '-'
+        byte[] buf = new byte[in.end - in.start];
+        in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+        throw new NumberFormatException(new String(buf));  
+      }
+   
+      int radix = 10;
+      ${type.primeType} max = -${type.javaType}.MAX_VALUE / radix;
+      ${type.primeType} result = 0;
+      int digit;
+      
+      while (i < length) {
+        digit = Character.digit(in.buffer.getByte(i++),radix);
+        //not valid digit.
+        if (digit == -1) {
+          byte[] buf = new byte[in.end - in.start];
+          in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+          throw new NumberFormatException(new String(buf));  
+        }
+        //overflow
+        if (max > result) {
+          byte[] buf = new byte[in.end - in.start];
+          in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+          throw new NumberFormatException(new String(buf));  
+        }
+        
+        ${type.primeType} next = result * radix - digit;
+        
+        //overflow
+        if (next > result) {
+          byte[] buf = new byte[in.end - in.start];
+          in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+          throw new NumberFormatException(new String(buf));  
+        }
+        result = next;
+      }
+      if (!negative) {
+        result = -result;
+        //overflow
+        if (result < 0) {
+          byte[] buf = new byte[in.end - in.start];
+          in.buffer.getBytes(in.start, buf, 0, in.end - in.start);  
+          throw new NumberFormatException(new String(buf));  
+        }
+      }
+   
+      out.value = result;
     
     </#if>
   }
