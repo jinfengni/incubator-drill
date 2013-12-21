@@ -29,7 +29,19 @@
             child: 1,
 	    pop:"project",
             exprs: [
-		{ ref: "col6", expr:"intNullableColumn + intColumn" }
+			{ ref: "col1", expr:"10+20.1" },
+			{ ref: "col2", expr:"20.1+10" },
+			{ ref: "col3", expr:"\"20\"+10" },
+			{ ref: "col4", expr:"10 + \"20\"" },
+			{ ref: "int", expr:"intColumn " },
+			{ ref: "bigint", expr:"bigIntColumn " },
+			{ ref: "col5", expr:"intColumn + bigIntColumn" },
+			{ ref: "float4", expr:"float4Column" },
+			{ ref: "float8", expr:"float8Column" },
+			{ ref: "col6", expr:"float4Column + float8Column" }
+
+                        
+
 		   ]	
         },
         {

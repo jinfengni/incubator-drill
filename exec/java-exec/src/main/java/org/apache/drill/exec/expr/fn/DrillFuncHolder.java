@@ -76,7 +76,6 @@ public abstract class DrillFuncHolder {
     return imports;
   }
 
-  
   public JVar[] renderStart(CodeGenerator<?> g, HoldingContainer[] inputVariables){
     return declareWorkspaceVariables(g);
   };
@@ -152,58 +151,19 @@ public abstract class DrillFuncHolder {
     
     return true;
   }
-  
-  
-  /*
-   * -1 : not allowed for implicit cast
-   * >=-0: cost associated with implicit cast.
-   */
-  public int getCost(FunctionCall call){
-	  	int cost = 0;	  
-	    
-	    if (call.args.size() != parameters.length) {
-	    	return -1;
-	    }
-	    for (int i =0; i < parameters.length; i++){
-	    	ValueReference param = parameters[i];
-	    	LogicalExpression callarg = call.args.get(i);	    	
-	    	
-	    	Integer paramval = ResolverTypePrecedence.precedenceMap.get(param.type.getMinorType().name());
-	    	Integer callval = null;
-	    	
-	    	if (!TypeCastRules.isCastable(callarg.getMajorType(), param.type)){
-	    		return -1;
-	    	}
-	    	
-	    	/** Allow NULL Expression/Arguments in casting **/
-	    	if (callarg instanceof NullExpression) {
-	    		callval = ResolverTypePrecedence.precedenceMap.get(ExecConstants.NULL_EXPRESSION);
-	    	}	else {
-	    		callval = ResolverTypePrecedence.precedenceMap.get(callarg.getMajorType().getMinorType().name());
-	    	}
-	    	
-	    	if(paramval==null){
-	    	  throw new RuntimeException(String.format("Precedence for type %s is not defined", param.getMajorType().getMinorType().name()));
-	    	}
-	    	
-	    	if(callval==null){
-          throw new RuntimeException(String.format("Precedence for type %s is not defined", callarg.getMajorType().getMinorType().name()));
-        }
-        
-	    	if (paramval - callval < 0) {
-	    		return -1;
-	    	}	    	
-	    	
-	    	cost += (paramval - callval) * 10 + callarg.getMajorType().getMode().ordinal() - param.type.getMode().ordinal() ;
-			    
-	    }	    
-	    return cost;
-	  }
-	  
+  	  
   public ValueReference[] getParameters() {
     return this.parameters;
   }
-    
+  
+  public MajorType getParmMajorType(int i) {
+    return this.parameters[i].type;
+  }
+  
+  public int getParmSize(){
+    return this.parameters.length;
+  }
+  
   public NullHandling getNullHandling() {
     return this.nullHandling ;
   }
