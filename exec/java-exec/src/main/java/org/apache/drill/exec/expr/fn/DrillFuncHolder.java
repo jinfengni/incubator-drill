@@ -151,11 +151,7 @@ public abstract class DrillFuncHolder {
     
     return true;
   }
-  	  
-  public ValueReference[] getParameters() {
-    return this.parameters;
-  }
-  
+  	    
   public MajorType getParmMajorType(int i) {
     return this.parameters[i].type;
   }
@@ -191,9 +187,6 @@ public abstract class DrillFuncHolder {
       return "ValueReference [type=" + type + ", name=" + name + "]";
     }
     
-    public MajorType getMajorType() {
-      return this.type;
-    }
   }
 
   

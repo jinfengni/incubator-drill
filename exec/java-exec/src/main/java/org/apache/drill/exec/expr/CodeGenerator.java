@@ -89,7 +89,6 @@ public class CodeGenerator<T>{
     this.mappings = mappingSet;
     this.className = "Gen" + classCreator.incrementAndGet();
     this.fqcn = packageName + "." + className;
-    //this.funcRegistry = funcRegistry;
     try{
       this.definition = definition;
       this.model = new JCodeModel();

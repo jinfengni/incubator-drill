@@ -31,12 +31,11 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.CastFunctionDefs;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
-import org.apache.drill.common.expression.visitors.SimpleExprVisitor;
+import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
-import org.apache.drill.exec.expr.fn.DrillFuncHolder.ValueReference;
 import org.apache.drill.exec.resolver.FunctionResolver;
 import org.apache.drill.exec.resolver.FunctionResolverFactory;
 
@@ -67,10 +66,6 @@ public class ImplicitCastBuilder {
       return newExpr;
     }
     
-    @Override
-    public LogicalExpression visitUnknown(LogicalExpression e, FunctionImplementationRegistry registry) throws RuntimeException {
-        return e;
-    }
 
     @Override
     public LogicalExpression visitFunctionCall(FunctionCall call, FunctionImplementationRegistry registry) {      
@@ -87,32 +82,29 @@ public class ImplicitCastBuilder {
       FunctionResolver resolver = FunctionResolverFactory.getResolver(call);    
       DrillFuncHolder matchedFuncHolder = resolver.getBestMatch(registry.getMethods().get(call.getDefinition().getName()), call); 
 
-      //clear argument list : need hold new arguments when determine if implicit cast is required. 
-      args.clear();
-           
+      //new arg lists, possible with implicit cast inserted.
+      List<LogicalExpression> argsWithCast = Lists.newArrayList();
+             
       if (matchedFuncHolder==null) {  
         //TODO: found no matched funcholder. Raise exception here?
         return validateNewExpr(call);
       } else {       
-        ValueReference[] parms = matchedFuncHolder.getParameters();
-        assert parms.length == call.args.size();
-        
         //Compare parm type against arg type. Insert cast on top of arg, whenever necessary.
         for (int i = 0; i < call.args.size(); ++i) {
-          ValueReference param = parms[i];
-          if (Types.softEquals(param.getMajorType(), call.args.get(i).getMajorType(), matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL))
-            args.add(call.args.get(i));
-          else {
+          MajorType parmType = matchedFuncHolder.getParmMajorType(i);          
+          if (Types.softEquals(parmType, call.args.get(i).getMajorType(), matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL)) {
+            argsWithCast.add(call.args.get(i));
+          } else {
             //Insert cast if param type is different from arg type.             
-            FunctionDefinition castFuncDef = CastFunctionDefs.getCastFuncDef(param.getMajorType().getMinorType());
+            FunctionDefinition castFuncDef = CastFunctionDefs.getCastFuncDef(parmType.getMinorType());
             List<LogicalExpression> castArgs = Lists.newArrayList();
             castArgs.add(call.args.get(i));  //input_expr
-            args.add(new FunctionCall(castFuncDef, castArgs, ExpressionPosition.UNKNOWN));
+            argsWithCast.add(new FunctionCall(castFuncDef, castArgs, ExpressionPosition.UNKNOWN));
           }
         }  
       }
       
-      return validateNewExpr(new FunctionCall(call.getDefinition(), args, call.getPosition()));
+      return validateNewExpr(new FunctionCall(call.getDefinition(), argsWithCast, call.getPosition()));
     }
 
     @Override
@@ -154,6 +146,11 @@ public class ImplicitCastBuilder {
     @Override
     public LogicalExpression visitQuotedStringConstant(ValueExpressions.QuotedString e, FunctionImplementationRegistry registry) {
       return e;
+    }
+
+    @Override
+    public LogicalExpression visitUnknown(LogicalExpression e, FunctionImplementationRegistry registry) throws RuntimeException {
+        return e;
     }
 
   }
