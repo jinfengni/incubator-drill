@@ -54,7 +54,6 @@ public class TestImplicitCastFunctions {
     static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestImplicitCastFunctions.class);
 
   DrillConfig c = DrillConfig.create();
-  String CAST_TEST_PHYSICAL_PLAN = "functions/cast/testICastProj.json";
   PhysicalPlanReader reader;
   FunctionImplementationRegistry registry;
   FragmentContext context;
@@ -72,9 +71,9 @@ public class TestImplicitCastFunctions {
     }   
     return res;
  }
-    
+  
   public void runTest(@Injectable final DrillbitContext bitContext,
-                      @Injectable UserServer.UserClientConnection connection, Object[] expectedResults) throws Throwable {
+                      @Injectable UserServer.UserClientConnection connection, Object[] expectedResults, String planPath) throws Throwable {
 
     new NonStrictExpectations(){{
       bitContext.getMetrics(); result = new MetricRegistry();
@@ -82,7 +81,7 @@ public class TestImplicitCastFunctions {
       bitContext.getOperatorCreatorRegistry(); result = new OperatorCreatorRegistry(c);
     }};
 
-    String planString = Resources.toString(Resources.getResource(CAST_TEST_PHYSICAL_PLAN), Charsets.UTF_8);
+    String planString = Resources.toString(Resources.getResource(planPath), Charsets.UTF_8);
     if(reader == null) reader = new PhysicalPlanReader(c, c.getMapper(), CoordinationProtos.DrillbitEndpoint.getDefaultInstance());
     if(registry == null) registry = new FunctionImplementationRegistry(c);
     if(context == null) context = new FragmentContext(bitContext, ExecProtos.FragmentHandle.getDefaultInstance(), connection, registry);
@@ -107,32 +106,48 @@ public class TestImplicitCastFunctions {
   }
 
   @Test
-  public void testInt(@Injectable final DrillbitContext bitContext,
-                           @Injectable UserServer.UserClientConnection connection) throws Throwable{
-    // BigInt + Float8
-    //runTest(bitContext, connection,"10 + 20.1", new Double(30.1));
-    
-    // Float8 + BigInt
-    //runTest(bitContext, connection,"20.1 + 10", new Double(30.1));
-    
-    // Varchar + BigInt : "20" + 10
-    
-    Object [] expected = new Object[4];
+  public void testImplicitCastWithConstant(@Injectable final DrillbitContext bitContext,
+                           @Injectable UserServer.UserClientConnection connection) throws Throwable{    
+    Object [] expected = new Object[21];
     expected [0] = new Double (30.1);
     expected [1] = new Double (30.1);
-    expected [2] = new Long (30);
-    expected [3] = new Long (30);
+    expected [2] = new Double (30.1);
+    expected [3] = new Double (30.1);
+    expected [4] = new Long (30);
+    expected [5] = new Long (30);
+
+    expected [6] = new Double (30.1);
+    expected [7] = new Double (30.1);
+    expected [8] = new Float (30.1);
+    expected [9] = new Float (30.1);
+    expected [10] = new Double (30.1);
+    expected [11] = new Double (30.1);
     
-    runTest(bitContext, connection, expected);
+    expected [12] = new Float (30.1);
+    expected [13] = new Double (30.1);
+    expected [14] = new Float (30.1);
+    expected [15] = new Double (30.1);
     
-    /*
-    runTest(bitContext, connection, "intColumn == intColumn", 100);
-    runTest(bitContext, connection, "intColumn != intColumn", 0);
-    runTest(bitContext, connection, "intColumn > intColumn", 0);
-    runTest(bitContext, connection, "intColumn < intColumn", 0);
-    runTest(bitContext, connection, "intColumn >= intColumn", 100);
-    runTest(bitContext, connection, "intColumn <= intColumn", 100);
-    */
+    expected [16] = Boolean.TRUE;
+    expected [17] = Boolean.TRUE;
+    expected [18] = Boolean.TRUE;
+    expected [19] = Boolean.TRUE;
+    expected [20] = Boolean.TRUE;
+   
+    runTest(bitContext, connection, expected, "functions/cast/testICastConstant.json");    
+  }
+
+  @Test
+  public void testImplicitCastWithMockColumn(@Injectable final DrillbitContext bitContext,
+                           @Injectable UserServer.UserClientConnection connection) throws Throwable{    
+    Object [] expected = new Object[5];
+    expected [0] = new Integer (0);
+    expected [1] = new Integer (0);
+    expected [2] = new Float (-4.2949673E9);
+    expected [3] = new Float (-4.2949673E9);
+    expected [4] = new Double (-9.223372036854776E18);
+    
+    runTest(bitContext, connection, expected, "functions/cast/testICastMockCol.json");    
   }
 
     @AfterClass

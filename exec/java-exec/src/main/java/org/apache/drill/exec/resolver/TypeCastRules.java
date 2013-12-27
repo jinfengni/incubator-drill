@@ -514,10 +514,11 @@ public class TypeCastRules {
       }
       
       // Check null vs non-null, as logic as in Types.softEqual()
-      // Only when the function use NULL_IF_NULL, allow nullable <---> non-nullable.
+      // Only when the function use NULL_IF_NULL, nullable and non-nullable are exchangable.
       // Otherwise, the function implementation is not a match. 
       // We may later on use similar approach as precedenceMap. 
-      if (!((holder.getNullHandling() == NullHandling.NULL_IF_NULL) &&
+      if (argType.getMode() != parmType.getMode())
+        if (!((holder.getNullHandling() == NullHandling.NULL_IF_NULL) &&
             (argType.getMode() == DataMode.OPTIONAL ||
              argType.getMode() == DataMode.REQUIRED ||
              parmType.getMode() == DataMode.OPTIONAL ||

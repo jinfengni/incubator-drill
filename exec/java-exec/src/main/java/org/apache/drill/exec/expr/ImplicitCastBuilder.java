@@ -79,36 +79,40 @@ public class ImplicitCastBuilder {
         LogicalExpression newExpr = call.args.get(i).accept(this, registry);
         args.add(newExpr);
       }
-          
+      
+      //replace with a new function call, since its argument could be changed.  
+      call = new FunctionCall(call.getDefinition(), args, call.getPosition());
+      
       //call function resolver, get the best match. 
       FunctionResolver resolver = FunctionResolverFactory.getResolver(call);    
       DrillFuncHolder matchedFuncHolder = resolver.getBestMatch(registry.getMethods().get(call.getDefinition().getName()), call); 
-      
-      List<LogicalExpression> newArgs = Lists.newArrayList();
+
+      //clear argument list : need hold new arguments when determine if implicit cast is required. 
+      args.clear();
            
       if (matchedFuncHolder==null) {  
         //TODO: found no matched funcholder. Raise exception here?
-        return validateNewExpr(new FunctionCall(call.getDefinition(), args, call.getPosition()));
+        return validateNewExpr(call);
       } else {       
         ValueReference[] parms = matchedFuncHolder.getParameters();
         assert parms.length == call.args.size();
         
-        //Compare parm type against arg type. Insert cast if necessary
+        //Compare parm type against arg type. Insert cast on top of arg, whenever necessary.
         for (int i = 0; i < call.args.size(); ++i) {
           ValueReference param = parms[i];
           if (Types.softEquals(param.getMajorType(), call.args.get(i).getMajorType(), matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL))
-            newArgs.add(call.args.get(i));
+            args.add(call.args.get(i));
           else {
             //Insert cast if param type is different from arg type.             
             FunctionDefinition castFuncDef = CastFunctionDefs.getCastFuncDef(param.getMajorType().getMinorType());
             List<LogicalExpression> castArgs = Lists.newArrayList();
             castArgs.add(call.args.get(i));  //input_expr
-            newArgs.add(new FunctionCall(castFuncDef, castArgs, ExpressionPosition.UNKNOWN));
+            args.add(new FunctionCall(castFuncDef, castArgs, ExpressionPosition.UNKNOWN));
           }
         }  
       }
       
-      return validateNewExpr(new FunctionCall(call.getDefinition(), newArgs, call.getPosition()));
+      return validateNewExpr(new FunctionCall(call.getDefinition(), args, call.getPosition()));
     }
 
     @Override

@@ -1,0 +1,54 @@
+{
+    head:{
+        type:"APACHE_DRILL_PHYSICAL",
+        version:"1",
+        generator:{
+            type:"manual"
+        }
+    },
+	graph:[
+        {
+            @id:1,
+            pop:"mock-sub-scan",
+            url: "http://apache.org",
+            entries:[
+            	{records: 1, types: [
+            	  {name: "intColumn", type: "INT", mode: "REQUIRED"}
+           	]}
+            ]
+        },
+        {
+            @id:2,
+            child: 1,
+	    pop:"project",
+            exprs: [
+			{ ref: "col1", expr:"10+20.1" },
+			{ ref: "col2", expr:"20.1+10" },
+			{ ref: "col3", expr:"20.1 + \"10\"" },
+		        { ref: "col4", expr:"cast(\"10\" as int) + 20.1"},
+		        { ref: "col5", expr:"cast(\"10\" as int) + cast(\"20\" as bigint)"},
+		        { ref: "col6", expr:"cast(\"10\" as bigint) + cast(\"20\" as int)"},
+		        { ref: "col7", expr:"cast(\"10\" as int) + cast(\"20.1\" as float8)"},
+		        { ref: "col8", expr:"cast(\"20.1\" as float8) + cast(\"10\" as int) "},
+		        { ref: "col9", expr:"cast(\"10\" as int) + cast(\"20.1\" as float4)"},
+		        { ref: "col10", expr:"cast(\"10\" as bigint) + cast(\"20.1\" as float4)"},
+		        { ref: "col11", expr:"cast(\"10\" as bigint) + cast(\"20.1\" as float8)"},
+		        { ref: "col12", expr:"cast(\"10\" as float4) + cast(\"20.1\" as float8)"},
+		        { ref: "col13", expr:"\"10\" + cast(\"20.1\" as float4)"},
+		        { ref: "col14", expr:"\"10\" + cast(\"20.1\" as float8)"},
+		        { ref: "col15", expr:"cast(\"10\" as float4) + \"20.1\" "},
+		        { ref: "col16", expr:"cast(\"10\" as float8) + \"20.1\" "},
+			{ ref: "CompBigIntFloat8", expr:"10 < 20.1" },
+		        { ref: "CompCharFloat8", expr:"\"10\" < 20.1" },
+		        { ref: "CompFloat8Char", expr:"20.1 > \"10\" " },
+		        { ref: "nested1", expr:" 20.1  + 10 > \"10\" " },
+		        { ref: "nested2", expr:" 20.1  + 10 > \"10\"  + 15.1" }
+		   ]	
+        },
+        {
+            @id: 3,
+            child: 2,
+            pop: "screen"
+        }
+    ]
+}
