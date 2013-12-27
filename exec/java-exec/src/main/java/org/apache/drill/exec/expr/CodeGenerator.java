@@ -24,8 +24,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.drill.common.expression.ErrorCollector;
-import org.apache.drill.common.expression.ErrorCollectorImpl;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
@@ -77,7 +75,6 @@ public class CodeGenerator<T>{
   private final SignatureHolder sig;
   private MappingSet mappings;
   private final EvaluationVisitor evaluationVisitor;
-  private final FunctionImplementationRegistry funcRegistry;
   private final Map<ValueVectorSetup, JVar> vvDeclaration = Maps.newHashMap();
   
   
@@ -92,7 +89,7 @@ public class CodeGenerator<T>{
     this.mappings = mappingSet;
     this.className = "Gen" + classCreator.incrementAndGet();
     this.fqcn = packageName + "." + className;
-    this.funcRegistry = funcRegistry;
+    //this.funcRegistry = funcRegistry;
     try{
       this.definition = definition;
       this.model = new JCodeModel();
