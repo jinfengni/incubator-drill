@@ -486,8 +486,8 @@ public class TypeCastRules {
   }
 
   public static boolean isCastable(MajorType from, MajorType to) {
-    return rules.get(to.getMinorType()) == null ? false : rules.get(
-        to.getMinorType()).contains(from.getMinorType());
+    return from.getMinorType().equals(MinorType.NULL) ||      //null could be casted to any other type. 
+           (rules.get(to.getMinorType()) == null ? false : rules.get(to.getMinorType()).contains(from.getMinorType()));
   }
 
   /*

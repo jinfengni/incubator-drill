@@ -28,14 +28,17 @@ import org.apache.drill.common.expression.FunctionDefinition;
 import org.apache.drill.common.expression.IfExpression;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.expression.TypedNullConstant;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.CastFunctionDefs;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
+import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.record.NullExpression;
 import org.apache.drill.exec.resolver.FunctionResolver;
 import org.apache.drill.exec.resolver.FunctionResolverFactory;
 
@@ -91,11 +94,19 @@ public class ImplicitCastBuilder {
       } else {       
         //Compare parm type against arg type. Insert cast on top of arg, whenever necessary.
         for (int i = 0; i < call.args.size(); ++i) {
-          MajorType parmType = matchedFuncHolder.getParmMajorType(i);          
-          if (Types.softEquals(parmType, call.args.get(i).getMajorType(), matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL)) {
+          MajorType parmType = matchedFuncHolder.getParmMajorType(i);
+          
+          //Case 1: If  1) the argument is NullExpression
+          //            2) the parameter of matchedFuncHolder allows null input, or func's null_handling is NULL_IF_NULL (means null and non-null are exchanble). 
+          //        then replace NullExpression with a TypedNullConstant
+          if (call.args.get(i).equals(NullExpression.INSTANCE) && 
+              ( parmType.getMode().equals(DataMode.OPTIONAL) || matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL)) {
+            argsWithCast.add(new TypedNullConstant(parmType));
+          } else if (Types.softEquals(parmType, call.args.get(i).getMajorType(), matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL)) {
+          //Case 2: argument and parameter matches. Do nothing. 
             argsWithCast.add(call.args.get(i));
           } else {
-            //Insert cast if param type is different from arg type.             
+          //Case 3: insert cast if param type is different from arg type.             
             FunctionDefinition castFuncDef = CastFunctionDefs.getCastFuncDef(parmType.getMinorType());
             List<LogicalExpression> castArgs = Lists.newArrayList();
             castArgs.add(call.args.get(i));  //input_expr

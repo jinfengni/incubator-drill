@@ -155,4 +155,25 @@ public class TestImplicitCastFunctions {
         // pause to get logger to catch up.
         Thread.sleep(1000);
     }
+    
+    @Test
+    public void testImplicitCastWithNullExpression(@Injectable final DrillbitContext bitContext,
+                             @Injectable UserServer.UserClientConnection connection) throws Throwable{    
+      Object [] expected = new Object[10];
+      
+      expected [0] = Boolean.TRUE;
+      expected [1] = Boolean.FALSE;
+      expected [2] = Boolean.FALSE;
+      expected [3] = Boolean.TRUE;
+       
+      expected [4] = null;
+      expected [5] = null;
+      expected [6] = null;
+      expected [7] = null;
+      expected [8] = null;
+      expected [9] = null;
+ 
+      runTest(bitContext, connection, expected, "functions/cast/testICastNullExp.json");    
+    }
+
 }
