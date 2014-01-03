@@ -97,7 +97,7 @@ public class ImplicitCastBuilder {
           MajorType parmType = matchedFuncHolder.getParmMajorType(i);
           
           //Case 1: If  1) the argument is NullExpression
-          //            2) the parameter of matchedFuncHolder allows null input, or func's null_handling is NULL_IF_NULL (means null and non-null are exchanble). 
+          //            2) the parameter of matchedFuncHolder allows null input, or func's null_handling is NULL_IF_NULL (means null and non-null are exchangable). 
           //        then replace NullExpression with a TypedNullConstant
           if (call.args.get(i).equals(NullExpression.INSTANCE) && 
               ( parmType.getMode().equals(DataMode.OPTIONAL) || matchedFuncHolder.getNullHandling() == NullHandling.NULL_IF_NULL)) {

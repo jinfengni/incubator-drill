@@ -531,10 +531,9 @@ public class TypeCastRules {
         return -1;
       }
       
-      // Check null vs non-null, as logic as in Types.softEqual()
-      // Only when the function use NULL_IF_NULL, nullable and non-nullable are exchangable.
+      // Check null vs non-null, using same logic as that in Types.softEqual()
+      // Only when the function uses NULL_IF_NULL, nullable and non-nullable are inter-changable.
       // Otherwise, the function implementation is not a match. 
-      // We may later on use similar approach as precedenceMap. 
       if (argType.getMode() != parmType.getMode())
         if (!((holder.getNullHandling() == NullHandling.NULL_IF_NULL) &&
             (argType.getMode() == DataMode.OPTIONAL ||
@@ -544,36 +543,6 @@ public class TypeCastRules {
           return -1;
      
       cost += (parmVal - argVal); 
-
-      /*
-      Integer parmDMVal = ResolverTypePrecedence.dmPrecedenceMap.get(parmType
-          .getMode());
-      Integer argDMVal = ResolverTypePrecedence.dmPrecedenceMap.get(argType
-          .getMode());
-
-      if (parmDMVal == null) {
-        throw new RuntimeException(String.format(
-            "Precedence for datamode %s is not defined", parmType.getMode()
-                .name()));
-      }
-
-      if (argDMVal == null) {
-        throw new RuntimeException(String.format(
-            "Precedence for datamode %s is not defined", argType.getMode()
-                .name()));
-      }
-
-      if (parmDMVal - argDMVal < 0) {
-        return -1;
-      }
-            
-      // type has higher weight than datamode
-      // for arg_type of float 4 nullable, float 4 non-nullable is a better
-      // match than float8 nullable.
-      int base = Math.max(10, ResolverTypePrecedence.dmPrecedenceMap.size());
-      cost += (parmVal - argVal) * base + (parmDMVal - argDMVal);
-      */
-      
     }
 
     return cost;

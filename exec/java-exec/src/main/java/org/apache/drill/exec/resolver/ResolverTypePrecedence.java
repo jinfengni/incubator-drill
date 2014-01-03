@@ -29,8 +29,6 @@ public class ResolverTypePrecedence {
 
 public static final Map<MinorType, Integer> precedenceMap;
 
-public static final Map<DataMode, Integer> dmPrecedenceMap;
-
   static {    
     /* The precedenceMap is used to decide whether it's allowed to implicitly "promote" 
      * one type to another type. 
@@ -72,16 +70,6 @@ public static final Map<DataMode, Integer> dmPrecedenceMap;
     precedenceMap.put(MinorType.TIMETZ, i++);
     precedenceMap.put(MinorType.TIMESTAMP, i++);  	
     
-    /*
-     * Non-nullable (REQUIRED) could be promoted to nullable (OPTIONAL).
-     */
-    dmPrecedenceMap = new HashMap<DataMode, Integer>();
-    int j = 0;
-    
-    dmPrecedenceMap.put(DataMode.REQUIRED, j++);
-    dmPrecedenceMap.put(DataMode.OPTIONAL, j++);
-    
   }
-
 
 }
