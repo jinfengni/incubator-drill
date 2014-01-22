@@ -63,13 +63,13 @@ public class MappingSet {
   }
 
   public void enterConstant(){
-//    assert constant != current;
-//    current = constant;
+    //assert constant != current;
+    current = constant;
   }
   
   public void exitConstant(){
-//    assert constant == current;
-//    current = mappings[mappingIndex];
+    //assert constant == current;
+    current = mappings[mappingIndex];
   }
   
   

@@ -28,6 +28,7 @@ import org.apache.drill.exec.expr.ClassGenerator.BlockType;
 import org.apache.drill.exec.expr.ClassGenerator.HoldingContainer;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
+import org.apache.drill.exec.expr.fn.DrillFuncHolder.ValueReference;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -63,14 +64,56 @@ class DrillSimpleFuncHolder extends DrillFuncHolder{
     return false;
   }
   
+/*
   public HoldingContainer renderEnd(ClassGenerator<?> g, HoldingContainer[] inputVariables, JVar[]  workspaceJVars){
     generateBody(g, BlockType.SETUP, setupBody, workspaceJVars);
+*/
+  public HoldingContainer renderEnd(ClassGenerator<?> g, HoldingContainer[] inputVariables, JVar[]  workspaceJVars){
+    //generateBody(g, BlockType.SETUP, setupBody, workspaceJVars);
+    generateSetupBody(g, BlockType.SETUP, setupBody, inputVariables, workspaceJVars);
     HoldingContainer c = generateEvalBody(g, inputVariables, evalBody, workspaceJVars);
     generateBody(g, BlockType.RESET, resetBody, workspaceJVars);
     generateBody(g, BlockType.CLEANUP, cleanupBody, workspaceJVars);
     return c;
   }
-  
+ 
+  protected void generateSetupBody(ClassGenerator<?> g, BlockType bt, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars){
+    if(!Strings.isNullOrEmpty(body) && !body.trim().isEmpty()){
+      JBlock sub = new JBlock(true, true);
+      addSetupProtectedBlock(g, sub, body, inputVariables, workspaceJVars);
+      g.getBlock(bt).directStatement(String.format("/** start %s for function %s **/ ", bt.name(), functionName));
+      g.getBlock(bt).add(sub);
+      g.getBlock(bt).directStatement(String.format("/** end %s for function %s **/ ", bt.name(), functionName));
+    }
+  }
+ 
+  protected void addSetupProtectedBlock(ClassGenerator<?> g, JBlock sub, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars){
+
+    if(inputVariables != null){
+      for(int i =0; i < inputVariables.length; i++){
+        if (!inputVariables[i].isConst())
+          continue;
+        
+        ValueReference parameter = parameters[i];
+        HoldingContainer inputVariable = inputVariables[i];
+        sub.decl(inputVariable.getHolder().type(), parameter.name, inputVariable.getHolder());  
+      }
+    }
+
+    JVar[] internalVars = new JVar[workspaceJVars.length];
+    for(int i =0; i < workspaceJVars.length; i++){
+      internalVars[i] = sub.decl(g.getModel()._ref(workspaceVars[i].type),  workspaceVars[i].name, workspaceJVars[i]);
+    }
+    
+    Preconditions.checkNotNull(body);
+    sub.directStatement(body);
+    
+    // reassign workspace variables back to global space.
+    for(int i =0; i < workspaceJVars.length; i++){
+      sub.assign(workspaceJVars[i], internalVars[i]);
+    }
+  }
+ 
  protected HoldingContainer generateEvalBody(ClassGenerator<?> g, HoldingContainer[] inputVariables, String body, JVar[] workspaceJVars){
     
     //g.getBlock().directStatement(String.format("//---- start of eval portion of %s function. ----//", functionName));
