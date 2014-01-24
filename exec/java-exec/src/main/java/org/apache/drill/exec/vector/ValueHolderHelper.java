@@ -19,7 +19,6 @@ package org.apache.drill.exec.vector;
 
 import io.netty.buffer.UnpooledByteBufAllocator;
 
-import org.apache.drill.exec.expr.holders.BigIntHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
 
 import com.google.common.base.Charsets;
@@ -38,20 +37,4 @@ public class ValueHolderHelper {
     vch.buffer.setBytes(0, b);
     return vch;
   }
-  
-  public static BigIntHolder getBigIntHolder(long l){
-    BigIntHolder holder = new BigIntHolder();
-    holder.value = l;
-    
-    return holder;
-    /*
-    byte[] b = s.getBytes(Charsets.UTF_8);
-    vch.start = 0;
-    vch.end = b.length;
-    vch.buffer = UnpooledByteBufAllocator.DEFAULT.buffer(s.length()); // use the length of input string to allocate buffer. 
-    vch.buffer.setBytes(0, b);
-    return vch;
-    */
-  }
-  
 }
