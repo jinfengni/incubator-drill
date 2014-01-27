@@ -315,7 +315,9 @@ public class EvaluationVisitor {
         //generator.getMappingSet().exitConstant();
         //return c;
         return renderConstantExpression(generator, c);
-      } else {
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitFunctionCall(e, generator).setConstant(true);
+      } */else {
         return super.visitFunctionCall(e, generator);
       }
     }
@@ -328,7 +330,9 @@ public class EvaluationVisitor {
         // generator.getMappingSet().exitConstant();
         // return c;
         return renderConstantExpression(generator, c); 
-      } else {
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitIfExpression(e, generator).setConstant(true);
+      } */else {
         return super.visitIfExpression(e, generator);
       }
     }
@@ -341,7 +345,9 @@ public class EvaluationVisitor {
         //generator.getMappingSet().exitConstant();
         //return c;
         return renderConstantExpression(generator, c);
-      } else {
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitSchemaPath(e, generator).setConstant(true);
+      } */else {
         return super.visitSchemaPath(e, generator);
       }
     }
@@ -354,7 +360,9 @@ public class EvaluationVisitor {
         //generator.getMappingSet().exitConstant();
         //return c;
         return renderConstantExpression(generator, c);
-      } else {
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitLongConstant(e, generator).setConstant(true);
+      } */else {
         return super.visitLongConstant(e, generator);
       }
     }
@@ -367,7 +375,9 @@ public class EvaluationVisitor {
         //generator.getMappingSet().exitConstant();
         //return c;
         return renderConstantExpression(generator, c);
-      } else {
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitDoubleConstant(e, generator).setConstant(true);
+      } */else {
         return super.visitDoubleConstant(e, generator);
       }
     }
@@ -381,7 +391,9 @@ public class EvaluationVisitor {
         //generator.getMappingSet().exitConstant();
         //return c;
         return renderConstantExpression(generator, c);
-      } else {
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitBooleanConstant(e, generator).setConstant(true);
+      } */else {
         return super.visitBooleanConstant(e, generator);
       }
     }
@@ -395,8 +407,10 @@ public class EvaluationVisitor {
         //generator.getMappingSet().exitConstant();
         //return c;
         return renderConstantExpression(generator, c);
-      } else {
-        return super.visitUnknown(e, generator);
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitUnknown(e, generator).setConstant(true);
+      } */else {
+        return super.visitUnknown(e, generator); 
       }
     }
 
@@ -409,8 +423,10 @@ public class EvaluationVisitor {
         //generator.getMappingSet().exitConstant();
         //return c;
         return renderConstantExpression(generator, c);
-      } else {
-        return super.visitQuotedStringConstant(e, generator);
+      } /*else if (generator.getMappingSet().isWithinConstant()) {
+        return super.visitQuotedStringConstant(e, generator).setConstant(true);
+      } */else {
+        return super.visitQuotedStringConstant(e, generator);          
       }
     }
 
