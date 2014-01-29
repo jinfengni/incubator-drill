@@ -65,11 +65,14 @@ class DrillSimpleFuncHolder extends DrillFuncHolder{
     return false;
   }
   
-/*
   public HoldingContainer renderEnd(ClassGenerator<?> g, HoldingContainer[] inputVariables, JVar[]  workspaceJVars){
-    generateBody(g, BlockType.SETUP, setupBody, workspaceJVars);
-*/
-  public HoldingContainer renderEnd(ClassGenerator<?> g, HoldingContainer[] inputVariables, JVar[]  workspaceJVars){
+    //If the function's annotation specifies a parameter has to be constant expression, but the HoldingContainer 
+    //for the argument is not, then raise exception.    
+    for(int i =0; i < inputVariables.length; i++){
+      if (parameters[i].isConstant && !inputVariables[i].isConst()) {
+        throw new DrillRuntimeException(String.format("The argument '%s' of Function '%s' has to be constant!", parameters[i].name, this.getFunctionName()));
+      }
+    }
     //generateBody(g, BlockType.SETUP, setupBody, workspaceJVars);
     generateSetupBody(g, BlockType.SETUP, setupBody, inputVariables, workspaceJVars);
     HoldingContainer c = generateEvalBody(g, inputVariables, evalBody, workspaceJVars);
@@ -88,15 +91,10 @@ class DrillSimpleFuncHolder extends DrillFuncHolder{
     }
   }
  
-  protected void addSetupProtectedBlock(ClassGenerator<?> g, JBlock sub, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars){
 
+  protected void addSetupProtectedBlock(ClassGenerator<?> g, JBlock sub, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars){
     if(inputVariables != null){
       for(int i =0; i < inputVariables.length; i++){
-        //If the function's annotation specifies a parameter has to be constant expression, but the HoldingContainer for the argument is not,
-        //Raise exception.
-        if (parameters[i].isConstant && !inputVariables[i].isConst()) {
-          throw new DrillRuntimeException(String.format("The argument %s of Function %s has to be constant!", parameters[i].name, this.getFunctionName()));
-        }
         if (!inputVariables[i].isConst())
           continue;
         
