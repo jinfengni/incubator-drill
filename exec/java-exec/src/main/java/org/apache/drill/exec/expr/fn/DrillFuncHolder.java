@@ -175,13 +175,20 @@ public abstract class DrillFuncHolder {
   public static class ValueReference{
     MajorType type;
     String name;
+    boolean isConstant;
     public ValueReference(MajorType type, String name) {
       super();
       Preconditions.checkNotNull(type);
       Preconditions.checkNotNull(name);
       this.type = type;
       this.name = name;
+      isConstant = false;
     }
+    
+    public void setConstant(boolean isConstant) {
+      this.isConstant = isConstant;
+    }
+    
     @Override
     public String toString() {
       return "ValueReference [type=" + type + ", name=" + name + "]";

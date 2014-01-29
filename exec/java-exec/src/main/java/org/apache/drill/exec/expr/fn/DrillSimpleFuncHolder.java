@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.expr.ClassGenerator;
@@ -91,6 +92,11 @@ class DrillSimpleFuncHolder extends DrillFuncHolder{
 
     if(inputVariables != null){
       for(int i =0; i < inputVariables.length; i++){
+        //If the function's annotation specifies a parameter has to be constant expression, but the HoldingContainer for the argument is not,
+        //Raise exception.
+        if (parameters[i].isConstant && !inputVariables[i].isConst()) {
+          throw new DrillRuntimeException(String.format("The argument %s of Function %s has to be constant!", parameters[i].name, this.getFunctionName()));
+        }
         if (!inputVariables[i].isConst())
           continue;
         
