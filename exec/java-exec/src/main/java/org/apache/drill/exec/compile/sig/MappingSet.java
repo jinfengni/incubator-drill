@@ -63,6 +63,7 @@ public class MappingSet {
     for (int i = 1; i< mappings.length; i++) {
       if (mappings[0] == mappings[i]) {
         this.constant = new GeneratorMapping(mappings[0]);
+        break;
       }
     }
     

@@ -73,7 +73,7 @@ public class ClassGenerator<T>{
   private MappingSet mappings;
 
   public static MappingSet getDefaultMapping(){
-    return new MappingSet("inIndex", "outIndex", DEFAULT_SCALAR_MAP, DEFAULT_SCALAR_MAP);
+    return new MappingSet("inIndex", "outIndex", DEFAULT_CONSTANT_MAP, DEFAULT_SCALAR_MAP);
   }
 
   
