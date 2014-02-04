@@ -62,11 +62,6 @@ public class EvaluationVisitor {
     this.registry = registry;
   }
 
-/*
-  public HoldingContainer addExpr(LogicalExpression e, ClassGenerator<?> generator){
-//    Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(e);
-    Set<LogicalExpression> constantBoundaries = Collections.emptySet();
-*/
   public HoldingContainer addExpr(LogicalExpression e, ClassGenerator<?> generator){
     Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(e);
     //Set<LogicalExpression> constantBoundaries = Collections.emptySet();
@@ -150,9 +145,6 @@ public class EvaluationVisitor {
     }
 
     @Override
-/*
-    public HoldingContainer visitLongConstant(LongExpression e, ClassGenerator<?> generator) throws RuntimeException {
-*/
     public HoldingContainer visitLongConstant(LongExpression e, ClassGenerator<?> generator) throws RuntimeException {     
       HoldingContainer out = generator.declare(e.getMajorType());
       generator.getEvalBlock().assign(out.getValue(), JExpr.lit(e.getLong()));
@@ -292,7 +284,6 @@ public class EvaluationVisitor {
       JVar var = generator.declareClassField("string", holderType);
       JExpression stringLiteral = JExpr.lit(e.value);
       setup.assign(var, ((JClass)generator.getModel().ref(ValueHolderHelper.class)).staticInvoke("getVarCharHolder").arg(stringLiteral));
-      //return new HoldingContainer(majorType, var, null, null).setConstant(true);
       return new HoldingContainer(majorType, var, null, null);
     }
   }

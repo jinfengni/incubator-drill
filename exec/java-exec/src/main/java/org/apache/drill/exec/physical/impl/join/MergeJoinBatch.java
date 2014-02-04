@@ -264,11 +264,8 @@ public class MergeJoinBatch extends AbstractRecordBatch<MergeJoinPOP> {
     ////////////////////////
     cg.setMappingSet(compareMapping);
     cg.getSetupBlock().assign(JExpr._this().ref(incomingRecordBatch), JExpr._this().ref(incomingLeftRecordBatch));
-/*
     ClassGenerator.HoldingContainer compareLeftExprHolder = cg.addExpr(materializedLeftExpr, false);
-    cg.setMappingSet(COMPARE_RIGHT_MAPPING);
-*/
-    ClassGenerator.HoldingContainer compareLeftExprHolder = cg.addExpr(materializedLeftExpr, false);
+
     cg.setMappingSet(compareRightMapping);
     cg.getSetupBlock().assign(JExpr._this().ref(incomingRecordBatch), JExpr._this().ref(incomingRightRecordBatch));
     ClassGenerator.HoldingContainer compareRightExprHolder = cg.addExpr(materializedRightExpr, false);
@@ -328,11 +325,6 @@ public class MergeJoinBatch extends AbstractRecordBatch<MergeJoinPOP> {
                        ._return(JExpr.lit(-1));
 
     // generate VV read expressions
-/*
-    ClassGenerator.HoldingContainer compareThisLeftExprHolder = cg.addExpr(materializedLeftExpr, false);
-    cg.setMappingSet(COMPARE_NEXT_LEFT_MAPPING); // change mapping from 'leftIndex' to 'nextLeftIndex'
-    ClassGenerator.HoldingContainer compareNextLeftExprHolder = cg.addExpr(materializedLeftExpr, false);
-*/
     ClassGenerator.HoldingContainer compareThisLeftExprHolder = cg.addExpr(materializedLeftExpr, false);
     cg.setMappingSet(compareNextLeftMapping); // change mapping from 'leftIndex' to 'nextLeftIndex'
     ClassGenerator.HoldingContainer compareNextLeftExprHolder = cg.addExpr(materializedLeftExpr, false);

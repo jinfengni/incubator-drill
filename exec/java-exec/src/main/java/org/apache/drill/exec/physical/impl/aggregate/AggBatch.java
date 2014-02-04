@@ -207,10 +207,6 @@ public class AggBatch extends AbstractRecordBatch<StreamingAggregate> {
   private final MappingSet isSameI1Mapping = new MappingSet("index1", null, IS_SAME, IS_SAME);
   private final MappingSet isSameI2Mapping = new MappingSet("index2", null, IS_SAME, IS_SAME);
 
-/*
-  private void setupIsSame(ClassGenerator<Aggregator> cg, LogicalExpression[] keyExprs){
-    cg.setMappingSet(IS_SAME_I1);
-*/
   private void setupIsSame(ClassGenerator<Aggregator> cg, LogicalExpression[] keyExprs){
     cg.setMappingSet(isSameI1Mapping);
     for(LogicalExpression expr : keyExprs){
@@ -232,10 +228,6 @@ public class AggBatch extends AbstractRecordBatch<StreamingAggregate> {
   private final MappingSet isaB1Mapping = new MappingSet("b1Index", null, "b1", null, IS_SAME_PREV_INTERNAL_BATCH_READ, IS_SAME_PREV_INTERNAL_BATCH_READ);
   private final MappingSet isaB2Mapping = new MappingSet("b2Index", null, "incoming", null, IS_SAME_PREV, IS_SAME_PREV);
   
-/*
-  private void setupIsSameApart(ClassGenerator<Aggregator> cg, LogicalExpression[] keyExprs){
-    cg.setMappingSet(ISA_B1);
-*/
   private void setupIsSameApart(ClassGenerator<Aggregator> cg, LogicalExpression[] keyExprs){
     cg.setMappingSet(isaB1Mapping);
     for(LogicalExpression expr : keyExprs){
@@ -256,10 +248,6 @@ public class AggBatch extends AbstractRecordBatch<StreamingAggregate> {
   private static final GeneratorMapping EVAL_OUTSIDE = GeneratorMapping.create("setupInterior", "outputRecordValues", "resetValues", "cleanup");
   private final MappingSet evalMapping = new MappingSet("index", "outIndex", EVAL_INSIDE, EVAL_OUTSIDE, EVAL_INSIDE);
   
-/*
-  private void addRecordValues(ClassGenerator<Aggregator> cg, LogicalExpression[] valueExprs){
-    cg.setMappingSet(EVAL);
-*/
   private void addRecordValues(ClassGenerator<Aggregator> cg, LogicalExpression[] valueExprs){
     cg.setMappingSet(evalMapping);
     for(LogicalExpression ex : valueExprs){
@@ -271,10 +259,6 @@ public class AggBatch extends AbstractRecordBatch<StreamingAggregate> {
   
   private final MappingSet recordKeysMapping = new MappingSet(GeneratorMapping.create("setupInterior", "outputRecordKeys", null, null));
   
-/*
-  private void outputRecordKeys(ClassGenerator<Aggregator> cg, TypedFieldId[] keyOutputIds, LogicalExpression[] keyExprs){
-    cg.setMappingSet(RECORD_KEYS);
-*/
   private void outputRecordKeys(ClassGenerator<Aggregator> cg, TypedFieldId[] keyOutputIds, LogicalExpression[] keyExprs){
     cg.setMappingSet(recordKeysMapping);
     for(int i =0; i < keyExprs.length; i++){
@@ -290,10 +274,6 @@ public class AggBatch extends AbstractRecordBatch<StreamingAggregate> {
   private static final GeneratorMapping PREVIOUS_KEYS = GeneratorMapping.create("outputRecordKeysPrev", "outputRecordKeysPrev", null, null);
   private final MappingSet recordKeysPrevMapping = new MappingSet("previousIndex", "outIndex", "previous", null, PREVIOUS_KEYS, PREVIOUS_KEYS);
   
-/*
-  private void outputRecordKeysPrev(ClassGenerator<Aggregator> cg, TypedFieldId[] keyOutputIds, LogicalExpression[] keyExprs){
-    cg.setMappingSet(RECORD_KEYS_PREV);
-*/
   private void outputRecordKeysPrev(ClassGenerator<Aggregator> cg, TypedFieldId[] keyOutputIds, LogicalExpression[] keyExprs){
     cg.setMappingSet(recordKeysPrevMapping);
 
