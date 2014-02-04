@@ -193,7 +193,7 @@ public abstract class DrillFuncHolder {
   public static class WorkspaceReference{
     Class<?> type;
     String name;
-
+    MajorType majorType;
 
     public WorkspaceReference(Class<?> type, String name) {
       super();
@@ -203,8 +203,14 @@ public abstract class DrillFuncHolder {
       this.name = name;
     }
     
+    public WorkspaceReference(MajorType majorType, String name) {
+      super();
+      Preconditions.checkNotNull(majorType);
+      Preconditions.checkNotNull(name);
+      this.name = name;
+      this.majorType = majorType;
+    }
+    
   }
 
-  
-  
 }

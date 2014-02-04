@@ -25,6 +25,7 @@ import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.annotations.Workspace;
 import org.apache.drill.exec.expr.holders.BigIntHolder;
 import org.apache.drill.exec.expr.holders.IntHolder;
+import org.apache.drill.exec.expr.holders.VarCharHolder;
 import org.apache.drill.exec.record.RecordBatch;
 
 public class SumFunctions {
@@ -34,7 +35,8 @@ public class SumFunctions {
   public static class BigIntSum implements DrillAggFunc{
 
     @Param BigIntHolder in;
-    @Workspace long sum;
+    @Workspace BigIntHolder sum;
+    @Workspace VarCharHolder charWS;
     @Output BigIntHolder out;
     
     public void setup(RecordBatch incoming) {
@@ -42,17 +44,17 @@ public class SumFunctions {
 
     @Override
     public void add() {
-      sum += in.value;
+      sum.value += in.value;
     }
 
     @Override
     public void output() {
-      out.value = sum;
+      out.value = sum.value;
     }
 
     @Override
     public void reset() {
-      sum = 0;
+      sum.value = 0;
     }
     
   }

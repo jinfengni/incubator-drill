@@ -33,6 +33,7 @@ import org.apache.drill.exec.compile.sig.GeneratorMapping;
 import org.apache.drill.exec.compile.sig.MappingSet;
 import org.apache.drill.exec.compile.sig.SignatureHolder;
 import org.apache.drill.exec.exception.SchemaChangeException;
+import org.apache.drill.exec.expr.fn.DrillFuncHolder.WorkspaceReference;
 import org.apache.drill.exec.record.TypedFieldId;
 
 import com.beust.jcommander.internal.Lists;
@@ -44,6 +45,7 @@ import com.sun.codemodel.JClassAlreadyExistsException;
 import com.sun.codemodel.JCodeModel;
 import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JExpr;
+import com.sun.codemodel.JExpression;
 import com.sun.codemodel.JFieldRef;
 import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
@@ -63,6 +65,8 @@ public class ClassGenerator<T>{
   private final EvaluationVisitor evaluationVisitor;
   private final Map<ValueVectorSetup, JVar> vvDeclaration = Maps.newHashMap();
   private final Map<String, ClassGenerator<T>> innerClasses = Maps.newHashMap();
+  private final Map<WorkspaceReference, TypedFieldId> workspaceTypes = Maps.newHashMap();
+  private final Map<WorkspaceReference, JVar> workspaceVectors = Maps.newHashMap();
   private final CodeGenerator<T> classGenerator;
 
   public final JDefinedClass clazz;
@@ -242,6 +246,9 @@ public class ClassGenerator<T>{
     return clazz.field(JMod.NONE, t, prefix + index++);
   }
 
+  public JVar declareClassField(String prefix, JType t, JExpression init){
+    return clazz.field(JMod.NONE, t, prefix + index++, init);
+  }
   
   public HoldingContainer declare(MajorType t){
     return declare(t, true);
@@ -263,6 +270,14 @@ public class ClassGenerator<T>{
     return new HoldingContainer(t, var, var.ref("value"), outputSet);
   }
   
+  public Map<WorkspaceReference, TypedFieldId> getWorkspaceTypes() {
+    return this.workspaceTypes;
+  }
+
+  public Map<WorkspaceReference, JVar> getWorkspaceVectors() {
+    return this.workspaceVectors;
+  }
+
   private static class ValueVectorSetup{
     final DirectExpression batch;
     final TypedFieldId fieldId;

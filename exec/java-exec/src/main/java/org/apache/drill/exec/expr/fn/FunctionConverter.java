@@ -150,7 +150,20 @@ public class FunctionConverter {
       }else{
         // workspace work.
 //        logger.debug("Found workspace field {}:{}", field.getType(), field.getName());
-        workspaceFields.add(new WorkspaceReference(field.getType(), field.getName()));
+        if(!ValueHolder.class.isAssignableFrom(field.getType())){
+          workspaceFields.add(new WorkspaceReference(field.getType(), field.getName()));
+        } else {
+          // get the type field from the value holder.
+          MajorType majorType = null;
+          try{
+            majorType = getStaticFieldValue("TYPE", field.getType(), MajorType.class);
+          }catch(Exception e){
+            return failure("Failure while trying to access the ValueHolder's TYPE static variable.  All ValueHolders must contain a static TYPE variable that defines their MajorType.", e, clazz, field.getName());
+          }
+   
+          workspaceFields.add(new WorkspaceReference(majorType, field.getName()));
+        }
+        
       }
       
     }
