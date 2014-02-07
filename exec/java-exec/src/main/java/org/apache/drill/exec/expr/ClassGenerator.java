@@ -20,7 +20,9 @@ package org.apache.drill.exec.expr;
 import static org.apache.drill.exec.compile.sig.GeneratorMapping.GM;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.drill.common.expression.LogicalExpression;
@@ -65,7 +67,7 @@ public class ClassGenerator<T>{
   private final EvaluationVisitor evaluationVisitor;
   private final Map<ValueVectorSetup, JVar> vvDeclaration = Maps.newHashMap();
   private final Map<String, ClassGenerator<T>> innerClasses = Maps.newHashMap();
-  private final Map<WorkspaceReference, TypedFieldId> workspaceTypes = Maps.newHashMap();
+  private final List<TypedFieldId> workspaceTypes = Lists.newArrayList();
   private final Map<WorkspaceReference, JVar> workspaceVectors = Maps.newHashMap();
   private final CodeGenerator<T> classGenerator;
 
@@ -270,7 +272,7 @@ public class ClassGenerator<T>{
     return new HoldingContainer(t, var, var.ref("value"), outputSet);
   }
   
-  public Map<WorkspaceReference, TypedFieldId> getWorkspaceTypes() {
+  public List<TypedFieldId> getWorkspaceTypes() {
     return this.workspaceTypes;
   }
 

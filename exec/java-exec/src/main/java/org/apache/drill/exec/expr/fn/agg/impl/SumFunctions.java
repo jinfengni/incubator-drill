@@ -25,6 +25,7 @@ import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.annotations.Workspace;
 import org.apache.drill.exec.expr.holders.BigIntHolder;
 import org.apache.drill.exec.expr.holders.IntHolder;
+import org.apache.drill.exec.expr.holders.NullableBigIntHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
 import org.apache.drill.exec.record.RecordBatch;
 
@@ -36,7 +37,6 @@ public class SumFunctions {
 
     @Param BigIntHolder in;
     @Workspace BigIntHolder sum;
-    @Workspace VarCharHolder charWS;
     @Output BigIntHolder out;
     
     public void setup(RecordBatch incoming) {

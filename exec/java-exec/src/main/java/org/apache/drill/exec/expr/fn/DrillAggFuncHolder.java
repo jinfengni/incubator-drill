@@ -20,6 +20,7 @@ package org.apache.drill.exec.expr.fn;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.ClassGenerator;
 import org.apache.drill.exec.expr.ClassGenerator.BlockType;
@@ -79,9 +80,6 @@ class DrillAggFuncHolder extends DrillFuncHolder{
       
       JBlock setupBlock = g.getSetupBlock();
       
-      //Assume all workspace vectors have same valueCapacity. Use any valueCapacity.  
-      //JVar sizeVar = setupBlock.decl(g.getModel().INT, "vectorSize", g.getWorkspaceVectors().get(workspaceVars[0]).invoke("getValueCapacity"));
-
       //Loop through all workspace vectors, to get the minimum of size of all workspace vectors.  
       JVar sizeVar = setupBlock.decl(g.getModel().INT, "vectorSize", JExpr.lit(Integer.MAX_VALUE));
       JClass mathClass = g.getModel().ref(Math.class);
@@ -130,14 +128,18 @@ class DrillAggFuncHolder extends DrillFuncHolder{
   private JVar[] declareWorkspaceVectors(ClassGenerator<?> g) {
     JVar[] workspaceJVars = new JVar[workspaceVars.length];
     
-    for(int i =0 ; i < workspaceVars.length; i++){      
-      workspaceJVars[i] = g.declareClassField("work", g.getHolderType(workspaceVars[i].majorType), JExpr._new(g.getHolderType(workspaceVars[i].majorType)));
-    
+    for(int i =0 ; i < workspaceVars.length; i++){
+      Preconditions.checkState(Types.isFixedWidthType(workspaceVars[i].majorType), String.format("Workspace variable '%s' in aggregation function '%s' is not allowed to have variable length type.", workspaceVars[i].name, functionName));
+      Preconditions.checkState(workspaceVars[i].majorType.getMode()==DataMode.REQUIRED, String.format("Workspace variable '%s' in aggregation function '%s' is not allowed to have null or repeated type.", workspaceVars[i].name, functionName));
+
+      //workspaceJVars[i] = g.declareClassField("work", g.getHolderType(workspaceVars[i].majorType), JExpr._new(g.getHolderType(workspaceVars[i].majorType)));
+      workspaceJVars[i] = g.declareClassField("work", g.getHolderType(workspaceVars[i].majorType)); 
+      
       //Declare a workspace vector for the workspace var.
       TypedFieldId typedFieldId = new TypedFieldId(workspaceVars[i].majorType, g.getWorkspaceTypes().size());
       JVar vv  = g.declareVectorValueSetupAndMember(g.getMappingSet().getWorkspace(), typedFieldId);
       
-      g.getWorkspaceTypes().put(workspaceVars[i], typedFieldId);
+      g.getWorkspaceTypes().add(typedFieldId);
       g.getWorkspaceVectors().put(workspaceVars[i], vv);
     }
     return workspaceJVars;
@@ -169,7 +171,7 @@ class DrillAggFuncHolder extends DrillFuncHolder{
    * This is customized version of "addProtectedBlock" for hash aggregation. It take one additional parameter "wsIndexVariable". 
    */
   private void addProtectedBlockHA(ClassGenerator<?> g, JBlock sub, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars, JExpression wsIndexVariable){
-    if(inputVariables != null){
+    if (inputVariables != null){
       for(int i =0; i < inputVariables.length; i++){
         ValueReference parameter = parameters[i];
         HoldingContainer inputVariable = inputVariables[i];
@@ -178,7 +180,8 @@ class DrillAggFuncHolder extends DrillFuncHolder{
     }
 
     JVar[] internalVars = new JVar[workspaceJVars.length];    
-    for(int i =0; i < workspaceJVars.length; i++){      
+    for(int i =0; i < workspaceJVars.length; i++){
+        sub.assign(workspaceJVars[i], JExpr._new(g.getHolderType(workspaceVars[i].majorType)));
         //Access workspaceVar through workspace vector.         
         JInvocation getValueAccessor = g.getWorkspaceVectors().get(workspaceVars[i]).invoke("getAccessor").invoke("get");          
         if (Types.usesHolderForGet(workspaceVars[i].majorType)) {
