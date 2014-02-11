@@ -34,25 +34,27 @@ public class CountFunctions {
   public static class BigIntCount implements DrillAggFunc{
 
     @Param BigIntHolder in;
-    @Workspace long count;
+    @Workspace BigIntHolder count;
     @Output BigIntHolder out;
     
     public void setup(RecordBatch incoming) {
+      count = new BigIntHolder();
+      count.value = 0;
     }
 
     @Override
     public void add() {
-      count++;
+      count.value++;
     }
 
     @Override
     public void output() {
-      out.value = count;
+      out.value = count.value;
     }
 
     @Override
     public void reset() {
-      count = 0;
+      count.value = 0;
     }
     
   }
@@ -61,25 +63,27 @@ public class CountFunctions {
   public static class IntCount implements DrillAggFunc{
 
     @Param IntHolder in;
-    @Workspace long count;
+    @Workspace IntHolder count;
     @Output BigIntHolder out;
     
     public void setup(RecordBatch incoming) {
+      count = new IntHolder();
+      count.value = 0;
     }
 
     @Override
     public void add() {
-      count++;
+      count.value++;
     }
 
     @Override
     public void output() {
-      out.value = count;
+      out.value = count.value;
     }
 
     @Override
     public void reset() {
-      count = 0;
+      count.value = 0;
     }
     
   }

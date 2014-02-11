@@ -87,7 +87,7 @@ public abstract class DrillFuncHolder {
   protected JVar[] declareWorkspaceVariables(ClassGenerator<?> g){
     JVar[] workspaceJVars = new JVar[workspaceVars.length];
     for(int i =0 ; i < workspaceVars.length; i++){
-      workspaceJVars[i] = g.declareClassField("work", g.getModel()._ref(workspaceVars[i].type));
+      workspaceJVars[i] = g.declareClassField("work", g.getModel()._ref(workspaceVars[i].type));     
     }
     return workspaceJVars;
   }
@@ -203,11 +203,7 @@ public abstract class DrillFuncHolder {
       this.name = name;
     }
     
-    public WorkspaceReference(MajorType majorType, String name) {
-      super();
-      Preconditions.checkNotNull(majorType);
-      Preconditions.checkNotNull(name);
-      this.name = name;
+    void setMajorType (MajorType majorType) {
       this.majorType = majorType;
     }
     

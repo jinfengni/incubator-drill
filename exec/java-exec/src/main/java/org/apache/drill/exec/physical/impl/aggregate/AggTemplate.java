@@ -58,7 +58,7 @@ public abstract class AggTemplate implements Aggregator {
     this.schema = incoming.getSchema();
     this.allocators = allocators;
     this.outgoing = outgoing;
-    setupInterior(incoming, outgoing,null);
+    setupInterior(incoming, outgoing);
     this.currentIndex = this.getVectorIndex(underlyingIndex);
   }
 
@@ -258,7 +258,7 @@ public abstract class AggTemplate implements Aggregator {
 
   private final boolean outputToBatch(int inIndex){
     boolean success = outputRecordKeys(inIndex, outputCount) //
-        && outputRecordValues(outputCount,0) //
+        && outputRecordValues(outputCount) //
         && resetValues();
     if(success){
       if(EXTRA_DEBUG) logger.debug("Outputting values to {}", outputCount);
@@ -271,7 +271,7 @@ public abstract class AggTemplate implements Aggregator {
 
   private final boolean outputToBatchPrev(InternalBatch b1, int inIndex, int outIndex){
     boolean success = outputRecordKeysPrev(b1, inIndex, outIndex) //
-        && outputRecordValues(outIndex,0) //
+        && outputRecordValues(outIndex) //
         && resetValues();
     if(success){
       outputCount++;
@@ -282,7 +282,7 @@ public abstract class AggTemplate implements Aggregator {
   }
   
   private void addRecordInc(int index){
-    addRecord(index,0);
+    addRecord(index);
     this.addedRecordCount++;
   }
   
@@ -292,13 +292,13 @@ public abstract class AggTemplate implements Aggregator {
   }
 
 
-  public abstract void setupInterior(@Named("incoming") RecordBatch incoming, @Named("outgoing") RecordBatch outgoing, @Named("workspace") RecordBatch workspace) throws SchemaChangeException;
+  public abstract void setupInterior(@Named("incoming") RecordBatch incoming, @Named("outgoing") RecordBatch outgoing) throws SchemaChangeException;
   public abstract boolean isSame(@Named("index1") int index1, @Named("index2") int index2);
   public abstract boolean isSamePrev(@Named("b1Index") int b1Index, @Named("b1") InternalBatch b1, @Named("b2Index") int b2Index);
-  public abstract void addRecord(@Named("index") int index, @Named("workspaceIndex") int workspaceIndex);
+  public abstract void addRecord(@Named("index") int index);
   public abstract boolean outputRecordKeys(@Named("inIndex") int inIndex, @Named("outIndex") int outIndex);
   public abstract boolean outputRecordKeysPrev(@Named("previous") InternalBatch previous, @Named("previousIndex") int previousIndex, @Named("outIndex") int outIndex);
-  public abstract boolean outputRecordValues(@Named("outIndex") int outIndex, @Named("workspaceIndex") int workspaceIndex);
+  public abstract boolean outputRecordValues(@Named("outIndex") int outIndex);
   public abstract int getVectorIndex(@Named("recordIndex") int recordIndex);
   public abstract boolean resetValues();
   

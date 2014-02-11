@@ -40,6 +40,8 @@ public class SumFunctions {
     @Output BigIntHolder out;
     
     public void setup(RecordBatch incoming) {
+      sum = new BigIntHolder();
+      sum.value = 0;
     }
 
     @Override
@@ -63,25 +65,27 @@ public class SumFunctions {
   public static class IntSum implements DrillAggFunc{
 
     @Param IntHolder in;
-    @Workspace int sum;
+    @Workspace IntHolder sum;
     @Output IntHolder out;
     
     public void setup(RecordBatch incoming) {
+      sum = new IntHolder();
+      sum.value = 0;
     }
 
     @Override
     public void add() {
-      sum += in.value;
+      sum.value += in.value;
     }
 
     @Override
     public void output() {
-      out.value = sum;
+      out.value = sum.value;
     }
 
     @Override
     public void reset() {
-      sum = 0;
+      sum.value = 0;
     }
     
   }

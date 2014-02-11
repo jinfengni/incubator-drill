@@ -93,8 +93,7 @@ class DrillAggFuncHolder extends DrillFuncHolder{
       forLoop.test(ivar.lt(sizeVar));
       forLoop.update(ivar.assignPlus(JExpr.lit(1)));
       
-      //Note : we use "reset" body, sine init block is in reset() of aggregate function implementation. 
-      JBlock subBlock = generateInitWorkspaceBlockHA(g, BlockType.SETUP, reset, workspaceJVars, ivar);
+      JBlock subBlock = generateInitWorkspaceBlockHA(g, BlockType.SETUP, setup, workspaceJVars, ivar);
       forLoop.body().add(subBlock);
       return workspaceJVars;      
     }
@@ -181,7 +180,7 @@ class DrillAggFuncHolder extends DrillFuncHolder{
 
     JVar[] internalVars = new JVar[workspaceJVars.length];    
     for(int i =0; i < workspaceJVars.length; i++){
-        sub.assign(workspaceJVars[i], JExpr._new(g.getHolderType(workspaceVars[i].majorType)));
+        //sub.assign(workspaceJVars[i], JExpr._new(g.getHolderType(workspaceVars[i].majorType)));
         //Access workspaceVar through workspace vector.         
         JInvocation getValueAccessor = g.getWorkspaceVectors().get(workspaceVars[i]).invoke("getAccessor").invoke("get");          
         if (Types.usesHolderForGet(workspaceVars[i].majorType)) {
