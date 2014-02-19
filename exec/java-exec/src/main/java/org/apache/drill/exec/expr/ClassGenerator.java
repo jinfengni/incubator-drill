@@ -313,7 +313,7 @@ public class ClassGenerator<T>{
     private final JFieldRef value;
     private final JFieldRef isSet;
     private final MajorType type;
-    private boolean isConst = false;
+    private boolean isConstant;
     
     public HoldingContainer(MajorType t, JVar holder, JFieldRef value, JFieldRef isSet) {
       super();
@@ -321,15 +321,16 @@ public class ClassGenerator<T>{
       this.value = value;
       this.isSet = isSet;
       this.type = t;
+      this.isConstant = false;
     }
     
     public HoldingContainer setConstant(boolean isConstant) {
-      this.isConst = isConstant;
+      this.isConstant = isConstant;
       return this;
     }
     
-    public boolean isConst() {
-      return this.isConst;
+    public boolean isConstant() {
+      return this.isConstant;
     }
     
     public JVar getHolder() {

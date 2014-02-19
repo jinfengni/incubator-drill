@@ -69,53 +69,15 @@ class DrillSimpleFuncHolder extends DrillFuncHolder{
     //If the function's annotation specifies a parameter has to be constant expression, but the HoldingContainer 
     //for the argument is not, then raise exception.    
     for(int i =0; i < inputVariables.length; i++){
-      if (parameters[i].isConstant && !inputVariables[i].isConst()) {
+      if (parameters[i].isConstant && !inputVariables[i].isConstant()) {
         throw new DrillRuntimeException(String.format("The argument '%s' of Function '%s' has to be constant!", parameters[i].name, this.getFunctionName()));
       }
     }
-    //generateBody(g, BlockType.SETUP, setupBody, workspaceJVars);
-    generateSetupBody(g, BlockType.SETUP, setupBody, inputVariables, workspaceJVars);
+    generateBody(g, BlockType.SETUP, setupBody, inputVariables, workspaceJVars, true);
     HoldingContainer c = generateEvalBody(g, inputVariables, evalBody, workspaceJVars);
-    generateBody(g, BlockType.RESET, resetBody, workspaceJVars);
-    generateBody(g, BlockType.CLEANUP, cleanupBody, workspaceJVars);
+    generateBody(g, BlockType.RESET, resetBody, null, workspaceJVars, false);
+    generateBody(g, BlockType.CLEANUP, cleanupBody, null, workspaceJVars, false);
     return c;
-  }
- 
-  protected void generateSetupBody(ClassGenerator<?> g, BlockType bt, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars){
-    if(!Strings.isNullOrEmpty(body) && !body.trim().isEmpty()){
-      JBlock sub = new JBlock(true, true);
-      addSetupProtectedBlock(g, sub, body, inputVariables, workspaceJVars);
-      g.getBlock(bt).directStatement(String.format("/** start %s for function %s **/ ", bt.name(), functionName));
-      g.getBlock(bt).add(sub);
-      g.getBlock(bt).directStatement(String.format("/** end %s for function %s **/ ", bt.name(), functionName));
-    }
-  }
- 
-
-  protected void addSetupProtectedBlock(ClassGenerator<?> g, JBlock sub, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars){
-    if(inputVariables != null){
-      for(int i =0; i < inputVariables.length; i++){
-        if (!inputVariables[i].isConst())
-          continue;
-        
-        ValueReference parameter = parameters[i];
-        HoldingContainer inputVariable = inputVariables[i];
-        sub.decl(inputVariable.getHolder().type(), parameter.name, inputVariable.getHolder());  
-      }
-    }
-
-    JVar[] internalVars = new JVar[workspaceJVars.length];
-    for(int i =0; i < workspaceJVars.length; i++){
-      internalVars[i] = sub.decl(g.getModel()._ref(workspaceVars[i].type),  workspaceVars[i].name, workspaceJVars[i]);
-    }
-    
-    Preconditions.checkNotNull(body);
-    sub.directStatement(body);
-    
-    // reassign workspace variables back to global space.
-    for(int i =0; i < workspaceJVars.length; i++){
-      sub.assign(workspaceJVars[i], internalVars[i]);
-    }
   }
  
  protected HoldingContainer generateEvalBody(ClassGenerator<?> g, HoldingContainer[] inputVariables, String body, JVar[] workspaceJVars){
@@ -158,7 +120,7 @@ class DrillSimpleFuncHolder extends DrillFuncHolder{
     
     
     JVar internalOutput = sub.decl(JMod.FINAL, g.getHolderType(returnValueType), returnValue.name, JExpr._new(g.getHolderType(returnValueType)));
-    addProtectedBlock(g, sub, body, inputVariables, workspaceJVars);
+    addProtectedBlock(g, sub, body, inputVariables, workspaceJVars, false);
     if (sub != topSub) sub.assign(internalOutput.ref("isSet"),JExpr.lit(1));// Assign null if NULL_IF_NULL mode
     sub.assign(out.getHolder(), internalOutput);
     if (sub != topSub) sub.assign(internalOutput.ref("isSet"),JExpr.lit(1));// Assign null if NULL_IF_NULL mode

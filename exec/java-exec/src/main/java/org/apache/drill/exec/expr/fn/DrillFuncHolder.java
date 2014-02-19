@@ -92,20 +92,26 @@ public abstract class DrillFuncHolder {
     return workspaceJVars;
   }
 
-  protected void generateBody(ClassGenerator<?> g, BlockType bt, String body, JVar[] workspaceJVars){
+  protected void generateBody(ClassGenerator<?> g, BlockType bt, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars, boolean decConstantInputOnly){
     if(!Strings.isNullOrEmpty(body) && !body.trim().isEmpty()){
       JBlock sub = new JBlock(true, true);
-      addProtectedBlock(g, sub, body, null, workspaceJVars);
+      if (decConstantInputOnly) {
+        addProtectedBlock(g, sub, body, inputVariables, workspaceJVars, true);        
+      } else {
+        addProtectedBlock(g, sub, body, null, workspaceJVars, false);
+      }
       g.getBlock(bt).directStatement(String.format("/** start %s for function %s **/ ", bt.name(), functionName));
       g.getBlock(bt).add(sub);
       g.getBlock(bt).directStatement(String.format("/** end %s for function %s **/ ", bt.name(), functionName));
     }
   }
 
-  protected void addProtectedBlock(ClassGenerator<?> g, JBlock sub, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars){
-
+  protected void addProtectedBlock(ClassGenerator<?> g, JBlock sub, String body, HoldingContainer[] inputVariables, JVar[] workspaceJVars, boolean decConstInputOnly){
     if(inputVariables != null){
       for(int i =0; i < inputVariables.length; i++){
+        if (decConstInputOnly && !inputVariables[i].isConstant())
+          continue;
+
         ValueReference parameter = parameters[i];
         HoldingContainer inputVariable = inputVariables[i];
         sub.decl(inputVariable.getHolder().type(), parameter.name, inputVariable.getHolder());  
