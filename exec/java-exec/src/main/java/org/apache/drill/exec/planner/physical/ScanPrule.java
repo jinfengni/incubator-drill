@@ -15,29 +15,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.planner.logical;
+package org.apache.drill.exec.planner.physical;
 
-import net.hydromatic.optiq.rules.java.JavaRules.EnumerableTableAccessRel;
-
+import org.apache.drill.exec.planner.logical.DrillRel;
+import org.apache.drill.exec.planner.logical.DrillScanRel;
+import org.apache.drill.exec.planner.logical.RelOptHelper;
+import org.eigenbase.rel.RelNode;
+import org.eigenbase.rel.convert.ConverterRule;
 import org.eigenbase.relopt.Convention;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
+import org.eigenbase.relopt.RelTrait;
 import org.eigenbase.relopt.RelTraitSet;
 
-public class DrillScanRule  extends RelOptRule {
-  public static final RelOptRule INSTANCE = new DrillScanRule();
+public class ScanPrule extends ConverterRule{
+  public static final RelOptRule INSTANCE = new ScanPrule();
 
-  private DrillScanRule() {
-    super(RelOptHelper.any(EnumerableTableAccessRel.class), "DrillTableRule");
+  
+  public ScanPrule() {
+    super(DrillScanRel.class, DrillRel.DRILL_LOGICAL, Prel.DRILL_PHYSICAL, "Prel.ScanRule");
+    
   }
-
-
-
-
   @Override
   public void onMatch(RelOptRuleCall call) {
-    final EnumerableTableAccessRel access = (EnumerableTableAccessRel) call.rel(0);
-    final RelTraitSet traits = access.getTraitSet().plus(DrillRel.DRILL_LOGICAL);
-    call.transformTo(new DrillScanRel(access.getCluster(), traits, access.getTable()));
+    final DrillScanRel scan = (DrillScanRel) call.rel(0);
+    final RelNode input = call.rel(1);
+    final RelTraitSet traits = scan.getTraitSet().replace(Prel.DRILL_PHYSICAL);
+    final RelNode convertedInput = convert(input, traits);
+    
+    call.transformTo(new ScanPrel(project.getCluster(), traits, convertedInput, project.getProjects(), project.getRowType()));
   }
+
+  @Override
+  public RelNode convert(RelNode rel) {
+    return null;
+  }
+  
 }

@@ -52,8 +52,8 @@ public class DrillLimitRule extends RelOptRule {
       input = incomingSort.copy(incomingTraits, input, incomingSort.getCollation(), null, null);
     }
 
-    RelNode convertedInput = convert(input, input.getTraitSet().plus(DrillRel.CONVENTION));
-    call.transformTo(new DrillLimitRel(incomingSort.getCluster(), incomingTraits.plus(DrillRel.CONVENTION), convertedInput, incomingSort.offset, incomingSort.fetch));
+    RelNode convertedInput = convert(input, input.getTraitSet().plus(DrillRel.DRILL_LOGICAL));
+    call.transformTo(new DrillLimitRel(incomingSort.getCluster(), incomingTraits.plus(DrillRel.DRILL_LOGICAL), convertedInput, incomingSort.offset, incomingSort.fetch));
   }
 
 }

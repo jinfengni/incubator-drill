@@ -36,7 +36,7 @@ public class DrillScanRel extends TableAccessRelBase implements DrillRel {
   /** Creates a DrillScan. */
   public DrillScanRel(RelOptCluster cluster, RelTraitSet traits, RelOptTable table) {
     super(cluster, traits, table);
-    assert getConvention() == CONVENTION;
+    assert getConvention() == DRILL_LOGICAL;
     this.drillTable = table.unwrap(DrillTable.class);
     assert drillTable != null;
   }

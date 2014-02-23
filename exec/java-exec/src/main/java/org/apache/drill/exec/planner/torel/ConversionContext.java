@@ -90,7 +90,7 @@ public class ConversionContext implements ToRelContext {
   
   public RelTraitSet getLogicalTraits(){
     RelTraitSet set = RelTraitSet.createEmpty();
-    set.add(DrillRel.CONVENTION);
+    set.add(DrillRel.DRILL_LOGICAL);
     return set;
   }
   

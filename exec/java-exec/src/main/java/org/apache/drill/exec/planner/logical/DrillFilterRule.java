@@ -35,7 +35,7 @@ public class DrillFilterRule extends RelOptRule {
   public void onMatch(RelOptRuleCall call) {
     final FilterRel filter = (FilterRel) call.rel(0);
     final RelNode input = call.rel(1);
-    final RelTraitSet traits = filter.getTraitSet().plus(DrillRel.CONVENTION);
+    final RelTraitSet traits = filter.getTraitSet().plus(DrillRel.DRILL_LOGICAL);
     final RelNode convertedInput = convert(input, traits);
     call.transformTo(new DrillFilterRel(filter.getCluster(), traits, convertedInput, filter.getCondition()));
   }

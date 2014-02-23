@@ -49,7 +49,7 @@ public class DrillScreenRel extends SingleRel implements DrillRel {
 
   public DrillScreenRel(RelOptCluster cluster, RelTraitSet traitSet, RelNode input) {
     super(cluster, traitSet, input);
-    assert input.getConvention() == DrillRel.CONVENTION;
+    assert input.getConvention() == DrillRel.DRILL_LOGICAL;
     physType = PhysTypeImpl.of((JavaTypeFactory) cluster.getTypeFactory(), input.getRowType(), JavaRowFormat.ARRAY);
   }
 

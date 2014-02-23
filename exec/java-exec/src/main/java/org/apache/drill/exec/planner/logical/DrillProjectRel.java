@@ -54,7 +54,7 @@ public class DrillProjectRel extends ProjectRelBase implements DrillRel {
   protected DrillProjectRel(RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,
       RelDataType rowType) {
     super(cluster, traits, child, exps, rowType, Flags.BOXED);
-    assert getConvention() == CONVENTION;
+    assert getConvention() == DRILL_LOGICAL;
   }
 
 

@@ -31,7 +31,7 @@ public class EnumerableDrillRule extends ConverterRule {
   
   
   private EnumerableDrillRule(EnumerableConvention outConvention) {
-    super(RelNode.class, DrillRel.CONVENTION, outConvention, "EnumerableDrillRule." + outConvention);
+    super(RelNode.class, DrillRel.DRILL_LOGICAL, outConvention, "EnumerableDrillRule." + outConvention);
   }
 
   @Override
@@ -41,7 +41,7 @@ public class EnumerableDrillRule extends ConverterRule {
 
   @Override
   public RelNode convert(RelNode rel) {
-    assert rel.getTraitSet().contains(DrillRel.CONVENTION);
+    assert rel.getTraitSet().contains(DrillRel.DRILL_LOGICAL);
     return new DrillScreenRel(rel.getCluster(), rel.getTraitSet().replace(getOutConvention()), rel);
   }
 }

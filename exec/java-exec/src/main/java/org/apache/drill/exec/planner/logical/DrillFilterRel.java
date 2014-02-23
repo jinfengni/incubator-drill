@@ -37,7 +37,7 @@ import org.eigenbase.rex.RexNode;
 public class DrillFilterRel extends FilterRelBase implements DrillRel {
   protected DrillFilterRel(RelOptCluster cluster, RelTraitSet traits, RelNode child, RexNode condition) {
     super(cluster, traits, child, condition);
-    assert getConvention() == CONVENTION;
+    assert getConvention() == DRILL_LOGICAL;
   }
 
   @Override
