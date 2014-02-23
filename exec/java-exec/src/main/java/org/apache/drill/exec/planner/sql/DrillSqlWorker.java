@@ -27,14 +27,17 @@ import net.hydromatic.optiq.tools.ValidationException;
 import org.apache.drill.common.expression.FunctionRegistry;
 import org.apache.drill.common.logical.LogicalPlan;
 import org.apache.drill.common.logical.PlanProperties.Generator.ResultMode;
+import org.apache.drill.exec.physical.PhysicalPlan;
+import org.apache.drill.exec.planner.common.BaseScreenRel;
+import org.apache.drill.exec.planner.common.DrillStoreRel;
 import org.apache.drill.exec.planner.logical.DrillImplementor;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillRuleSets;
-import org.apache.drill.exec.planner.logical.DrillScreenRel;
-import org.apache.drill.exec.planner.logical.DrillStoreRel;
+import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.store.StoragePluginRegistry.DrillSchemaFactory;
 import org.eigenbase.rel.RelNode;
+import org.eigenbase.relopt.RelTraitSet;
 import org.eigenbase.sql.SqlExplain;
 import org.eigenbase.sql.SqlKind;
 import org.eigenbase.sql.SqlLiteral;
@@ -47,13 +50,26 @@ public class DrillSqlWorker {
 
   private final FunctionRegistry registry;
   private final Planner planner;
+  private final static RuleSet[] RULES = new RuleSet[]{DrillRuleSets.DRILL_BASIC_RULES, DrillRuleSets.DRILL_PHYSICAL_MEM};
+  private final static int LOGICAL_RULES = 0;
+  private final static int PHYSICAL_MEM_RULES = 1;
   
   public DrillSqlWorker(DrillSchemaFactory schemaFactory, FunctionRegistry functionRegistry) throws Exception {
     this.registry = functionRegistry;
-    this.planner = Frameworks.getPlanner(ConnectionConfig.Lex.MYSQL, schemaFactory, SqlStdOperatorTable.instance(), new RuleSet[]{DrillRuleSets.DRILL_BASIC_RULES});
+    this.planner = Frameworks.getPlanner(ConnectionConfig.Lex.MYSQL, schemaFactory, SqlStdOperatorTable.instance(), RULES);
   }
   
-  public LogicalPlan getPlan(String sql) throws SqlParseException, ValidationException, RelConversionException{
+  private class RelResult{
+    final ResultMode mode;
+    final RelNode node;
+    public RelResult(ResultMode mode, RelNode node) {
+      super();
+      this.mode = mode;
+      this.node = node;
+    }
+  }
+  
+  private RelResult getRel(String sql) throws SqlParseException, ValidationException, RelConversionException{
     SqlNode sqlNode = planner.parse(sql);
 
     ResultMode resultMode = ResultMode.EXEC;
@@ -75,13 +91,20 @@ public class DrillSqlWorker {
     
     SqlNode validatedNode = planner.validate(sqlNode);
     RelNode relNode = planner.convert(validatedNode);
-    RelNode convertedRelNode = planner.transform(0, planner.getEmptyTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+    return new RelResult(resultMode, relNode);
+  }
+  
+  
+  
+  public LogicalPlan getLogicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException{
+    RelResult result = getRel(sql);
+    RelNode convertedRelNode = planner.transform(LOGICAL_RULES, planner.getEmptyTraitSet().plus(DrillRel.DRILL_LOGICAL), result.node);
     if(convertedRelNode instanceof DrillStoreRel){
       throw new UnsupportedOperationException();
     }else{
-      convertedRelNode = new DrillScreenRel(convertedRelNode.getCluster(), convertedRelNode.getTraitSet(), convertedRelNode);
+      convertedRelNode = new BaseScreenRel(convertedRelNode.getCluster(), convertedRelNode.getTraitSet(), convertedRelNode);
     }
-    DrillImplementor implementor = new DrillImplementor(new DrillParseContext(registry), resultMode);
+    DrillImplementor implementor = new DrillImplementor(new DrillParseContext(registry), result.mode);
     implementor.go( (DrillRel) convertedRelNode);
     planner.close();
     planner.reset();
@@ -89,5 +112,14 @@ public class DrillSqlWorker {
     
   }
 
+  
+  public PhysicalPlan getPhysicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException{
+    RelResult result = getRel(sql);
+    RelTraitSet traits = planner.getEmptyTraitSet().plus(Prel.DRILL_PHYSICAL);
+    RelNode transformed = planner.transform(PHYSICAL_MEM_RULES, traits, result.node);
+    planner.close();
+    planner.reset();
+    return null;
+  }
   
 }

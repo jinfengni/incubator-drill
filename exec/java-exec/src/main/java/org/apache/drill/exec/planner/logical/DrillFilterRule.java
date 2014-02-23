@@ -19,7 +19,10 @@ package org.apache.drill.exec.planner.logical;
 
 import org.eigenbase.rel.FilterRel;
 import org.eigenbase.rel.RelNode;
-import org.eigenbase.relopt.*;
+import org.eigenbase.relopt.Convention;
+import org.eigenbase.relopt.RelOptRule;
+import org.eigenbase.relopt.RelOptRuleCall;
+import org.eigenbase.relopt.RelTraitSet;
 
 /**
  * Rule that converts a {@link org.eigenbase.rel.FilterRel} to a Drill "filter" operation.

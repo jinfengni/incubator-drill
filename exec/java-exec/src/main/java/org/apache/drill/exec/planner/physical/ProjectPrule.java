@@ -17,8 +17,10 @@
  */
 package org.apache.drill.exec.planner.physical;
 
-import org.apache.drill.exec.planner.logical.DrillProjectRel;
+import org.apache.drill.exec.planner.common.BaseProjectRel;
+import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
+import org.eigenbase.rel.ProjectRel;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.Convention;
 import org.eigenbase.relopt.RelOptRule;
@@ -29,14 +31,14 @@ public class ProjectPrule extends RelOptRule {
   public static final RelOptRule INSTANCE = new ProjectPrule();
 
   private ProjectPrule() {
-    super(RelOptHelper.some(DrillProjectRel.class, Convention.NONE, RelOptHelper.any(RelNode.class)), "ProjectPrule");
+    super(RelOptHelper.some(BaseProjectRel.class, DrillRel.DRILL_LOGICAL, RelOptHelper.any(RelNode.class)), "ProjectPrule");
   }
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    final DrillProjectRel project = (DrillProjectRel) call.rel(0);
+    final BaseProjectRel project = (BaseProjectRel) call.rel(0);
     final RelNode input = call.rel(1);
-    final RelTraitSet traits = project.getTraitSet().plus(Prel.DRILL_PHYSICAL);
+    final RelTraitSet traits = project.getTraitSet().replace(Prel.DRILL_PHYSICAL);
     final RelNode convertedInput = convert(input, traits);
     call.transformTo(new ProjectPrel(project.getCluster(), traits, convertedInput, project.getProjects(), project.getRowType()));
   }

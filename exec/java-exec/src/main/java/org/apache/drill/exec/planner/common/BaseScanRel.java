@@ -15,28 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.planner.physical;
+package org.apache.drill.exec.planner.common;
 
-import org.apache.drill.exec.planner.common.BaseScanRel;
-import org.apache.drill.exec.planner.logical.RelOptHelper;
-import org.eigenbase.relopt.RelOptRule;
-import org.eigenbase.relopt.RelOptRuleCall;
+import org.apache.drill.exec.planner.logical.DrillTable;
+import org.eigenbase.rel.TableAccessRelBase;
+import org.eigenbase.relopt.Convention;
+import org.eigenbase.relopt.RelOptCluster;
+import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
 
-public class ScanPrule extends RelOptRule{
-  public static final RelOptRule INSTANCE = new ScanPrule();
+public abstract class BaseScanRel extends TableAccessRelBase{
+  protected final DrillTable drillTable;
 
-  
-  public ScanPrule() {
-    super(RelOptHelper.any(BaseScanRel.class), "Prel.ScanRule");
-    
-  }
-  @Override
-  public void onMatch(RelOptRuleCall call) {
-    final BaseScanRel scan = (BaseScanRel) call.rel(0);
-    final RelTraitSet traits = scan.getTraitSet().replace(Prel.DRILL_PHYSICAL);
-    call.transformTo(new ScanPrel(scan.getCluster(), traits, scan.getTable()));
+  public BaseScanRel(Convention convention, RelOptCluster cluster, RelTraitSet traits, RelOptTable table) {
+    super(cluster, traits, table);
+    this.drillTable = table.unwrap(DrillTable.class);
+    assert drillTable != null;
   }
 
-  
 }
