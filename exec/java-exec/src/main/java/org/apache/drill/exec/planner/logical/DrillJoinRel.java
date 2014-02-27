@@ -161,5 +161,14 @@ public class DrillJoinRel extends JoinRelBase implements DrillRel {
   private static <T> boolean isUnique(List<T> list) {
     return new HashSet<>(list).size() == list.size();
   }
+  
+  public List<Integer> getLeftKeys() {
+    return this.leftKeys;
+  }
+  
+  public List<Integer> getRightKeys() {
+    return this.rightKeys;
+  }
+
 
 }

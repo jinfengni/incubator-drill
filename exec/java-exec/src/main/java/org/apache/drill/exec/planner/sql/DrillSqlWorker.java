@@ -34,11 +34,18 @@ import org.apache.drill.exec.planner.logical.DrillImplementor;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillRuleSets;
+import org.apache.drill.exec.planner.logical.DrillScreenRel;
+import org.apache.drill.exec.planner.physical.DrillMuxMode;
+import org.apache.drill.exec.planner.physical.DrillMuxModeDef;
+import org.apache.drill.exec.planner.physical.DrillDistributionTrait;
+import org.apache.drill.exec.planner.physical.DrillDistributionTraitDef;
 import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.store.StoragePluginRegistry.DrillSchemaFactory;
 import org.eigenbase.rel.RelNode;
+import org.eigenbase.relopt.RelOptUtil;
 import org.eigenbase.relopt.RelTraitSet;
 import org.eigenbase.sql.SqlExplain;
+import org.eigenbase.sql.SqlExplainLevel;
 import org.eigenbase.sql.SqlKind;
 import org.eigenbase.sql.SqlLiteral;
 import org.eigenbase.sql.SqlNode;
@@ -68,11 +75,20 @@ public class DrillSqlWorker {
       this.node = node;
     }
   }
-  
+
+  /*
+   * Return the logical DrillRel tree 
+   */
   private RelResult getRel(String sql) throws SqlParseException, ValidationException, RelConversionException{
     SqlNode sqlNode = planner.parse(sql);
 
+    //Add new TraintDef to planner.
+    //Temp solution. Framework only create planner after "parse", only after that, can add traitDef to planner. 
+    //this.planner.addRelTraitDef(DrillMuxModeDef.INSTANCE);
+    this.planner.addRelTraitDef(DrillDistributionTraitDef.INSTANCE);
+    
     ResultMode resultMode = ResultMode.EXEC;
+    /*
     if(sqlNode.getKind() == SqlKind.EXPLAIN){
       SqlExplain explain = (SqlExplain) sqlNode;
       sqlNode = explain.operands[0];
@@ -88,38 +104,49 @@ public class DrillSqlWorker {
       default:
       }
     }
-    
+    */
     SqlNode validatedNode = planner.validate(sqlNode);
     RelNode relNode = planner.convert(validatedNode);
-    return new RelResult(resultMode, relNode);
+    RelNode convertedRelNode = planner.transform(LOGICAL_RULES, planner.getEmptyTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+    if(convertedRelNode instanceof DrillStoreRel){
+      throw new UnsupportedOperationException();
+    }else{
+      convertedRelNode = new DrillScreenRel(convertedRelNode.getCluster(), convertedRelNode.getTraitSet(), convertedRelNode);
+    }
+
+    return new RelResult(resultMode, convertedRelNode);
   }
   
   
   
   public LogicalPlan getLogicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException{
     RelResult result = getRel(sql);
-    RelNode convertedRelNode = planner.transform(LOGICAL_RULES, planner.getEmptyTraitSet().plus(DrillRel.DRILL_LOGICAL), result.node);
-    if(convertedRelNode instanceof DrillStoreRel){
-      throw new UnsupportedOperationException();
-    }else{
-      convertedRelNode = new BaseScreenRel(convertedRelNode.getCluster(), convertedRelNode.getTraitSet(), convertedRelNode);
-    }
+    
     DrillImplementor implementor = new DrillImplementor(new DrillParseContext(registry), result.mode);
-    implementor.go( (DrillRel) convertedRelNode);
+    implementor.go( (DrillRel) result.node);
     planner.close();
     planner.reset();
     return implementor.getPlan();
     
   }
-
   
   public PhysicalPlan getPhysicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException{
     RelResult result = getRel(sql);
-    RelTraitSet traits = planner.getEmptyTraitSet().plus(Prel.DRILL_PHYSICAL);
-    RelNode transformed = planner.transform(PHYSICAL_MEM_RULES, traits, result.node);
+
+    RelTraitSet traits = result.node.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);    
+    Prel phyRelNode = (Prel) planner.transform(PHYSICAL_MEM_RULES, traits, result.node);
+
+    //Debug.
+    System.err.println("SQL : " + sql);
+    logger.debug("SQL : " + sql);
+    String msg = RelOptUtil.toString(phyRelNode, SqlExplainLevel.ALL_ATTRIBUTES);
+    System.out.println(msg);
+    logger.debug(msg);
+    
     planner.close();
     planner.reset();
     return null;
+
   }
   
 }

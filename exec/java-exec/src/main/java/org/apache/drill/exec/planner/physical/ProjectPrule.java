@@ -31,15 +31,34 @@ public class ProjectPrule extends RelOptRule {
   public static final RelOptRule INSTANCE = new ProjectPrule();
 
   private ProjectPrule() {
-    super(RelOptHelper.some(BaseProjectRel.class, DrillRel.DRILL_LOGICAL, RelOptHelper.any(RelNode.class)), "ProjectPrule");
+    super(RelOptHelper.some(BaseProjectRel.class, RelOptHelper.any(RelNode.class)), "ProjectPrule");
   }
 
   @Override
   public void onMatch(RelOptRuleCall call) {
     final BaseProjectRel project = (BaseProjectRel) call.rel(0);
     final RelNode input = call.rel(1);
-    final RelTraitSet traits = project.getTraitSet().replace(Prel.DRILL_PHYSICAL);
-    final RelNode convertedInput = convert(input, traits);
-    call.transformTo(new ProjectPrel(project.getCluster(), traits, convertedInput, project.getProjects(), project.getRowType()));
+    
+    RelTraitSet traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
+    RelNode convertedInput = convert(input, traits);
+    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
+    
+    traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.RANDOM_DISTRIBUTED);
+    convertedInput = convert(input, traits);
+    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
+
+/*    
+    DrillDistributionTrait hashDistribution = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, null);
+
+    traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(hashDistribution);
+    convertedInput = convert(input, traits);
+    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
+
+    DrillDistributionTrait rangeDistribution = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.RANGE_DISTRIBUTED, null);
+
+    traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(rangeDistribution);
+    convertedInput = convert(input, traits);
+    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
+*/    
   }
 }

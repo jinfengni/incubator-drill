@@ -21,24 +21,17 @@ import java.util.Iterator;
 
 import net.hydromatic.optiq.tools.RuleSet;
 
+import org.apache.drill.exec.planner.physical.MergeJoinPrule;
 import org.apache.drill.exec.planner.physical.ProjectPrule;
+import org.apache.drill.exec.planner.physical.RemoveSortUnderHashExch;
 import org.apache.drill.exec.planner.physical.ScanPrule;
-import org.eigenbase.rel.rules.MergeProjectRule;
-import org.eigenbase.rel.rules.PushFilterPastJoinRule;
-import org.eigenbase.rel.rules.PushFilterPastProjectRule;
-import org.eigenbase.rel.rules.PushJoinThroughJoinRule;
-import org.eigenbase.rel.rules.PushSortPastProjectRule;
-import org.eigenbase.rel.rules.ReduceAggregatesRule;
-import org.eigenbase.rel.rules.RemoveDistinctAggregateRule;
-import org.eigenbase.rel.rules.RemoveDistinctRule;
-import org.eigenbase.rel.rules.RemoveSortRule;
-import org.eigenbase.rel.rules.RemoveTrivialCalcRule;
-import org.eigenbase.rel.rules.RemoveTrivialProjectRule;
-import org.eigenbase.rel.rules.SwapJoinRule;
-import org.eigenbase.rel.rules.TableAccessRule;
-import org.eigenbase.rel.rules.UnionToDistinctRule;
+import org.apache.drill.exec.planner.physical.ScreenPrule;
+import org.apache.drill.exec.planner.physical.SortExchangePrule;
+import org.apache.drill.exec.planner.physical.SortConvertPrule;
+import org.apache.drill.exec.planner.physical.SortPrule;
+import org.apache.drill.exec.planner.physical.StreamAggPrule;
 import org.eigenbase.relopt.RelOptRule;
-import org.eigenbase.relopt.volcano.AbstractConverter.ExpandConversionRule;
+import org.eigenbase.relopt.volcano.AbstractConverter;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -59,17 +52,26 @@ public class DrillRuleSets {
       ));
   
   public static final RuleSet DRILL_PHYSICAL_MEM = new DrillRuleSet(ImmutableSet.of( //
-      DrillScanRule.INSTANCE,
-      DrillFilterRule.INSTANCE,
-      DrillProjectRule.INSTANCE,
-      DrillAggregateRule.INSTANCE,
-
-      DrillLimitRule.INSTANCE,
-      DrillSortRule.INSTANCE,
-      DrillJoinRule.INSTANCE,
-      DrillUnionRule.INSTANCE,
+//      DrillScanRule.INSTANCE,
+//      DrillFilterRule.INSTANCE,
+//      DrillProjectRule.INSTANCE,
+//      DrillAggregateRule.INSTANCE,
+//
+//      DrillLimitRule.INSTANCE,
+//      DrillSortRule.INSTANCE,
+//      DrillJoinRule.INSTANCE,
+//      DrillUnionRule.INSTANCE,
+      SortConvertPrule.INSTANCE,
+      SortPrule.INSTANCE,
+      //SortConvertPrule.INSTANCE_SRC_LOGICAL,      
       ProjectPrule.INSTANCE,
-      ScanPrule.INSTANCE
+      ScanPrule.INSTANCE,
+      ScreenPrule.INSTANCE,
+      AbstractConverter.ExpandConversionRule.INSTANCE,
+      StreamAggPrule.INSTANCE,
+      MergeJoinPrule.INSTANCE,
+      RemoveSortUnderHashExch.INSTANCE
+      //DrillInsertExchUnderScreenRule.INSTANCE
 
 //    ExpandConversionRule.instance,
 //    SwapJoinRule.instance,

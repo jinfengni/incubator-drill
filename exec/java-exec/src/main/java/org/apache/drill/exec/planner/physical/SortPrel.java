@@ -1,36 +1,40 @@
 package org.apache.drill.exec.planner.physical;
 
-import java.util.BitSet;
-import java.util.List;
+import java.io.IOException;
 
-import org.apache.drill.exec.planner.logical.DrillAggregateRel;
-import org.eigenbase.rel.AggregateCall;
-import org.eigenbase.rel.AggregateRelBase;
-import org.eigenbase.rel.InvalidRelException;
+import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.eigenbase.rel.RelCollation;
 import org.eigenbase.rel.RelNode;
+import org.eigenbase.rel.SortRel;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelTraitSet;
+import org.eigenbase.rex.RexNode;
 
-public class SortPrel extends AggregateRelBase{
+public class SortPrel extends SortRel implements Prel {
 
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(SortPrel.class);
+  /** Creates a DrillSortRel. */
+  public SortPrel(RelOptCluster cluster, RelTraitSet traits, RelNode input, RelCollation collation) {
+    super(cluster, traits, input, collation);
+  }
 
-  public SortPrel(RelOptCluster cluster, RelTraitSet traits, RelNode child, BitSet groupSet,
-      List<AggregateCall> aggCalls) throws InvalidRelException {
-    super(cluster, traits, child, groupSet, aggCalls);
-    for (AggregateCall aggCall : aggCalls) {
-      if (aggCall.isDistinct()) {
-        throw new InvalidRelException("DrillAggregateRel does not support DISTINCT aggregates");
-      }
-    }
+  /** Creates a DrillSortRel with offset and fetch. */
+  public SortPrel(RelOptCluster cluster, RelTraitSet traits, RelNode input, RelCollation collation, RexNode offset, RexNode fetch) {
+    super(cluster, traits, input, collation, offset, fetch);
   }
 
   @Override
-  public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    try {
-      return new DrillAggregateRel(getCluster(), traitSet, sole(inputs), getGroupSet(), aggCalls);
-    } catch (InvalidRelException e) {
-      throw new AssertionError(e);
-    }
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+    return null;
   }
+
+  public SortPrel copy(
+      RelTraitSet traitSet,
+      RelNode newInput,
+      RelCollation newCollation,
+      RexNode offset,
+      RexNode fetch) {
+    return new SortPrel(getCluster(), traitSet, newInput, newCollation);
+  }
+  
+  
 }

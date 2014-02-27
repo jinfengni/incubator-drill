@@ -68,7 +68,7 @@ CP=$HADOOP_CLASSPATH:$CP
 
 CP=$DRILL_CONF_DIR:$CP
 
-DRILL_SHELL_JAVA_OPTS="$DRILL_SHELL_JAVA_OPTS -Dlog.path=$DRILL_LOG_DIR/sqlline.log"
+DRILL_SHELL_JAVA_OPTS="$DRILL_SHELL_JAVA_OPTS -Dlog.path=$DRILL_LOG_DIR/sqlline.log -Doptiq.debug=true -Djava.util.logging.config.file=/Users/jni/work/optiq_conf/logging.properties"
 
 if [ -n "$QUERY" ]
 then

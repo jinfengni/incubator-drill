@@ -17,7 +17,10 @@
  */
 package org.apache.drill.exec.planner.physical;
 
+import java.io.IOException;
+
 import org.apache.drill.exec.planner.common.BaseScanRel;
+import org.apache.drill.exec.planner.logical.DrillTable;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
@@ -28,14 +31,25 @@ public class ScanPrule extends RelOptRule{
 
   
   public ScanPrule() {
-    super(RelOptHelper.any(BaseScanRel.class), "Prel.ScanRule");
+    super(RelOptHelper.any(BaseScanRel.class), "Prel.ScanPrule");
     
   }
   @Override
   public void onMatch(RelOptRuleCall call) {
-    final BaseScanRel scan = (BaseScanRel) call.rel(0);
-    final RelTraitSet traits = scan.getTraitSet().replace(Prel.DRILL_PHYSICAL);
-    call.transformTo(new ScanPrel(scan.getCluster(), traits, scan.getTable()));
+    try{
+      final BaseScanRel scan = (BaseScanRel) call.rel(0);
+      DrillTable table = scan.getTable().unwrap(DrillTable.class);
+      DrillDistributionTrait partition = table.getGroupScan().getMaxParallelizationWidth() > 1 ? DrillDistributionTrait.RANDOM_DISTRIBUTED : DrillDistributionTrait.SINGLETON;
+      final RelTraitSet traits = scan.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(partition);
+
+      BaseScanRel newScan = new ScanPrel(scan.getCluster(), traits, scan.getTable());
+      call.transformTo(newScan);
+      
+//      BaseScanRel newScan2 = new ScanPrel(scan.getCluster(),traits.plus(DrillDistributionTrait.SINGLETON), scan.getTable());
+//      call.transformTo(newScan2);
+    }catch(IOException e){
+      throw new RuntimeException("Failure getting group scan.", e);
+    }
   }
 
   

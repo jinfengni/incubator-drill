@@ -121,17 +121,20 @@ public class ConversionContext implements ToRelContext {
 
     @Override
     public RelNode visitScan(Scan scan, ConversionContext context){
-      return BaseScanRel.convert(scan, context);
+      //return BaseScanRel.convert(scan, context);
+      return null;
     }
 
     @Override
     public RelNode visitFilter(Filter filter, ConversionContext context) throws InvalidRelException{
-      return BaseFilterRel.convert(filter, context);
+      //return BaseFilterRel.convert(filter, context);
+      return null;
     }
 
     @Override
     public RelNode visitProject(Project project, ConversionContext context) throws InvalidRelException{
-      return BaseProjectRel.convert(project, context);
+      //return BaseProjectRel.convert(project, context);
+      return null;
     }
 
     @Override

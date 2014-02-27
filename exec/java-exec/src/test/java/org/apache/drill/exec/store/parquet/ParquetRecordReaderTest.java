@@ -428,6 +428,7 @@ public class ParquetRecordReaderTest {
 
     FileSystem fs = new CachedSingleFileSystem(fileName);
     for(int i = 0; i < 25; i++){
+      /*
       ParquetRecordReader rr = new ParquetRecordReader(context, 256000, fileName, 0, fs,
           new CodecFactoryExposer(dfsConfig), f.getParquetMetadata(), new FieldReference("_MAP",
           ExpressionPosition.UNKNOWN), columns);
@@ -442,6 +443,7 @@ public class ParquetRecordReaderTest {
       }
       System.out.println(String.format("Time completed: %s. ", watch.elapsed(TimeUnit.MILLISECONDS)));
       rr.cleanup();
+      */
     }
     System.out.println(String.format("Total row count %s", totalRowCount));
   }

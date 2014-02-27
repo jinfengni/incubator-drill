@@ -1,8 +1,11 @@
 package org.apache.drill.exec.planner.physical;
 
+import java.io.IOException;
 import java.util.BitSet;
 import java.util.List;
 
+import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.physical.config.Project;
 import org.apache.drill.exec.planner.logical.DrillAggregateRel;
 import org.eigenbase.rel.AggregateCall;
 import org.eigenbase.rel.AggregateRelBase;
@@ -34,4 +37,13 @@ public class HashPrel extends AggregateRelBase implements Prel{
       throw new AssertionError(e);
     }
   }
+  
+  @Override
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+    //Prel child = (Prel) this.getChild();
+    //Project p = new Project(this.getProjectExpressions(creator.getContext()), child.getPhysicalOperator(creator));
+    //return p;
+    throw new IOException("HashPrel not supported yet!");
+  }
+
 }

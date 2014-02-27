@@ -9,7 +9,7 @@ import org.eigenbase.relopt.Convention;
 public interface Prel extends RelNode {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Prel.class);
   
-  final static Convention DRILL_PHYSICAL = new Convention.Impl("DRILL_PHYSICAL", Prel.class);
+  final static Convention DRILL_PHYSICAL = new Convention.Impl("PHYSICAL", Prel.class);
   
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException;
     
