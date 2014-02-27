@@ -40,12 +40,12 @@ Nullable: 'nullable';
 Repeat: 'repeat';
 As: 'as';
 
-INT		 : 'int';
-BIGINT	 : 'bigint';
-FLOAT4   : 'float4';
-FLOAT8   : 'float8';
-VARCHAR  : 'varchar';
-VARBINARY: 'varbinary';
+INT		 : 'int' | 'INT';
+BIGINT	 : 'bigint' | 'BIGINT';
+FLOAT4   : 'float4' | 'FLOAT4';
+FLOAT8   : 'float8' | 'FLOAT8';
+VARCHAR  : 'varchar' | 'VARCHAR';
+VARBINARY: 'varbinary' | 'VARBINARY';
 
 Or       : '||' | 'or' | 'OR' | 'Or';
 And      : '&&' | 'and' | 'AND' ;
