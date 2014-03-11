@@ -7,6 +7,8 @@ import java.util.List;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Project;
 import org.apache.drill.exec.planner.common.BaseProjectRel;
+import org.apache.drill.exec.planner.logical.DrillProjectRel;
+import org.eigenbase.rel.ProjectRelBase;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelTraitSet;
@@ -22,10 +24,10 @@ public class ProjectPrel extends BaseProjectRel implements Prel{
     super(DRILL_PHYSICAL, cluster, traits, child, exps, rowType);
   }
 
-  @Override
-  public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    return new ProjectPrel(getCluster(), traitSet, sole(inputs), new ArrayList<RexNode>(exps), rowType);
+  public ProjectRelBase copy(RelTraitSet traitSet, RelNode input, List<RexNode> exps, RelDataType rowType) {
+    return new ProjectPrel(getCluster(), traitSet, input, exps, rowType);
   }
+
 
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {

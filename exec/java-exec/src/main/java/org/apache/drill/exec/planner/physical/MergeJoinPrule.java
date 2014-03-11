@@ -10,6 +10,7 @@ import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillJoinRule;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
+import org.apache.drill.exec.planner.physical.DrillDistributionTrait.DistributionField;
 import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.JoinRel;
 import org.eigenbase.rel.RelCollation;
@@ -22,6 +23,7 @@ import org.eigenbase.relopt.RelOptRuleCall;
 import org.eigenbase.relopt.RelTraitSet;
 import org.eigenbase.trace.EigenbaseTrace;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 public class MergeJoinPrule extends RelOptRule {
@@ -42,10 +44,11 @@ public class MergeJoinPrule extends RelOptRule {
 
     RelCollation collationLeft = getCollation(join.getLeftKeys());
     RelCollation collationRight = getCollation(join.getRightKeys());
-    DrillDistributionTrait hashPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, null);
+    DrillDistributionTrait hashLeftPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getLeftKeys())));
+    DrillDistributionTrait hashRightPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getLeftKeys())));
     
-    final RelTraitSet traitsLeft = left.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(collationLeft).plus(hashPartition);   
-    final RelTraitSet traitsRight = right.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(collationRight).plus(hashPartition);
+    final RelTraitSet traitsLeft = left.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(collationLeft).plus(hashLeftPartition);   
+    final RelTraitSet traitsRight = right.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(collationRight).plus(hashRightPartition);
     
     final RelNode convertedLeft = convert(left, traitsLeft);
     final RelNode convertedRight = convert(right, traitsRight);
@@ -65,6 +68,16 @@ public class MergeJoinPrule extends RelOptRule {
       fields.add(new RelFieldCollation(key));
     }
     return RelCollationImpl.of(fields);
+  }
+
+  private List<DistributionField> getDistributionField(List<Integer> keys) {
+    List<DistributionField> distFields = Lists.newArrayList();
+
+    for (int key : keys) {
+      distFields.add(new DistributionField(key));
+    }
+     
+    return distFields;
   }
 
 }

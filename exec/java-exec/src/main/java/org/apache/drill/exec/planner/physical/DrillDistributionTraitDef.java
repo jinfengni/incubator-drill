@@ -40,8 +40,15 @@ public class DrillDistributionTraitDef extends RelTraitDef<DrillDistributionTrai
     
     DrillDistributionTrait currentPartition = rel.getTraitSet().getTrait(DrillDistributionTraitDef.INSTANCE);
     
+    //Sournce and Target have the same trait.
     if (currentPartition.equals(toPartition)) {
       return rel;
+    }
+    
+    //Source have the default trait -- "ANY". We do not want to convert from "ANY", since it's abstract. 
+    //Source trait should be concreate : SINGLETON, HASH_DISTRIBUTED, etc.
+    if (currentPartition.equals(DrillDistributionTrait.DEFAULT)) {
+      return null;
     }
     
     switch(toPartition.getType()){

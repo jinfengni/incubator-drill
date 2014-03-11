@@ -26,6 +26,7 @@ import org.apache.drill.common.logical.data.Project;
 import org.apache.drill.exec.planner.common.BaseProjectRel;
 import org.apache.drill.exec.planner.torel.ConversionContext;
 import org.eigenbase.rel.InvalidRelException;
+import org.eigenbase.rel.ProjectRelBase;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelTraitSet;
@@ -47,9 +48,9 @@ public class DrillProjectRel extends BaseProjectRel implements DrillRel {
     super(DRILL_LOGICAL, cluster, traits, child, exps, rowType);
   }
 
-  @Override
-  public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    return new DrillProjectRel(getCluster(), traitSet, sole(inputs), new ArrayList<RexNode>(exps), rowType);
+
+  public ProjectRelBase copy(RelTraitSet traitSet, RelNode input, List<RexNode> exps, RelDataType rowType) {
+    return new DrillProjectRel(getCluster(), traitSet, input, exps, rowType);
   }
 
 

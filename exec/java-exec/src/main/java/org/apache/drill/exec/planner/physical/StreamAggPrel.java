@@ -27,15 +27,14 @@ public class StreamAggPrel extends AggregateRelBase implements Prel{
     }
   }
 
-  @Override
-  public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
+  public AggregateRelBase copy(RelTraitSet traitSet, RelNode input, BitSet groupSet, List<AggregateCall> aggCalls) {
     try {
-      return new StreamAggPrel(getCluster(), traitSet, sole(inputs), getGroupSet(), aggCalls);
+      return new StreamAggPrel(getCluster(), traitSet, input, getGroupSet(), aggCalls);
     } catch (InvalidRelException e) {
       throw new AssertionError(e);
     }
   }
-  
+   
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     return null;

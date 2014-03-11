@@ -29,15 +29,13 @@ public class HashPrel extends AggregateRelBase implements Prel{
     assert getConvention() == DRILL_PHYSICAL;
   }
 
-  @Override
-  public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
+  public AggregateRelBase copy(RelTraitSet traitSet, RelNode input, BitSet groupSet, List<AggregateCall> aggCalls) {
     try {
-      return new HashPrel(getCluster(), traitSet, sole(inputs), getGroupSet(), aggCalls);
+      return new HashPrel(getCluster(), traitSet, input, getGroupSet(), aggCalls);
     } catch (InvalidRelException e) {
       throw new AssertionError(e);
     }
   }
-  
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     //Prel child = (Prel) this.getChild();

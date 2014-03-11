@@ -26,6 +26,7 @@ import org.eigenbase.relopt.Convention;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
 import org.eigenbase.relopt.RelTraitSet;
+import org.eigenbase.relopt.volcano.RelSubset;
 
 public class ProjectPrule extends RelOptRule {
   public static final RelOptRule INSTANCE = new ProjectPrule();
@@ -38,27 +39,20 @@ public class ProjectPrule extends RelOptRule {
   public void onMatch(RelOptRuleCall call) {
     final BaseProjectRel project = (BaseProjectRel) call.rel(0);
     final RelNode input = call.rel(1);
-    
-    RelTraitSet traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
+
+    RelTraitSet traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL);
     RelNode convertedInput = convert(input, traits);
-    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
     
-    traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.RANDOM_DISTRIBUTED);
-    convertedInput = convert(input, traits);
-    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
-
-/*    
-    DrillDistributionTrait hashDistribution = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, null);
-
-    traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(hashDistribution);
-    convertedInput = convert(input, traits);
-    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
-
-    DrillDistributionTrait rangeDistribution = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.RANGE_DISTRIBUTED, null);
-
-    traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(rangeDistribution);
-    convertedInput = convert(input, traits);
-    call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));
-*/    
+    if (convertedInput instanceof RelSubset) {
+      RelSubset subset = (RelSubset) convertedInput;
+      for (RelNode rel : subset.getRelList()) {
+        if (!rel.getTraitSet().getTrait(DrillDistributionTraitDef.INSTANCE).equals(DrillDistributionTrait.DEFAULT)) {
+          call.transformTo(new ProjectPrel(project.getCluster(), rel.getTraitSet(), rel, project.getProjects(), project.getRowType()));
+        }
+      }
+      
+    } else{
+      call.transformTo(new ProjectPrel(project.getCluster(), convertedInput.getTraitSet(), convertedInput, project.getProjects(), project.getRowType()));        
+    }
   }
 }

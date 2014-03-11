@@ -40,7 +40,7 @@ import com.google.common.collect.Lists;
 /**
  * Project implemented in Drill.
  */
-public class BaseProjectRel extends ProjectRelBase{
+public abstract class BaseProjectRel extends ProjectRelBase{
   protected BaseProjectRel(Convention convention, RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,
       RelDataType rowType) {
     super(cluster, traits, child, exps, rowType, Flags.BOXED);
