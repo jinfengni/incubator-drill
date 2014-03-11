@@ -17,7 +17,7 @@
  */
 package org.apache.drill.exec.planner.physical;
 
-import org.apache.drill.exec.planner.common.BaseProjectRel;
+import org.apache.drill.exec.planner.common.DrillProjectRelBase;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
 import org.eigenbase.rel.ProjectRel;
@@ -32,12 +32,12 @@ public class ProjectPrule extends RelOptRule {
   public static final RelOptRule INSTANCE = new ProjectPrule();
 
   private ProjectPrule() {
-    super(RelOptHelper.some(BaseProjectRel.class, RelOptHelper.any(RelNode.class)), "ProjectPrule");
+    super(RelOptHelper.some(DrillProjectRelBase.class, RelOptHelper.any(RelNode.class)), "ProjectPrule");
   }
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    final BaseProjectRel project = (BaseProjectRel) call.rel(0);
+    final DrillProjectRelBase project = (DrillProjectRelBase) call.rel(0);
     final RelNode input = call.rel(1);
 
     RelTraitSet traits = input.getTraitSet().plus(Prel.DRILL_PHYSICAL);

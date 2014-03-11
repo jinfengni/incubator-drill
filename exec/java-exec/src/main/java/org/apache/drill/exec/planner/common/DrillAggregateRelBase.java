@@ -17,25 +17,26 @@
  */
 package org.apache.drill.exec.planner.common;
 
-import org.apache.drill.exec.planner.logical.DrillRel;
+import java.util.BitSet;
+import java.util.List;
+
+
+import org.eigenbase.rel.AggregateCall;
+import org.eigenbase.rel.AggregateRelBase;
+import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.RelNode;
-import org.eigenbase.rel.SingleRel;
-import org.eigenbase.relopt.Convention;
 import org.eigenbase.relopt.RelOptCluster;
-import org.eigenbase.relopt.RelOptCost;
-import org.eigenbase.relopt.RelOptPlanner;
 import org.eigenbase.relopt.RelTraitSet;
 
-public abstract class BaseScreenRel extends SingleRel {
 
-  public BaseScreenRel(Convention convention, RelOptCluster cluster, RelTraitSet traitSet, RelNode input) {
-    super(cluster, traitSet, input);
-    assert input.getConvention() == convention;
-  }
+/**
+ * Base class for logical and physical Aggregations implemented in Drill
+ */
+public abstract class DrillAggregateRelBase extends AggregateRelBase implements DrillRelNode {
 
-  @Override
-  public RelOptCost computeSelfCost(RelOptPlanner planner) {
-    return super.computeSelfCost(planner).multiplyBy(.1);
+  public DrillAggregateRelBase(RelOptCluster cluster, RelTraitSet traits, RelNode child, BitSet groupSet,
+      List<AggregateCall> aggCalls) throws InvalidRelException {
+    super(cluster, traits, child, groupSet, aggCalls);
   }
 
 }

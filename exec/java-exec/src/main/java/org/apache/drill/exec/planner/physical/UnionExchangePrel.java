@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.physical.config.Screen;
+import org.apache.drill.exec.physical.config.UnionExchange;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.rel.SingleRel;
 import org.eigenbase.relopt.RelOptCluster;
@@ -30,7 +32,10 @@ public class UnionExchangePrel extends SingleRel implements Prel {
   }
   
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
-    throw new IOException(this.getClass().getSimpleName() + " not supported yet!");
+    Prel child = (Prel) this.getChild();
+    UnionExchange g = new UnionExchange(child.getPhysicalOperator(creator));
+    creator.addPhysicalOperator(g);
+    return g;    
   }
   
 }

@@ -27,9 +27,9 @@ import org.apache.drill.common.logical.data.Join;
 import org.apache.drill.common.logical.data.JoinCondition;
 import org.apache.drill.common.logical.data.LogicalOperator;
 import org.apache.drill.common.logical.data.Project;
+import org.apache.drill.exec.planner.common.DrillJoinRelBase;
 import org.apache.drill.exec.planner.torel.ConversionContext;
 import org.eigenbase.rel.InvalidRelException;
-import org.eigenbase.rel.JoinRelBase;
 import org.eigenbase.rel.JoinRelType;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
@@ -45,14 +45,14 @@ import org.eigenbase.util.Pair;
 /**
  * Join implemented in Drill.
  */
-public class DrillJoinRel extends JoinRelBase implements DrillRel {
+public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
   private final List<Integer> leftKeys = new ArrayList<>();
   private final List<Integer> rightKeys = new ArrayList<>();
 
   /** Creates a DrillJoinRel. */
   public DrillJoinRel(RelOptCluster cluster, RelTraitSet traits, RelNode left, RelNode right, RexNode condition,
       JoinRelType joinType) throws InvalidRelException {
-    super(cluster, traits, left, right, condition, joinType, Collections.<String> emptySet());
+    super(cluster, traits, left, right, condition, joinType);
 
     RexNode remaining = RelOptUtil.splitJoinCondition(left, right, condition, leftKeys, rightKeys);
     if (!remaining.isAlwaysTrue()) {

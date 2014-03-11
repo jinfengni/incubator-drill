@@ -5,6 +5,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.physical.config.StreamingAggregate;
 import org.apache.drill.exec.planner.logical.DrillAggregateRel;
 import org.eigenbase.rel.AggregateCall;
 import org.eigenbase.rel.AggregateRelBase;
@@ -37,6 +38,7 @@ public class StreamAggPrel extends AggregateRelBase implements Prel{
    
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
-    return null;
+    // Prel child = (Prel) this.getChild();
+    throw new IOException("StreamingAggPrel not supported yet!");
   }
 }

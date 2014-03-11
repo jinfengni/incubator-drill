@@ -2,10 +2,11 @@ package org.apache.drill.exec.planner.physical;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
+
 import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.planner.common.DrillJoinRelBase;
 import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.JoinRelBase;
 import org.eigenbase.rel.JoinRelType;
@@ -15,14 +16,14 @@ import org.eigenbase.relopt.RelOptUtil;
 import org.eigenbase.relopt.RelTraitSet;
 import org.eigenbase.rex.RexNode;
 
-public class MergeJoinPrel  extends JoinRelBase implements Prel{
+public class MergeJoinPrel  extends DrillJoinRelBase implements Prel {
   private final List<Integer> leftKeys = new ArrayList<>();
   private final List<Integer> rightKeys = new ArrayList<>();
 
   /** Creates a MergeJoiPrel. */
   public MergeJoinPrel(RelOptCluster cluster, RelTraitSet traits, RelNode left, RelNode right, RexNode condition,
       JoinRelType joinType) throws InvalidRelException {
-    super(cluster, traits, left, right, condition, joinType, Collections.<String> emptySet());
+    super(cluster, traits, left, right, condition, joinType);
 
     RexNode remaining = RelOptUtil.splitJoinCondition(left, right, condition, leftKeys, rightKeys);
     if (!remaining.isAlwaysTrue()) {

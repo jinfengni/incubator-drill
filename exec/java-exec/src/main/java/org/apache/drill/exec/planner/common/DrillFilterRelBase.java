@@ -17,52 +17,39 @@
  */
 package org.apache.drill.exec.planner.common;
 
-import java.util.List;
-
-import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.expression.LogicalExpression;
-import org.apache.drill.common.logical.data.NamedExpression;
+import org.apache.drill.common.logical.data.Filter;
+import org.apache.drill.common.logical.data.LogicalOperator;
+import org.apache.drill.exec.planner.logical.DrillImplementor;
 import org.apache.drill.exec.planner.logical.DrillOptiq;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
-import org.eigenbase.rel.ProjectRelBase;
+import org.apache.drill.exec.planner.logical.DrillRel;
+import org.apache.drill.exec.planner.torel.ConversionContext;
+import org.eigenbase.rel.FilterRelBase;
+import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.Convention;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptCost;
 import org.eigenbase.relopt.RelOptPlanner;
 import org.eigenbase.relopt.RelTraitSet;
-import org.eigenbase.reltype.RelDataType;
 import org.eigenbase.rex.RexNode;
-import org.eigenbase.util.Pair;
-
-import com.google.common.collect.Lists;
 
 /**
- * Project implemented in Drill.
+ * Base class for logical and physical Filters implemented in Drill
  */
-public abstract class BaseProjectRel extends ProjectRelBase{
-  protected BaseProjectRel(Convention convention, RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,
-      RelDataType rowType) {
-    super(cluster, traits, child, exps, rowType, Flags.BOXED);
+public abstract class DrillFilterRelBase extends FilterRelBase implements DrillRelNode {
+  protected DrillFilterRelBase(Convention convention, RelOptCluster cluster, RelTraitSet traits, RelNode child, RexNode condition) {
+    super(cluster, traits, child, condition);
     assert getConvention() == convention;
   }
-
+  
   @Override
   public RelOptCost computeSelfCost(RelOptPlanner planner) {
     return super.computeSelfCost(planner).multiplyBy(0.1);
   }
 
-  private List<Pair<RexNode, String>> projects() {
-    return Pair.zip(exps, getRowType().getFieldNames());
+  protected LogicalExpression getFilterExpression(DrillParseContext context){
+    return DrillOptiq.toDrill(context, getChild(), getCondition());
   }
-
-  protected List<NamedExpression> getProjectExpressions(DrillParseContext context){
-    List<NamedExpression> expressions = Lists.newArrayList();
-    for (Pair<RexNode, String> pair : projects()) {
-      LogicalExpression expr = DrillOptiq.toDrill(context, getChild(), pair.left);
-      expressions.add(new NamedExpression(expr, new FieldReference("output." + pair.right)));
-    }
-    return expressions;
-  }
-
 }

@@ -17,6 +17,8 @@
  */
 package org.apache.drill.exec.planner.sql;
 
+import java.io.IOException;
+
 import net.hydromatic.optiq.jdbc.ConnectionConfig;
 import net.hydromatic.optiq.tools.Frameworks;
 import net.hydromatic.optiq.tools.Planner;
@@ -28,8 +30,7 @@ import org.apache.drill.common.expression.FunctionRegistry;
 import org.apache.drill.common.logical.LogicalPlan;
 import org.apache.drill.common.logical.PlanProperties.Generator.ResultMode;
 import org.apache.drill.exec.physical.PhysicalPlan;
-import org.apache.drill.exec.planner.common.BaseScreenRel;
-import org.apache.drill.exec.planner.common.DrillStoreRel;
+import org.apache.drill.exec.planner.logical.DrillStoreRel;
 import org.apache.drill.exec.planner.logical.DrillImplementor;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.planner.logical.DrillRel;
@@ -39,6 +40,7 @@ import org.apache.drill.exec.planner.physical.DrillMuxMode;
 import org.apache.drill.exec.planner.physical.DrillMuxModeDef;
 import org.apache.drill.exec.planner.physical.DrillDistributionTrait;
 import org.apache.drill.exec.planner.physical.DrillDistributionTraitDef;
+import org.apache.drill.exec.planner.physical.PhysicalPlanCreator;
 import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.store.StoragePluginRegistry.DrillSchemaFactory;
 import org.eigenbase.rel.RelNode;
@@ -130,12 +132,15 @@ public class DrillSqlWorker {
     
   }
   
-  public PhysicalPlan getPhysicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException{
+  public PhysicalPlan getPhysicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException, IOException {
     RelResult result = getRel(sql);
 
     RelTraitSet traits = result.node.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);    
     Prel phyRelNode = (Prel) planner.transform(PHYSICAL_MEM_RULES, traits, result.node);
 
+    PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(new DrillParseContext(registry));
+    PhysicalPlan plan = pplanCreator.build(phyRelNode, true /* rebuild */);
+    
     //Debug.
     System.err.println("SQL : " + sql);
     logger.debug("SQL : " + sql);
@@ -145,7 +150,7 @@ public class DrillSqlWorker {
     
     planner.close();
     planner.reset();
-    return null;
+    return plan;
 
   }
   

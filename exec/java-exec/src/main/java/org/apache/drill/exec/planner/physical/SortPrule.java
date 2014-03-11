@@ -1,6 +1,6 @@
 package org.apache.drill.exec.planner.physical;
 
-import org.apache.drill.exec.planner.common.BaseProjectRel;
+import org.apache.drill.exec.planner.common.DrillProjectRelBase;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillSortRel;
 import org.apache.drill.exec.planner.logical.RelOptHelper;

@@ -17,57 +17,34 @@
  */
 package org.apache.drill.exec.planner.common;
 
+import java.math.BigDecimal;
 import java.util.List;
-
-import net.hydromatic.linq4j.Ord;
 
 import org.apache.drill.common.logical.data.Limit;
 import org.apache.drill.common.logical.data.LogicalOperator;
-import org.apache.drill.common.logical.data.Union;
 import org.apache.drill.exec.planner.logical.DrillImplementor;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.torel.ConversionContext;
 import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.RelNode;
-import org.eigenbase.rel.UnionRelBase;
+import org.eigenbase.rel.SingleRel;
 import org.eigenbase.relopt.RelOptCluster;
-import org.eigenbase.relopt.RelOptCost;
-import org.eigenbase.relopt.RelOptPlanner;
 import org.eigenbase.relopt.RelTraitSet;
+import org.eigenbase.rex.RexLiteral;
+import org.eigenbase.rex.RexNode;
+import org.eigenbase.sql.type.SqlTypeName;
 
 /**
- * Union implemented in Drill.
+ * Base class for logical and physical Limits implemented in Drill
  */
-public class DrillUnionRel extends UnionRelBase implements DrillRel {
-  /** Creates a DrillUnionRel. */
-  public DrillUnionRel(RelOptCluster cluster, RelTraitSet traits,
-      List<RelNode> inputs, boolean all) {
-    super(cluster, traits, inputs, all);
+public abstract class DrillLimitRelBase extends SingleRel implements DrillRelNode {
+  protected RexNode offset;
+  protected RexNode fetch;
+
+  public DrillLimitRelBase(RelOptCluster cluster, RelTraitSet traitSet, RelNode child, RexNode offset, RexNode fetch) {
+    super(cluster, traitSet, child);
+    this.offset = offset;
+    this.fetch = fetch;
   }
 
-  @Override
-  public DrillUnionRel copy(RelTraitSet traitSet, List<RelNode> inputs,
-      boolean all) {
-    return new DrillUnionRel(getCluster(), traitSet, inputs, all);
-  }
-
-  @Override
-  public RelOptCost computeSelfCost(RelOptPlanner planner) {
-    // divide cost by two to ensure cheaper than EnumerableDrillRel
-    return super.computeSelfCost(planner).multiplyBy(.5);
-  }
-
-  @Override
-  public LogicalOperator implement(DrillImplementor implementor) {
-    Union.Builder builder = Union.builder();
-    for (Ord<RelNode> input : Ord.zip(inputs)) {
-      builder.addInput(implementor.visitChild(this, input.i, input.e));
-    }
-    builder.setDistinct(!all);
-    return builder.build();
-  }
-  
-  public static DrillUnionRel convert(Union union, ConversionContext context) throws InvalidRelException{
-    throw new UnsupportedOperationException();
-  }
 }

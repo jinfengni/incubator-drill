@@ -29,6 +29,7 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.logical.data.GroupingAggregate;
 import org.apache.drill.common.logical.data.LogicalOperator;
+import org.apache.drill.exec.planner.common.DrillAggregateRelBase;
 import org.apache.drill.exec.planner.torel.ConversionContext;
 import org.eigenbase.rel.AggregateCall;
 import org.eigenbase.rel.AggregateRelBase;
@@ -42,7 +43,7 @@ import com.google.common.collect.Lists;
 /**
  * Aggregation implemented in Drill.
  */
-public class DrillAggregateRel extends AggregateRelBase implements DrillRel {
+public class DrillAggregateRel extends DrillAggregateRelBase implements DrillRel {
   /** Creates a DrillAggregateRel. */
   public DrillAggregateRel(RelOptCluster cluster, RelTraitSet traits, RelNode child, BitSet groupSet,
       List<AggregateCall> aggCalls) throws InvalidRelException {

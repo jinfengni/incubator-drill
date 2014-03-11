@@ -15,33 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.planner.logical;
+package org.apache.drill.exec.planner.common;
 
 import java.util.List;
 
 import net.hydromatic.optiq.prepare.Prepare.CatalogReader;
 
-import org.apache.drill.common.logical.data.LogicalOperator;
-import org.apache.drill.exec.planner.common.DrillStoreRelBase;
-import org.apache.drill.exec.planner.logical.DrillImplementor;
-import org.apache.drill.exec.planner.logical.DrillRel;
 import org.eigenbase.rel.RelNode;
+import org.eigenbase.rel.TableModificationRelBase;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
 
-public class DrillStoreRel extends DrillStoreRelBase implements DrillRel{
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillStoreRel.class);
+/**
+ * Base class for logical and physical Store implemented in Drill
+ */
+public abstract class DrillStoreRelBase extends TableModificationRelBase implements DrillRelNode {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillStoreRelBase.class);
 
-  protected DrillStoreRel(RelOptCluster cluster, RelTraitSet traits, RelOptTable table, CatalogReader catalogReader,
+  protected DrillStoreRelBase(RelOptCluster cluster, RelTraitSet traits, RelOptTable table, CatalogReader catalogReader,
       RelNode child, Operation operation, List<String> updateColumnList, boolean flattened) {
     super(cluster, traits, table, catalogReader, child, operation, updateColumnList, flattened);
     
-  }
-
-  @Override
-  public LogicalOperator implement(DrillImplementor implementor) {
-    return null;
   }
 
 }

@@ -15,19 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.planner.logical;
 
-import org.apache.drill.common.logical.data.LogicalOperator;
-import org.apache.drill.exec.planner.common.DrillRelNode;
-import org.eigenbase.relopt.Convention;
+package org.apache.drill.exec.planner.common;
 
-/**
- * Relational expression that is implemented in Drill.
- */
-public interface DrillRel extends DrillRelNode {
-  /** Calling convention for relational expressions that are "implemented" by
-   * generating Drill logical plans. */
-  Convention DRILL_LOGICAL = new Convention.Impl("LOGICAL", DrillRel.class);
+import org.eigenbase.rel.RelNode;
 
-  LogicalOperator implement(DrillImplementor implementor);
+public interface DrillRelNode extends RelNode {
+
 }
