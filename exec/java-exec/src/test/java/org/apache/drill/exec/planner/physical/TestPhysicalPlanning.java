@@ -5,6 +5,7 @@ import mockit.NonStrictExpectations;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.FunctionRegistry;
 import org.apache.drill.exec.memory.TopLevelAllocator;
+import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.planner.sql.DrillSqlWorker;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.StoragePluginRegistry;
@@ -36,7 +37,8 @@ public class TestPhysicalPlanning {
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
     //worker.getPhysicalPlan("select * from cp.`employee.json`");
-    worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions1/`");   
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions1/`");   
+    worker.runPhysicalPlan(plan, c);
     
   }
 

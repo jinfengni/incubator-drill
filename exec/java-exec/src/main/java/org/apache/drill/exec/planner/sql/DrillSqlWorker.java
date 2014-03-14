@@ -26,9 +26,11 @@ import net.hydromatic.optiq.tools.RelConversionException;
 import net.hydromatic.optiq.tools.RuleSet;
 import net.hydromatic.optiq.tools.ValidationException;
 
+import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.FunctionRegistry;
 import org.apache.drill.common.logical.LogicalPlan;
 import org.apache.drill.common.logical.PlanProperties.Generator.ResultMode;
+import org.apache.drill.exec.client.QuerySubmitter;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.planner.logical.DrillStoreRel;
 import org.apache.drill.exec.planner.logical.DrillImplementor;
@@ -53,6 +55,8 @@ import org.eigenbase.sql.SqlLiteral;
 import org.eigenbase.sql.SqlNode;
 import org.eigenbase.sql.fun.SqlStdOperatorTable;
 import org.eigenbase.sql.parser.SqlParseException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class DrillSqlWorker {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillSqlWorker.class);
@@ -153,5 +157,24 @@ public class DrillSqlWorker {
     return plan;
 
   }
-  
+ 
+  public void runPhysicalPlan(PhysicalPlan phyPlan, DrillConfig config) {
+    QuerySubmitter qs = new QuerySubmitter();
+    
+    ObjectMapper mapper = config.getMapper();
+    
+    
+    
+    try {
+      String phyPlanStr = mapper.writeValueAsString(phyPlan);
+      
+      System.out.println(phyPlanStr);
+      
+      qs.submitQuery(null, phyPlanStr, "physical", null, true, 1, "csv");
+    } catch (Exception e) {
+      System.err.println("Query fails " + e.toString());
+    }
+  }
+
+   
 }
