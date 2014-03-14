@@ -60,8 +60,9 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions2/`");   
-  
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions2/`");   
+    worker.runPhysicalPlan(plan, c);
+    
   }
 
   @Test
@@ -82,7 +83,9 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions1/` group by R_REGIONKEY");    
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions1/` group by R_REGIONKEY");  
+    worker.runPhysicalPlan(plan, c);
+    
   }
 
   @Test

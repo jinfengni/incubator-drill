@@ -38,8 +38,6 @@ import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillRuleSets;
 import org.apache.drill.exec.planner.logical.DrillScreenRel;
-import org.apache.drill.exec.planner.physical.DrillMuxMode;
-import org.apache.drill.exec.planner.physical.DrillMuxModeDef;
 import org.apache.drill.exec.planner.physical.DrillDistributionTrait;
 import org.apache.drill.exec.planner.physical.DrillDistributionTraitDef;
 import org.apache.drill.exec.planner.physical.PhysicalPlanCreator;
@@ -48,10 +46,7 @@ import org.apache.drill.exec.store.StoragePluginRegistry.DrillSchemaFactory;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptUtil;
 import org.eigenbase.relopt.RelTraitSet;
-import org.eigenbase.sql.SqlExplain;
 import org.eigenbase.sql.SqlExplainLevel;
-import org.eigenbase.sql.SqlKind;
-import org.eigenbase.sql.SqlLiteral;
 import org.eigenbase.sql.SqlNode;
 import org.eigenbase.sql.fun.SqlStdOperatorTable;
 import org.eigenbase.sql.parser.SqlParseException;
@@ -142,9 +137,6 @@ public class DrillSqlWorker {
     RelTraitSet traits = result.node.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);    
     Prel phyRelNode = (Prel) planner.transform(PHYSICAL_MEM_RULES, traits, result.node);
 
-    PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(new DrillParseContext(registry));
-    PhysicalPlan plan = pplanCreator.build(phyRelNode, true /* rebuild */);
-    
     //Debug.
     System.err.println("SQL : " + sql);
     logger.debug("SQL : " + sql);
@@ -152,6 +144,9 @@ public class DrillSqlWorker {
     System.out.println(msg);
     logger.debug(msg);
     
+    PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(new DrillParseContext(registry));
+    PhysicalPlan plan = pplanCreator.build(phyRelNode, true /* rebuild */);
+        
     planner.close();
     planner.reset();
     return plan;
@@ -162,8 +157,6 @@ public class DrillSqlWorker {
     QuerySubmitter qs = new QuerySubmitter();
     
     ObjectMapper mapper = config.getMapper();
-    
-    
     
     try {
       String phyPlanStr = mapper.writeValueAsString(phyPlan);
@@ -176,5 +169,4 @@ public class DrillSqlWorker {
     }
   }
 
-   
 }

@@ -116,6 +116,10 @@ public class DrillDistributionTrait implements RelTrait {
       return this.fieldId;
     }
     
+    public int getFieldId() {
+      return this.fieldId;
+    }
+    
   }
   
 }

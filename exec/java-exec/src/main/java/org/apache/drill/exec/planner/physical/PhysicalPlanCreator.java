@@ -43,8 +43,8 @@ public class PhysicalPlanCreator {
     PlanPropertiesBuilder propsBuilder = PlanProperties.builder();
     propsBuilder.type(PlanType.APACHE_DRILL_PHYSICAL);
     propsBuilder.version(1);
-    propsBuilder.resultMode(ResultMode.PHYSICAL);
-    propsBuilder.generator("dummyType", "dummyInfo");
+    propsBuilder.resultMode(ResultMode.EXEC);
+    propsBuilder.generator(PhysicalPlanCreator.class.getName(), "");
 
     
     try { 
@@ -58,6 +58,7 @@ public class PhysicalPlanCreator {
       
     } catch (IOException e) {
       plan = null;
+      throw new UnsupportedOperationException("Physical plan created failed with error : " + e.toString());
     }
     
     return plan;
