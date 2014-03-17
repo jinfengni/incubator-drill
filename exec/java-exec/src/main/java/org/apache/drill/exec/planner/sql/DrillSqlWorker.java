@@ -18,8 +18,10 @@
 package org.apache.drill.exec.planner.sql;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-import net.hydromatic.optiq.jdbc.ConnectionConfig;
+import net.hydromatic.optiq.config.Lex;
 import net.hydromatic.optiq.tools.Frameworks;
 import net.hydromatic.optiq.tools.Planner;
 import net.hydromatic.optiq.tools.RelConversionException;
@@ -42,9 +44,13 @@ import org.apache.drill.exec.planner.physical.DrillDistributionTrait;
 import org.apache.drill.exec.planner.physical.DrillDistributionTraitDef;
 import org.apache.drill.exec.planner.physical.PhysicalPlanCreator;
 import org.apache.drill.exec.planner.physical.Prel;
+import org.apache.drill.exec.planner.physical.DrillDistributionTrait.DistributionField;
 import org.apache.drill.exec.store.StoragePluginRegistry.DrillSchemaFactory;
+import org.eigenbase.rel.RelCollationTraitDef;
 import org.eigenbase.rel.RelNode;
+import org.eigenbase.relopt.ConventionTraitDef;
 import org.eigenbase.relopt.RelOptUtil;
+import org.eigenbase.relopt.RelTraitDef;
 import org.eigenbase.relopt.RelTraitSet;
 import org.eigenbase.sql.SqlExplainLevel;
 import org.eigenbase.sql.SqlNode;
@@ -52,6 +58,7 @@ import org.eigenbase.sql.fun.SqlStdOperatorTable;
 import org.eigenbase.sql.parser.SqlParseException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 
 public class DrillSqlWorker {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillSqlWorker.class);
@@ -64,7 +71,12 @@ public class DrillSqlWorker {
   
   public DrillSqlWorker(DrillSchemaFactory schemaFactory, FunctionRegistry functionRegistry) throws Exception {
     this.registry = functionRegistry;
-    this.planner = Frameworks.getPlanner(ConnectionConfig.Lex.MYSQL, schemaFactory, SqlStdOperatorTable.instance(), RULES);
+    final List<RelTraitDef> traitDefs = new ArrayList<RelTraitDef>();
+    traitDefs.add(ConventionTraitDef.INSTANCE);
+    traitDefs.add(RelCollationTraitDef.INSTANCE);
+    traitDefs.add(DrillDistributionTraitDef.INSTANCE);
+    
+    this.planner = Frameworks.getPlanner(Lex.MYSQL, schemaFactory, SqlStdOperatorTable.instance(), traitDefs, RULES);
   }
   
   private class RelResult{
@@ -86,7 +98,7 @@ public class DrillSqlWorker {
     //Add new TraintDef to planner.
     //Temp solution. Framework only create planner after "parse", only after that, can add traitDef to planner. 
     //this.planner.addRelTraitDef(DrillMuxModeDef.INSTANCE);
-    this.planner.addRelTraitDef(DrillDistributionTraitDef.INSTANCE);
+    //this.planner.addRelTraitDef(DrillDistributionTraitDef.INSTANCE);
     
     ResultMode resultMode = ResultMode.EXEC;
     /*
@@ -143,7 +155,7 @@ public class DrillSqlWorker {
     String msg = RelOptUtil.toString(phyRelNode, SqlExplainLevel.ALL_ATTRIBUTES);
     System.out.println(msg);
     logger.debug(msg);
-    
+        
     PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(new DrillParseContext(registry));
     PhysicalPlan plan = pplanCreator.build(phyRelNode, true /* rebuild */);
         
