@@ -48,6 +48,7 @@ import org.eigenbase.util.Pair;
 public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
   private final List<Integer> leftKeys = new ArrayList<>();
   private final List<Integer> rightKeys = new ArrayList<>();
+  private Join join = null;
 
   /** Creates a DrillJoinRel. */
   public DrillJoinRel(RelOptCluster cluster, RelTraitSet traits, RelNode left, RelNode right, RexNode condition,
@@ -88,7 +89,9 @@ public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
     for (Pair<Integer, Integer> pair : Pair.zip(leftKeys, rightKeys)) {
       builder.addCondition("==", new FieldReference(leftFields.get(pair.left)), new FieldReference(rightFields.get(pair.right)));
     }
-    return builder.build();
+    
+    this.join = builder.build();  // save the logical operator for future use
+    return join;
   }
 
   /**
@@ -170,5 +173,9 @@ public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
     return this.rightKeys;
   }
 
+  // get the Drill logical join operator
+  public Join getJoinLOP() {
+    return join;
+  }
 
 }
