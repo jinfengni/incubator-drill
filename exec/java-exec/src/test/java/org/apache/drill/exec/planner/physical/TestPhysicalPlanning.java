@@ -106,7 +106,9 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions2/` group by R_REGIONKEY");    
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions2/` group by R_REGIONKEY");    
+    worker.runPhysicalPlan(plan, c);
+
   }
  
   @Test
@@ -127,7 +129,9 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    worker.getPhysicalPlan("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY S");    
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY S");    
+    worker.runPhysicalPlan(plan, c);
+
   }
  
   @Test
@@ -148,7 +152,8 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    worker.getPhysicalPlan("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY R_REGIONKEY");    
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY R_REGIONKEY");   
+    worker.runPhysicalPlan(plan, c);
   }
    
   @Test
@@ -213,9 +218,8 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    //worker.getPhysicalPlan("select * from cp.`employee.json`");
-    worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions1/` order by R_REGIONKEY");   
-    
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions1/` order by R_REGIONKEY");   
+    worker.runPhysicalPlan(plan, c);
   }
 
   @Test
@@ -236,9 +240,8 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    //worker.getPhysicalPlan("select * from cp.`employee.json`");
-    worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions2/` order by R_REGIONKEY");   
-    
+    PhysicalPlan plan = worker.getPhysicalPlan("select R_REGIONKEY from dfs.`/Users/jni/regions2/` order by R_REGIONKEY");   
+    worker.runPhysicalPlan(plan, c);
   }
   
   @AfterClass
