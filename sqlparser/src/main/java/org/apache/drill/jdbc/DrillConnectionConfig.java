@@ -20,10 +20,14 @@ package org.apache.drill.jdbc;
 import java.util.Properties;
 import java.util.TimeZone;
 
-public class ConnectionConfig {
+import net.hydromatic.avatica.ConnectionConfig;
+import net.hydromatic.avatica.ConnectionConfigImpl;
+
+public class DrillConnectionConfig extends ConnectionConfigImpl {
   private final Properties props;
   
-  public ConnectionConfig(Properties p){
+  public DrillConnectionConfig(Properties p){
+    super(p);
     this.props = p;
   }
   
