@@ -8,8 +8,10 @@ import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.logical.data.Order.Ordering;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
+import org.apache.drill.exec.physical.config.SelectionVectorRemover;
 import org.apache.drill.exec.physical.config.SingleMergeExchange;
 import org.apache.drill.exec.physical.config.UnionExchange;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelCollation;
 import org.eigenbase.rel.RelFieldCollation;
 import org.eigenbase.rel.RelNode;
@@ -42,11 +44,21 @@ public class SingleMergeExchangePrel extends SingleRel implements Prel {
     return new SingleMergeExchangePrel(getCluster(), traitSet, sole(inputs), collation);
   }
   
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {    
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {    
     Prel child = (Prel) this.getChild();
-    SingleMergeExchange g = new SingleMergeExchange(child.getPhysicalOperator(creator), PrelUtil.getOrdering(this.collation, getChild().getRowType()));
+    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
+    
+    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+    
+    //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
+    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+      childPOP = new SelectionVectorRemover(childPOP);
+      creator.addPhysicalOperator(childPOP);
+    }
+
+    SingleMergeExchange g = new SingleMergeExchange(childPOP, PrelUtil.getOrdering(this.collation, getChild().getRowType()));
     creator.addPhysicalOperator(g);
-    return g;    
+    return new PhysicalOPWithSV(g, SelectionVectorMode.NONE);    
   }
     
 }

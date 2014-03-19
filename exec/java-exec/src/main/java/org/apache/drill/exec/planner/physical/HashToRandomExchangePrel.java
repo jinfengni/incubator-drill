@@ -13,8 +13,10 @@ import org.apache.drill.exec.expr.fn.impl.ComparatorFunctions;
 import org.apache.drill.exec.expr.fn.impl.HashFunctions;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.HashToRandomExchange;
+import org.apache.drill.exec.physical.config.SelectionVectorRemover;
 import org.apache.drill.exec.physical.config.SingleMergeExchange;
 import org.apache.drill.exec.planner.physical.DrillDistributionTrait.DistributionField;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.rel.SingleRel;
 import org.eigenbase.relopt.RelOptCluster;
@@ -45,11 +47,22 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
     return new HashToRandomExchangePrel(getCluster(), traitSet, sole(inputs), fields);
   }
   
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-    HashToRandomExchange g = new HashToRandomExchange(child.getPhysicalOperator(creator), PrelUtil.getHashExpression(this.fields, getChild().getRowType()));
+    
+    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
+    
+    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+    
+    //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
+    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+      childPOP = new SelectionVectorRemover(childPOP);
+      creator.addPhysicalOperator(childPOP);
+    }
+
+    HashToRandomExchange g = new HashToRandomExchange(childPOP, PrelUtil.getHashExpression(this.fields, getChild().getRowType()));
     creator.addPhysicalOperator(g);
-    return g;    
+    return new PhysicalOPWithSV(g, SelectionVectorMode.NONE);    
   }
   
   public List<DistributionField> getFields() {

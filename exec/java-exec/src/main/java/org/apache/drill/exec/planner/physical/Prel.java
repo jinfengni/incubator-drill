@@ -11,7 +11,8 @@ public interface Prel extends DrillRelNode {
   
   final static Convention DRILL_PHYSICAL = new Convention.Impl("PHYSICAL", Prel.class);
   
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException;
-    
+  //public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException;
   
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException;
+    
 }

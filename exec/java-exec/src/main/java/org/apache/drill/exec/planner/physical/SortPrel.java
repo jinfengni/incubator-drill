@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.SingleMergeExchange;
 import org.apache.drill.exec.physical.config.Sort;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelCollation;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.rel.SortRel;
@@ -25,11 +26,20 @@ public class SortPrel extends SortRel implements Prel {
   }
 
   @Override
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-    Sort g = new Sort(child.getPhysicalOperator(creator), PrelUtil.getOrdering(this.collation, getChild().getRowType()), false);
+    
+    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
+    
+    if (popsv.getSVMode().equals(SelectionVectorMode.FOUR_BYTE)) {
+      throw new UnsupportedOperationException();
+    }
+    
+    Sort g = new Sort(popsv.getPhysicalOperator(), PrelUtil.getOrdering(this.collation, getChild().getRowType()), false);
+    
     creator.addPhysicalOperator(g);
-    return g;    
+    
+    return new PhysicalOPWithSV(g, SelectionVectorMode.FOUR_BYTE);    
   }
 
   public SortPrel copy(

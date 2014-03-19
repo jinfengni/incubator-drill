@@ -37,7 +37,7 @@ public class HashPrel extends AggregateRelBase implements Prel{
     }
   }
   @Override
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     //Prel child = (Prel) this.getChild();
     //Project p = new Project(this.getProjectExpressions(creator.getContext()), child.getPhysicalOperator(creator));
     //return p;

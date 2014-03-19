@@ -6,7 +6,9 @@ import java.util.List;
 
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Project;
+import org.apache.drill.exec.physical.config.SelectionVectorRemover;
 import org.apache.drill.exec.planner.common.DrillProjectRelBase;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.ProjectRelBase;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
@@ -29,11 +31,23 @@ public class ProjectPrel extends DrillProjectRelBase implements Prel{
 
 
   @Override
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-    Project p = new Project(this.getProjectExpressions(creator.getContext()), child.getPhysicalOperator(creator));
+    
+    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
+    
+    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+    
+    //Currently, Project only accepts "NONE". For other, requires SelectionVectorRemover
+    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+      childPOP = new SelectionVectorRemover(childPOP);
+      creator.addPhysicalOperator(childPOP);
+    }
+    
+    Project p = new Project(this.getProjectExpressions(creator.getContext()),  childPOP);
     creator.addPhysicalOperator(p);
-    return p;
+    
+    return new PhysicalOPWithSV(p, SelectionVectorMode.NONE);
   }
 
 

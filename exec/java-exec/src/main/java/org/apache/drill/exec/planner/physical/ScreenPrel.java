@@ -5,7 +5,9 @@ import java.util.List;
 
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Screen;
+import org.apache.drill.exec.physical.config.SelectionVectorRemover;
 import org.apache.drill.exec.planner.common.DrillScreenRelBase;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelTraitSet;
@@ -25,12 +27,22 @@ public class ScreenPrel extends DrillScreenRelBase implements Prel {
   }
   
   @Override  
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-    Screen s = new Screen(child.getPhysicalOperator(creator), null);
+
+    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
+    
+    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+    
+    //Currently, Screen only accepts "NONE". For other, requires SelectionVectorRemover
+    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+      childPOP = new SelectionVectorRemover(childPOP);
+      creator.addPhysicalOperator(childPOP);
+    }
+
+    Screen s = new Screen(childPOP, null);
     creator.addPhysicalOperator(s);
-    return s;
-    // throw new IOException("ScreenPrel not supported yet!");
+    return new PhysicalOPWithSV(s, SelectionVectorMode.NONE); 
   }
 
 }

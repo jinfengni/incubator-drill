@@ -175,7 +175,7 @@ public class DrillSqlWorker {
       
       System.out.println(phyPlanStr);
       
-      qs.submitQuery(null, phyPlanStr, "physical", null, true, 1, "csv");
+      //qs.submitQuery(null, phyPlanStr, "physical", null, true, 1, "csv");
     } catch (Exception e) {
       System.err.println("Query fails " + e.toString());
     }

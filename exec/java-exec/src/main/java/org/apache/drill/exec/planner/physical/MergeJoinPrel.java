@@ -42,7 +42,7 @@ public class MergeJoinPrel  extends DrillJoinRelBase implements Prel {
   }
 
   @Override  
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     throw new IOException("MergeJoinPrel not supported yet!");
   }
 

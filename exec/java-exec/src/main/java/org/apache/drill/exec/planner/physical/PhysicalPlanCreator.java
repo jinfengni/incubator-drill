@@ -50,7 +50,7 @@ public class PhysicalPlanCreator {
     try { 
       // invoke getPhysicalOperator on the root Prel which will recursively invoke it 
       // on the descendants and we should have a well-formed physical operator tree
-      PhysicalOperator rootPOP = rootPrel.getPhysicalOperator(this);
+      PhysicalOperator rootPOP = rootPrel.getPhysicalOperator(this).getPhysicalOperator();
       if (rootPOP != null) {
         assert (popList.size() > 0); //getPhysicalOperator() is supposed to populate this list 
         plan = new PhysicalPlan(propsBuilder.build(), popList);

@@ -5,7 +5,9 @@ import java.util.List;
 
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Screen;
+import org.apache.drill.exec.physical.config.SelectionVectorRemover;
 import org.apache.drill.exec.physical.config.UnionExchange;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.rel.SingleRel;
 import org.eigenbase.relopt.RelOptCluster;
@@ -31,11 +33,22 @@ public class UnionExchangePrel extends SingleRel implements Prel {
     return new UnionExchangePrel(getCluster(), traitSet, sole(inputs));
   }
   
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-    UnionExchange g = new UnionExchange(child.getPhysicalOperator(creator));
+    
+    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
+    
+    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+    
+    //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
+    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+      childPOP = new SelectionVectorRemover(childPOP);
+      creator.addPhysicalOperator(childPOP);
+    }
+   
+    UnionExchange g = new UnionExchange(childPOP);
     creator.addPhysicalOperator(g);
-    return g;    
+    return new PhysicalOPWithSV(g,SelectionVectorMode.NONE) ;    
   }
   
 }

@@ -7,6 +7,7 @@ import org.apache.drill.common.JSONOptions;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.common.DrillScanRelBase;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.store.StoragePlugin;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
@@ -34,11 +35,12 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
 
 
   @Override
-  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     StoragePlugin plugin = this.drillTable.getPlugin();
     GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()));
     creator.addPhysicalOperator(scan);
-    return scan;    
+    
+    return new PhysicalOPWithSV(scan, SelectionVectorMode.NONE);    
   }
   
   
