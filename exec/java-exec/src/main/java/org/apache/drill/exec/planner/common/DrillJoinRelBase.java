@@ -17,7 +17,9 @@
  */
 package org.apache.drill.exec.planner.common;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.drill.common.expression.LogicalExpression;
@@ -43,9 +45,36 @@ import com.google.common.collect.Lists;
  * Base class for logical and physical Joins implemented in Drill.
  */
 public abstract class DrillJoinRelBase extends JoinRelBase implements DrillRelNode {
+  protected final List<Integer> leftKeys = new ArrayList<>();
+  protected final List<Integer> rightKeys = new ArrayList<>();
 
   public DrillJoinRelBase(RelOptCluster cluster, RelTraitSet traits, RelNode left, RelNode right, RexNode condition,
       JoinRelType joinType) throws InvalidRelException {
     super(cluster, traits, left, right, condition, joinType, Collections.<String> emptySet());
   }
+  
+  
+  /**
+   * Returns whether there are any elements in common between left and right.
+   */
+  private static <T> boolean intersects(List<T> left, List<T> right) {
+    return new HashSet<>(left).removeAll(right);
+  }
+
+  protected boolean uniqueFieldNames(RelDataType rowType) {
+    return isUnique(rowType.getFieldNames());
+  }
+
+  protected static <T> boolean isUnique(List<T> list) {
+    return new HashSet<>(list).size() == list.size();
+  }
+  
+  public List<Integer> getLeftKeys() {
+    return this.leftKeys;
+  }
+  
+  public List<Integer> getRightKeys() {
+    return this.rightKeys;
+  }
+
 }

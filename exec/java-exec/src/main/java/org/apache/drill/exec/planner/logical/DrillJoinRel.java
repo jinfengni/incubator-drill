@@ -46,10 +46,6 @@ import org.eigenbase.util.Pair;
  * Join implemented in Drill.
  */
 public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
-  private final List<Integer> leftKeys = new ArrayList<>();
-  private final List<Integer> rightKeys = new ArrayList<>();
-  private Join join = null;
-
   /** Creates a DrillJoinRel. */
   public DrillJoinRel(RelOptCluster cluster, RelTraitSet traits, RelNode left, RelNode right, RexNode condition,
       JoinRelType joinType) throws InvalidRelException {
@@ -90,8 +86,7 @@ public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
       builder.addCondition("==", new FieldReference(leftFields.get(pair.left)), new FieldReference(rightFields.get(pair.right)));
     }
     
-    this.join = builder.build();  // save the logical operator for future use
-    return join;
+    return builder.build();  
   }
 
   /**
@@ -150,32 +145,29 @@ public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
   }
   
   
-  /**
-   * Returns whether there are any elements in common between left and right.
-   */
-  private static <T> boolean intersects(List<T> left, List<T> right) {
-    return new HashSet<>(left).removeAll(right);
-  }
-
-  private boolean uniqueFieldNames(RelDataType rowType) {
-    return isUnique(rowType.getFieldNames());
-  }
-
-  private static <T> boolean isUnique(List<T> list) {
-    return new HashSet<>(list).size() == list.size();
-  }
-  
-  public List<Integer> getLeftKeys() {
-    return this.leftKeys;
-  }
-  
-  public List<Integer> getRightKeys() {
-    return this.rightKeys;
-  }
+//  /**
+//   * Returns whether there are any elements in common between left and right.
+//   */
+//  private static <T> boolean intersects(List<T> left, List<T> right) {
+//    return new HashSet<>(left).removeAll(right);
+//  }
+//
+//  private boolean uniqueFieldNames(RelDataType rowType) {
+//    return isUnique(rowType.getFieldNames());
+//  }
+//
+//  private static <T> boolean isUnique(List<T> list) {
+//    return new HashSet<>(list).size() == list.size();
+//  }
+//  
+//  public List<Integer> getLeftKeys() {
+//    return this.leftKeys;
+//  }
+//  
+//  public List<Integer> getRightKeys() {
+//    return this.rightKeys;
+//  }
 
   // get the Drill logical join operator
-  public Join getJoinLOP() {
-    return join;
-  }
 
 }

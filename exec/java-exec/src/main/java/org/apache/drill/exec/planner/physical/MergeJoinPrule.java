@@ -52,12 +52,10 @@ public class MergeJoinPrule extends RelOptRule {
     
     final RelNode convertedLeft = convert(left, traitsLeft);
     final RelNode convertedRight = convert(right, traitsRight);
- 
-    assert (join.getJoinLOP() != null);
     
     try {          
       MergeJoinPrel newJoin = new MergeJoinPrel(join.getCluster(), traitsLeft, convertedLeft, convertedRight, join.getCondition(),
-                                                join.getJoinType(), join.getJoinLOP().getConditions());
+                                                join.getJoinType());
       call.transformTo(newJoin);
     } catch (InvalidRelException e) {
       tracer.warning(e.toString());

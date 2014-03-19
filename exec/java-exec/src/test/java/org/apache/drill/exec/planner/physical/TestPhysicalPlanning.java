@@ -174,7 +174,8 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    worker.getPhysicalPlan("select T1.R_REGIONKEY from dfs.`/Users/jni/regions1/` as T1 join dfs.`/Users/jni/regions1/` as T2 on T1.R_REGIONKEY = T2.R_REGIONKEY");   
+    PhysicalPlan plan = worker.getPhysicalPlan("select T1.R_REGIONKEY from dfs.`/Users/jni/regions1/` as T1 join dfs.`/Users/jni/nations1/` as T2 on T1.R_REGIONKEY = T2.N_REGIONKEY");   
+    worker.runPhysicalPlan(plan, c);
   
   }
 
@@ -196,7 +197,8 @@ public class TestPhysicalPlanning {
     FunctionRegistry reg = new FunctionRegistry(c);
     StoragePluginRegistry registry = new StoragePluginRegistry(bitContext);
     DrillSqlWorker worker = new DrillSqlWorker(registry.getSchemaFactory(), reg);
-    worker.getPhysicalPlan("select T1.R_REGIONKEY from dfs.`/Users/jni/regions2/` as T1 join dfs.`/Users/jni/regions2/` as T2 on T1.R_REGIONKEY = T2.R_REGIONKEY");   
+    PhysicalPlan plan = worker.getPhysicalPlan("select T1.R_REGIONKEY from dfs.`/Users/jni/regions2/` as T1 join dfs.`/Users/jni/nations2/` as T2 on T1.R_REGIONKEY = T2.N_REGIONKEY");   
+    worker.runPhysicalPlan(plan, c);
   
   }
   
