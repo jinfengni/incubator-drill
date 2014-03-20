@@ -66,18 +66,18 @@ public class InfoSchemaStoragePlugin extends AbstractStoragePlugin{
   
   @Override
   public Schema createAndAddSchema(SchemaPlus parent) {
-    Schema s = new ISchema(parent);
+    Schema s = new ISchema(parent, this);
     parent.add(s);
     return s;
   }
   
   private class ISchema extends AbstractSchema{
     private Map<String, InfoSchemaDrillTable> tables;
-    public ISchema(SchemaPlus parent){
+    public ISchema(SchemaPlus parent, InfoSchemaStoragePlugin plugin){
       super(new SchemaHolder(parent), "INFORMATION_SCHEMA");
       Map<String, InfoSchemaDrillTable> tbls = Maps.newHashMap();
       for(SelectedTable tbl : SelectedTable.values()){
-        tbls.put(tbl.name(), new InfoSchemaDrillTable("INFORMATION_SCHEMA", tbl, config));  
+        tbls.put(tbl.name(), new InfoSchemaDrillTable(plugin, "INFORMATION_SCHEMA", tbl, config));  
       }
       this.tables = ImmutableMap.copyOf(tbls);
     }
