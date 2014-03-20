@@ -52,21 +52,19 @@ public class MergeJoinPrel  extends DrillJoinRelBase implements Prel {
   }
 
   @Override  
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {    
-    PhysicalOPWithSV leftPopsv = ((Prel) getLeft()).getPhysicalOperator(creator);    
-    PhysicalOperator leftPop = leftPopsv.getPhysicalOperator();
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {    
+    PhysicalOperator leftPop = ((Prel) getLeft()).getPhysicalOperator(creator);
 
     //Currently, only accepts "NONE" or "SV2". For other, requires SelectionVectorRemover
-    if (leftPopsv.getSVMode().equals(SelectionVectorMode.FOUR_BYTE)) {
+    if (leftPop.getSVMode().equals(SelectionVectorMode.FOUR_BYTE)) {
       leftPop = new SelectionVectorRemover(leftPop);
       creator.addPhysicalOperator(leftPop);
     }
 
-    PhysicalOPWithSV rightPopsv = ((Prel) getRight()).getPhysicalOperator(creator);    
-    PhysicalOperator rightPop = rightPopsv.getPhysicalOperator();
+    PhysicalOperator rightPop = ((Prel) getRight()).getPhysicalOperator(creator);
 
     //Currently, only accepts "NONE" or "SV2". For other, requires SelectionVectorRemover
-    if (rightPopsv.getSVMode().equals(SelectionVectorMode.FOUR_BYTE)) {
+    if (rightPop.getSVMode().equals(SelectionVectorMode.FOUR_BYTE)) {
       rightPop = new SelectionVectorRemover(rightPop);
       creator.addPhysicalOperator(rightPop);
     }
@@ -87,7 +85,7 @@ public class MergeJoinPrel  extends DrillJoinRelBase implements Prel {
     MergeJoinPOP mjoin = new MergeJoinPOP(leftPop, rightPop, conditions, jtype);
     creator.addPhysicalOperator(mjoin);
    
-    return new PhysicalOPWithSV(mjoin, SelectionVectorMode.FOUR_BYTE);
+    return mjoin;
   }
 
   public List<Integer> getLeftKeys() {

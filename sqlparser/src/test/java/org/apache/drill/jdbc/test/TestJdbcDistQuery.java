@@ -25,7 +25,16 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
+import mockit.NonStrictExpectations;
+
+import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.common.expression.FunctionRegistry;
 import org.apache.drill.common.util.TestTools;
+import org.apache.drill.exec.memory.TopLevelAllocator;
+import org.apache.drill.exec.physical.PhysicalPlan;
+import org.apache.drill.exec.planner.sql.DrillSqlWorker;
+import org.apache.drill.exec.server.DrillbitContext;
+import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.hive.HiveTestDataGenerator;
 import org.apache.drill.jdbc.Driver;
 import org.junit.BeforeClass;
@@ -34,10 +43,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Stopwatch;
 
-public class TestJdbcQuery {
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestJdbcQuery.class);
+public class TestJdbcDistQuery {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestJdbcDistQuery.class);
 
   
   // Set a timeout unless we're debugging.
@@ -55,66 +65,55 @@ public class TestJdbcQuery {
     new HiveTestDataGenerator().generateTestData();
   }
   
-  @Test
-  @Ignore
-  public void testHiveRead() throws Exception{
-    testQuery("select * from hive.kv");
-  }
 
-  @Test
-  @Ignore // something not working here.
-  public void testHiveReadWithDb() throws Exception{
-    testQuery("select * from hive.`default`.kv");
-  }
-
-  @Test
-  @Ignore
-  public void testJsonQuery() throws Exception{
-    testQuery("select * from cp.`employee.json`");
-  }
-
-  @Test
-  public void testInfoSchema() throws Exception{
-    testQuery("select * from INFORMATION_SCHEMA.SCHEMATA");
-    testQuery("select * from INFORMATION_SCHEMA.CATALOGS");
-    testQuery("select * from INFORMATION_SCHEMA.VIEWS");
-    testQuery("select * from INFORMATION_SCHEMA.TABLES");
-    testQuery("select * from INFORMATION_SCHEMA.COLUMNS");
+  @Test 
+  public void testSimpleQuerySingleFile() throws Exception{
+    testQuery(String.format("select R_REGIONKEY from dfs.`/Users/jni/regions1/`"));    
   }
   
   @Test 
-  public void testCast() throws Exception{
-    testQuery(String.format("select R_REGIONKEY, cast(R_NAME as varchar(15)) as region, cast(R_COMMENT as varchar(255)) as comment from dfs.`%s/../sample-data/region.parquet`", WORKING_PATH));    
-  }
-
-  @Test 
-  @Ignore
-  public void testWorkspace() throws Exception{
-    testQuery(String.format("select * from dfs.home.`%s/../sample-data/region.parquet`", WORKING_PATH));
-  }
-
-  @Test 
-  @Ignore
-  public void testWildcard() throws Exception{
-    testQuery(String.format("select * from dfs.`%s/../sample-data/region.parquet`", WORKING_PATH));
+  public void testSimpleQueryMultiFile() throws Exception{
+    testQuery(String.format("select R_REGIONKEY from dfs.`/Users/jni/regions2/`"));    
   }
   
   @Test 
-  @Ignore
-  public void testLogicalExplain() throws Exception{
-    testQuery(String.format("EXPLAIN PLAN WITHOUT IMPLEMENTATION FOR select * from dfs.`%s/../sample-data/region.parquet`", WORKING_PATH));
-  }
-
-  @Test 
-  @Ignore
-  public void testPhysicalExplain() throws Exception{
-    testQuery(String.format("EXPLAIN PLAN FOR select * from dfs.`%s/../sample-data/region.parquet`", WORKING_PATH));
+  public void testAggSingleFile() throws Exception{
+    testQuery(String.format("select R_REGIONKEY from dfs.`/Users/jni/regions1/` group by R_REGIONKEY"));    
   }
   
-  @Test 
-  @Ignore
-  public void checkUnknownColumn() throws Exception{
-    testQuery(String.format("SELECT unknownColumn FROM dfs.`%s/../sample-data/region.parquet`", WORKING_PATH));
+  @Test
+  public void testAggMultiFile(final DrillbitContext bitContext) throws Exception{
+    testQuery("select R_REGIONKEY from dfs.`/Users/jni/regions2/` group by R_REGIONKEY");    
+  }
+ 
+  @Test
+  public void testAggOrderByDiffGKeyMultiFile(final DrillbitContext bitContext) throws Exception{    
+    testQuery("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY S");    
+  }
+ 
+  @Test
+  public void testAggOrderBySameGKeyMultiFile(final DrillbitContext bitContext) throws Exception{
+    testQuery("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY R_REGIONKEY");   
+  }
+   
+  @Test
+  public void testJoinSingleFile(final DrillbitContext bitContext) throws Exception{
+    testQuery("select T1.R_REGIONKEY from dfs.`/Users/jni/regions1/` as T1 join dfs.`/Users/jni/nations1/` as T2 on T1.R_REGIONKEY = T2.N_REGIONKEY");    
+  }
+
+  @Test
+  public void testJoinMultiFile(final DrillbitContext bitContext) throws Exception{
+    testQuery("select T1.R_REGIONKEY from dfs.`/Users/jni/regions2/` as T1 join dfs.`/Users/jni/nations2/` as T2 on T1.R_REGIONKEY = T2.N_REGIONKEY");     
+  }
+  
+  @Test
+  public void testSortSingleFile(final DrillbitContext bitContext) throws Exception{
+    testQuery("select R_REGIONKEY from dfs.`/Users/jni/regions1/` order by R_REGIONKEY");   
+  }
+
+  @Test
+  public void testSortMultiFile(final DrillbitContext bitContext) throws Exception{
+    testQuery("select R_REGIONKEY from dfs.`/Users/jni/regions2/` order by R_REGIONKEY");   
   }
 
   

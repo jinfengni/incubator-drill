@@ -348,10 +348,11 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
     try{
       DrillSqlWorker sqlWorker = new DrillSqlWorker(context.getFactory(), context.getFunctionRegistry());
       
-      PhysicalPlan physical = sqlWorker.getPhysicalPlan(sql);
+      PhysicalPlan physical = sqlWorker.getPhysicalPlan(sql, context);
 
       
       if(logger.isDebugEnabled()) logger.debug("Physical {}", context.getConfig().getMapper().writeValueAsString(physical));
+     
       runPhysicalPlan(physical);
       
       

@@ -35,12 +35,12 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
 
 
   @Override
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     StoragePlugin plugin = this.drillTable.getPlugin();
     GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()));
     creator.addPhysicalOperator(scan);
     
-    return new PhysicalOPWithSV(scan, SelectionVectorMode.NONE);    
+    return scan;    
   }
   
   

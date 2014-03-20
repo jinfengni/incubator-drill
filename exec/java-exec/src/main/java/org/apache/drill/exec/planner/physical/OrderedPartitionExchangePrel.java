@@ -29,7 +29,7 @@ public class OrderedPartitionExchangePrel extends SingleRel implements Prel {
     return new OrderedPartitionExchangePrel(getCluster(), traitSet, sole(inputs));
   }
   
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     throw new IOException(this.getClass().getSimpleName() + " not supported yet!");
   }
   

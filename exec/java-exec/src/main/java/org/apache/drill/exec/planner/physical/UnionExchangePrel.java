@@ -33,22 +33,20 @@ public class UnionExchangePrel extends SingleRel implements Prel {
     return new UnionExchangePrel(getCluster(), traitSet, sole(inputs));
   }
   
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-    
-    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
-    
-    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+     
+    PhysicalOperator childPOP = child.getPhysicalOperator(creator);
     
     //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
-    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+    if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
       childPOP = new SelectionVectorRemover(childPOP);
       creator.addPhysicalOperator(childPOP);
     }
    
     UnionExchange g = new UnionExchange(childPOP);
     creator.addPhysicalOperator(g);
-    return new PhysicalOPWithSV(g,SelectionVectorMode.NONE) ;    
+    return g;    
   }
   
 }

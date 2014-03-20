@@ -44,21 +44,20 @@ public class SingleMergeExchangePrel extends SingleRel implements Prel {
     return new SingleMergeExchangePrel(getCluster(), traitSet, sole(inputs), collation);
   }
   
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {    
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {    
     Prel child = (Prel) this.getChild();
-    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
     
-    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+    PhysicalOperator childPOP = child.getPhysicalOperator(creator);
     
     //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
-    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+    if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
       childPOP = new SelectionVectorRemover(childPOP);
       creator.addPhysicalOperator(childPOP);
     }
 
     SingleMergeExchange g = new SingleMergeExchange(childPOP, PrelUtil.getOrdering(this.collation, getChild().getRowType()));
     creator.addPhysicalOperator(g);
-    return new PhysicalOPWithSV(g, SelectionVectorMode.NONE);    
+    return g;    
   }
     
 }

@@ -27,22 +27,20 @@ public class ScreenPrel extends DrillScreenRelBase implements Prel {
   }
   
   @Override  
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-
-    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
     
-    PhysicalOperator childPOP = popsv.getPhysicalOperator();
+    PhysicalOperator childPOP = child.getPhysicalOperator(creator);
     
     //Currently, Screen only accepts "NONE". For other, requires SelectionVectorRemover
-    if (!popsv.getSVMode().equals(SelectionVectorMode.NONE)) {
+    if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
       childPOP = new SelectionVectorRemover(childPOP);
       creator.addPhysicalOperator(childPOP);
     }
 
-    Screen s = new Screen(childPOP, null);
+    Screen s = new Screen(childPOP, creator.getContext().getCurrentEndpoint());
     creator.addPhysicalOperator(s);
-    return new PhysicalOPWithSV(s, SelectionVectorMode.NONE); 
+    return s; 
   }
 
 }

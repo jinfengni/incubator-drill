@@ -51,7 +51,7 @@ public class StreamAggPrel extends AggregateRelBase implements Prel{
   }
    
   @Override
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     // Prel child = (Prel) this.getChild();
     
     final List<String> childFields = getChild().getRowType().getFieldNames();
@@ -66,15 +66,15 @@ public class StreamAggPrel extends AggregateRelBase implements Prel{
     
     for (Ord<AggregateCall> aggCall : Ord.zip(aggCalls)) {
       FieldReference ref = new FieldReference(fields.get(groupSet.cardinality() + aggCall.i));
-      LogicalExpression expr = toDrill(aggCall.e, childFields, creator.getContext());
+      LogicalExpression expr = toDrill(aggCall.e, childFields, new DrillParseContext(creator.getContext().getFunctionRegistry()));
       exprs.add(new NamedExpression(expr, ref));
     }
 
     Prel child = (Prel) this.getChild();
-    StreamingAggregate g = new StreamingAggregate(child.getPhysicalOperator(creator).getPhysicalOperator(), keys.toArray(new NamedExpression[keys.size()]), exprs.toArray(new NamedExpression[exprs.size()]), 1.0f);
+    StreamingAggregate g = new StreamingAggregate(child.getPhysicalOperator(creator), keys.toArray(new NamedExpression[keys.size()]), exprs.toArray(new NamedExpression[exprs.size()]), 1.0f);
     creator.addPhysicalOperator(g);
     
-    return new PhysicalOPWithSV(g, SelectionVectorMode.NONE);    
+    return g;    
 
   }
   

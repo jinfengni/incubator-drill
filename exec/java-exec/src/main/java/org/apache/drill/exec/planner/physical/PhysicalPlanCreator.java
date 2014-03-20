@@ -7,6 +7,7 @@ import org.apache.drill.common.logical.PlanProperties;
 import org.apache.drill.common.logical.PlanProperties.Generator.ResultMode;
 import org.apache.drill.common.logical.PlanProperties.PlanPropertiesBuilder;
 import org.apache.drill.common.logical.PlanProperties.PlanType;
+import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
@@ -18,15 +19,15 @@ public class PhysicalPlanCreator {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PhysicalPlanCreator.class);
 
   private List<PhysicalOperator> popList;
-  private final DrillParseContext context;
+  private final QueryContext context;
   PhysicalPlan plan = null;
   
-  public PhysicalPlanCreator(DrillParseContext context) {
+  public PhysicalPlanCreator(QueryContext context) {
     this.context = context;
     popList = Lists.newArrayList();
   }
   
-  public DrillParseContext getContext() {
+  public QueryContext getContext() {
     return context;
   }
   
@@ -50,7 +51,7 @@ public class PhysicalPlanCreator {
     try { 
       // invoke getPhysicalOperator on the root Prel which will recursively invoke it 
       // on the descendants and we should have a well-formed physical operator tree
-      PhysicalOperator rootPOP = rootPrel.getPhysicalOperator(this).getPhysicalOperator();
+      PhysicalOperator rootPOP = rootPrel.getPhysicalOperator(this);
       if (rootPOP != null) {
         assert (popList.size() > 0); //getPhysicalOperator() is supposed to populate this list 
         plan = new PhysicalPlan(propsBuilder.build(), popList);

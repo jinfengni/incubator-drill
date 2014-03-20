@@ -33,6 +33,7 @@ import org.apache.drill.common.expression.FunctionRegistry;
 import org.apache.drill.common.logical.LogicalPlan;
 import org.apache.drill.common.logical.PlanProperties.Generator.ResultMode;
 import org.apache.drill.exec.client.QuerySubmitter;
+import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.planner.logical.DrillStoreRel;
 import org.apache.drill.exec.planner.logical.DrillImplementor;
@@ -143,7 +144,7 @@ public class DrillSqlWorker {
     
   }
   
-  public PhysicalPlan getPhysicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException, IOException {
+  public PhysicalPlan getPhysicalPlan(String sql, QueryContext qcontext) throws SqlParseException, ValidationException, RelConversionException, IOException {
     RelResult result = getRel(sql);
 
     RelTraitSet traits = result.node.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);    
@@ -156,7 +157,7 @@ public class DrillSqlWorker {
     System.out.println(msg);
     logger.debug(msg);
         
-    PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(new DrillParseContext(registry));
+    PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(qcontext);
     PhysicalPlan plan = pplanCreator.build(phyRelNode, true /* rebuild */);
         
     planner.close();

@@ -26,20 +26,20 @@ public class SortPrel extends SortRel implements Prel {
   }
 
   @Override
-  public PhysicalOPWithSV getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
     
-    PhysicalOPWithSV popsv = child.getPhysicalOperator(creator);
+    PhysicalOperator childPOP = child.getPhysicalOperator(creator);
     
-    if (popsv.getSVMode().equals(SelectionVectorMode.FOUR_BYTE)) {
+    if (childPOP.getSVMode().equals(SelectionVectorMode.FOUR_BYTE)) {
       throw new UnsupportedOperationException();
     }
     
-    Sort g = new Sort(popsv.getPhysicalOperator(), PrelUtil.getOrdering(this.collation, getChild().getRowType()), false);
+    Sort g = new Sort(childPOP, PrelUtil.getOrdering(this.collation, getChild().getRowType()), false);
     
     creator.addPhysicalOperator(g);
     
-    return new PhysicalOPWithSV(g, SelectionVectorMode.FOUR_BYTE);    
+    return g;    
   }
 
   public SortPrel copy(
