@@ -347,22 +347,33 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
   private void runSQL(String sql) {
     try{
       DrillSqlWorker sqlWorker = new DrillSqlWorker(context.getFactory(), context.getFunctionRegistry());
-      LogicalPlan plan = sqlWorker.getLogicalPlan(sql);
       
+      PhysicalPlan physical = sqlWorker.getPhysicalPlan(sql);
 
-      if(plan.getProperties().resultMode == ResultMode.LOGICAL){
-        returnLogical(plan);
-        return;
-      }
-
-      PhysicalPlan physical = convert(plan);
       
-      if(plan.getProperties().resultMode == ResultMode.PHYSICAL){
-        returnPhysical(physical);
-        return;
-      }
-      
+      if(logger.isDebugEnabled()) logger.debug("Physical {}", context.getConfig().getMapper().writeValueAsString(physical));
       runPhysicalPlan(physical);
+      
+      
+      
+//      LogicalPlan plan = sqlWorker.getLogicalPlan(sql);
+//      
+//
+//      if(plan.getProperties().resultMode == ResultMode.LOGICAL){
+//        returnLogical(plan);
+//        return;
+//      }
+//
+//      PhysicalPlan physical = convert(plan);
+//      
+//      if(plan.getProperties().resultMode == ResultMode.PHYSICAL){
+//        returnPhysical(physical);
+//        return;
+//      }
+//
+//      if(logger.isDebugEnabled()) logger.debug("Physical {}", context.getConfig().getMapper().writeValueAsString(physical));
+//      
+//      runPhysicalPlan(physical);
     }catch(Exception e){
       fail("Failure while parsing sql.", e);
     }

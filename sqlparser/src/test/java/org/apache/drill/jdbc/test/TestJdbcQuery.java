@@ -88,6 +88,12 @@ public class TestJdbcQuery {
   }
 
   @Test 
+  public void testDistQuerySimple() throws Exception{
+    testQuery(String.format("select R_REGIONKEY from dfs.`/Users/jni/regions1/`"));    
+  }
+
+  
+  @Test 
   @Ignore
   public void testWorkspace() throws Exception{
     testQuery(String.format("select * from dfs.home.`%s/../sample-data/region.parquet`", WORKING_PATH));

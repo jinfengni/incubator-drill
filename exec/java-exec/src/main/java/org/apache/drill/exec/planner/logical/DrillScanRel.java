@@ -30,13 +30,13 @@ import org.eigenbase.relopt.RelTraitSet;
  * GroupScan of a Drill table.
  */
 public class DrillScanRel extends DrillScanRelBase implements DrillRel {
-  private final DrillTable drillTable;
+  //private final DrillTable drillTable;
 
   /** Creates a DrillScan. */
   public DrillScanRel(RelOptCluster cluster, RelTraitSet traits, RelOptTable table) {
     super(DRILL_LOGICAL, cluster, traits, table);
-    this.drillTable = table.unwrap(DrillTable.class);
-    assert drillTable != null;
+    //this.drillTable = table.unwrap(DrillTable.class);
+    //assert drillTable != null;
   }
 
   public LogicalOperator implement(DrillImplementor implementor) {
