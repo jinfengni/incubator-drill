@@ -24,6 +24,7 @@ import java.util.Set;
 import net.hydromatic.optiq.Schema;
 import net.hydromatic.optiq.SchemaPlus;
 
+import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.logical.data.Scan;
 import org.apache.drill.exec.planner.logical.DrillTable;
 import org.apache.drill.exec.server.DrillbitContext;
@@ -52,12 +53,17 @@ public class InfoSchemaStoragePlugin extends AbstractStoragePlugin{
     return true;
   }
 
-  @Override
-  public InfoSchemaGroupScan getPhysicalScan(Scan scan) throws IOException {
-    SelectedTable table = scan.getSelection().getWith(context.getConfig(),  SelectedTable.class);
-    return new InfoSchemaGroupScan(table);
-  }
+//  @Override
+//  public InfoSchemaGroupScan getPhysicalScan(Scan scan) throws IOException {
+//    SelectedTable table = scan.getSelection().getWith(context.getConfig(),  SelectedTable.class);
+//    return new InfoSchemaGroupScan(table);
+//  }
 
+  @Override
+  public StoragePluginConfig getConfig() {
+    return this.config;
+  }
+  
   @Override
   public Schema createAndAddSchema(SchemaPlus parent) {
     Schema s = new ISchema(parent);
