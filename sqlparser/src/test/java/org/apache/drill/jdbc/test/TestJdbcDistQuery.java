@@ -82,37 +82,39 @@ public class TestJdbcDistQuery {
   }
   
   @Test
-  public void testAggMultiFile(final DrillbitContext bitContext) throws Exception{
+  public void testAggMultiFile() throws Exception{
     testQuery("select R_REGIONKEY from dfs.`/Users/jni/regions2/` group by R_REGIONKEY");    
   }
  
   @Test
-  public void testAggOrderByDiffGKeyMultiFile(final DrillbitContext bitContext) throws Exception{    
+  public void testAggOrderByDiffGKeyMultiFile() throws Exception{    
     testQuery("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY S");    
   }
  
   @Test
-  public void testAggOrderBySameGKeyMultiFile(final DrillbitContext bitContext) throws Exception{
+  public void testAggOrderBySameGKeyMultiFile() throws Exception{
     testQuery("select R_REGIONKEY, SUM(cast(R_REGIONKEY AS int)) As S from dfs.`/Users/jni/regions2/` group by R_REGIONKEY ORDER BY R_REGIONKEY");   
   }
    
   @Test
-  public void testJoinSingleFile(final DrillbitContext bitContext) throws Exception{
+  @Ignore
+  public void testJoinSingleFile() throws Exception{
     testQuery("select T1.R_REGIONKEY from dfs.`/Users/jni/regions1/` as T1 join dfs.`/Users/jni/nations1/` as T2 on T1.R_REGIONKEY = T2.N_REGIONKEY");    
   }
 
   @Test
-  public void testJoinMultiFile(final DrillbitContext bitContext) throws Exception{
+  @Ignore
+  public void testJoinMultiFile() throws Exception{
     testQuery("select T1.R_REGIONKEY from dfs.`/Users/jni/regions2/` as T1 join dfs.`/Users/jni/nations2/` as T2 on T1.R_REGIONKEY = T2.N_REGIONKEY");     
   }
   
   @Test
-  public void testSortSingleFile(final DrillbitContext bitContext) throws Exception{
+  public void testSortSingleFile() throws Exception{
     testQuery("select R_REGIONKEY from dfs.`/Users/jni/regions1/` order by R_REGIONKEY");   
   }
 
   @Test
-  public void testSortMultiFile(final DrillbitContext bitContext) throws Exception{
+  public void testSortMultiFile() throws Exception{
     testQuery("select R_REGIONKEY from dfs.`/Users/jni/regions2/` order by R_REGIONKEY");   
   }
 
