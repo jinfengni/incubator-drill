@@ -30,7 +30,7 @@ public class TestExampleQueries extends BaseTestQuery{
   @Test
   public void testJoin() throws Exception{
     test("SELECT\n" +
-        "  nations.N_NAME,\n" +
+        "  *, nations.N_NAME,\n" +
         "  regions.R_NAME\n" +
         "FROM\n" +
         "  dfs.`[WORKING_PATH]/../../sample-data/nation.parquet` nations\n" +

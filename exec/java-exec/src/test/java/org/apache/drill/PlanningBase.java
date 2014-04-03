@@ -60,7 +60,7 @@ public class PlanningBase {
     testSqlPlan(getFile(file));
   }
 
-  protected void testSqlPlan(String sqlCommands) throws Exception{
+  protected String testSqlPlan(String sqlCommands) throws Exception{
     String[] sqlStrings = sqlCommands.split(";");
 
     new NonStrictExpectations() {
@@ -99,12 +99,16 @@ public class PlanningBase {
       }
     };
 
+    StringBuilder builder = new StringBuilder();
     for(String sql : sqlStrings){
       if(sql.trim().isEmpty()) continue;
       DrillSqlWorker worker = new DrillSqlWorker(context);
       PhysicalPlan p = worker.getPlan(sql);
+      
+      builder.append(context.getConfig().getMapper().writeValueAsString(p));
     }
 
+    return builder.toString();
   }
 
   protected String getFile(String resource) throws IOException{

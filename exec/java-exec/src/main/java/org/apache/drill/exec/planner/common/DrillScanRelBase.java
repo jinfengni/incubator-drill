@@ -17,12 +17,18 @@
  */
 package org.apache.drill.exec.planner.common;
 
+import java.util.List;
+
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.planner.logical.DrillTable;
 import org.eigenbase.rel.TableAccessRelBase;
 import org.eigenbase.relopt.Convention;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
+import org.eigenbase.reltype.RelDataType;
+
+import com.google.hive12.common.collect.Lists;
 
 /**
  * Base class for logical and physical Scans implemented in Drill
@@ -35,5 +41,5 @@ public abstract class DrillScanRelBase extends TableAccessRelBase implements Dri
     this.drillTable = table.unwrap(DrillTable.class);
     assert drillTable != null;
   }
-
+  
 }

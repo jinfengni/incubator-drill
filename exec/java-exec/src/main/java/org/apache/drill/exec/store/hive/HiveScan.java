@@ -25,7 +25,7 @@ import com.google.common.io.ByteStreams;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.expression.FieldReference;
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.EndpointAffinity;
 import org.apache.drill.exec.physical.OperatorCost;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
@@ -68,7 +68,7 @@ public class HiveScan extends AbstractGroupScan {
   private Collection<DrillbitEndpoint> endpoints;
 
   @JsonProperty("columns")
-  public List<FieldReference> columns;
+  public List<SchemaPath> columns;
 
   @JsonIgnore
   List<List<InputSplit>> mappings;
@@ -78,7 +78,7 @@ public class HiveScan extends AbstractGroupScan {
 
   @JsonCreator
   public HiveScan(@JsonProperty("hive-table") HiveReadEntry hiveReadEntry, @JsonProperty("storage-plugin") String storagePluginName,
-                  @JsonProperty("columns") List<FieldReference> columns,
+                  @JsonProperty("columns") List<SchemaPath> columns,
                   @JacksonInject StoragePluginRegistry engineRegistry) throws ExecutionSetupException {
     this.hiveReadEntry = hiveReadEntry;
     this.table = hiveReadEntry.getTable();
@@ -90,7 +90,7 @@ public class HiveScan extends AbstractGroupScan {
     endpoints = storagePlugin.getContext().getBits();
   }
 
-  public HiveScan(HiveReadEntry hiveReadEntry, HiveStoragePlugin storageEngine, List<FieldReference> columns) throws ExecutionSetupException {
+  public HiveScan(HiveReadEntry hiveReadEntry, HiveStoragePlugin storageEngine, List<SchemaPath> columns) throws ExecutionSetupException {
     this.table = hiveReadEntry.getTable();
     this.hiveReadEntry = hiveReadEntry;
     this.columns = columns;
@@ -100,7 +100,7 @@ public class HiveScan extends AbstractGroupScan {
     this.storagePluginName = storageEngine.getName();
   }
 
-  public List<FieldReference> getColumns() {
+  public List<SchemaPath> getColumns() {
     return columns;
   }
 

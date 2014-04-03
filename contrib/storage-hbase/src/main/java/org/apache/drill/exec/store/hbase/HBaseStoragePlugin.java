@@ -18,11 +18,14 @@
 package org.apache.drill.exec.store.hbase;
 
 import java.io.IOException;
+import java.util.List;
 
 import net.hydromatic.optiq.SchemaPlus;
 
 import org.apache.drill.common.JSONOptions;
 import org.apache.drill.exec.rpc.user.DrillUser;
+import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.AbstractStoragePlugin;
 
@@ -55,10 +58,10 @@ public class HBaseStoragePlugin extends AbstractStoragePlugin {
   }
 
   @Override
-  public HBaseGroupScan getPhysicalScan(JSONOptions selection) throws IOException {
+  public HBaseGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns) throws IOException {
     HTableReadEntry readEntry = selection.getListWith(new ObjectMapper(),
         new TypeReference<HTableReadEntry>() {});
-    return new HBaseGroupScan(readEntry.getTableName(), this, null);
+    return new HBaseGroupScan(readEntry.getTableName(), this, columns);
   }
 
   @Override

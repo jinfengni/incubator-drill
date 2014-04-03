@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.common.DrillScanRelBase;
@@ -30,6 +31,8 @@ import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
+
+import com.google.hive12.common.collect.Lists;
 
 public class ScanPrel extends DrillScanRelBase implements Prel{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScanPrel.class);
@@ -54,9 +57,11 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     StoragePlugin plugin = this.drillTable.getPlugin();
-    GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()));
 
-    return scan;
+    List<SchemaPath> columns = PrelUtil.getColumns(this.getRowType());
+    GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), columns);
+    
+    return scan;    
   }
 
 
