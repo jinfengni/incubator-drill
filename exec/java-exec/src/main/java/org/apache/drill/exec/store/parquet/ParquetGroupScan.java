@@ -128,10 +128,11 @@ public class ParquetGroupScan extends AbstractGroupScan {
   }
 
   public ParquetGroupScan(List<FileStatus> files, //
-      ParquetFormatPlugin formatPlugin) //
+      ParquetFormatPlugin formatPlugin,
+      List<SchemaPath> columns) //
       throws IOException {
     this.formatPlugin = formatPlugin;
-    this.columns = null;
+    this.columns = columns;
     this.formatConfig = formatPlugin.getConfig();
     this.fs = formatPlugin.getFileSystem().getUnderlying();
     

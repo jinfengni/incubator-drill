@@ -23,6 +23,7 @@ import java.util.List;
 import net.hydromatic.optiq.SchemaPlus;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
 import org.apache.drill.exec.rpc.user.DrillUser;
@@ -43,7 +44,19 @@ public interface StoragePlugin extends SchemaFactory{
    * @throws IOException
    */
   public AbstractGroupScan getPhysicalScan(JSONOptions selection) throws IOException;
-
+ 
+  /**
+   * Get the physical scan operator for the particular GroupScan (read) node.
+   * 
+   * @param scan
+   *          The configured scan with a storage engine specific selection.
+   * @parm  columns  (optional)
+   *          The list of column names to scan from the data source.
+   * @return
+   * @throws IOException
+   */
+  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns) throws IOException;
+   
   public StoragePluginConfig getConfig();
 
 }
