@@ -25,34 +25,42 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.common.DrillScanRelBase;
+import org.apache.drill.exec.planner.logical.DrillOptiq;
+import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.store.StoragePlugin;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
+import org.eigenbase.rex.RexNode;
 
 import com.google.hive12.common.collect.Lists;
 
 public class ScanPrel extends DrillScanRelBase implements Prel{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScanPrel.class);
-
+  
+  protected final RexNode condition;
+  
   public ScanPrel(RelOptCluster cluster, RelTraitSet traits, RelOptTable tbl) {
-    super(DRILL_PHYSICAL, cluster, traits, tbl);
+    this(cluster, traits, tbl, null);
   }
 
+  public ScanPrel(RelOptCluster cluster, RelTraitSet traits, RelOptTable tbl, RexNode condition) {
+    super(DRILL_PHYSICAL, cluster, traits, tbl);
+    this.condition = condition;
+  }
   
   @Override
   public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    return super.copy(traitSet, inputs);
+    return new ScanPrel(this.getCluster(), traitSet, this.getTable(), this.condition);
   }
 
 
   @Override
   protected Object clone() throws CloneNotSupportedException {
-    return super.clone();
+    return new ScanPrel(this.getCluster(), this.getTraitSet(), this.getTable(), this.condition);
   }
-
 
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
@@ -74,7 +82,9 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
       columns = null;
     }
     
-    GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), columns);
+    //Push the projected columns + filter condition into scan operator, if any. 
+    GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), columns, DrillOptiq.toDrill(new DrillParseContext(), this, this.condition));
+      
     creator.addPhysicalOperator(scan);
     
     return scan;    

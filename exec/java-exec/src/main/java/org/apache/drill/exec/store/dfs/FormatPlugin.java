@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.drill.common.expression.FieldReference;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -40,7 +41,7 @@ public interface FormatPlugin {
   
   public FormatMatcher getMatcher();
   
-  public AbstractGroupScan getGroupScan(FileSelection selection, List<SchemaPath> columns) throws IOException;
+  public AbstractGroupScan getGroupScan(FileSelection selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException;
 
   public List<QueryOptimizerRule> getOptimizerRules();
   

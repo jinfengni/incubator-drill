@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
 
@@ -48,11 +49,11 @@ public abstract class AbstractStoragePlugin implements StoragePlugin{
 
   @Override
   public AbstractGroupScan getPhysicalScan(JSONOptions selection) throws IOException {
-    return getPhysicalScan(selection, null);
+    return getPhysicalScan(selection, null, null);
   }
   
   @Override
-  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns) throws IOException {
+  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
     throw new UnsupportedOperationException();
   }
     

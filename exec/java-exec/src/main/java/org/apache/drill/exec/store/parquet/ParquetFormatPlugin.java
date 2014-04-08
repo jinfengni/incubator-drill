@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.drill.common.expression.FieldReference;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.server.DrillbitContext;
@@ -101,8 +102,8 @@ public class ParquetFormatPlugin implements FormatPlugin{
   }
 
   @Override
-  public ParquetGroupScan getGroupScan(FileSelection selection, List<SchemaPath> columns) throws IOException {
-    return new ParquetGroupScan( selection.getFileStatusList(fs), this, columns);
+  public ParquetGroupScan getGroupScan(FileSelection selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
+    return new ParquetGroupScan( selection.getFileStatusList(fs), this, columns, condition);
   }
 
   @Override

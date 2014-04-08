@@ -26,6 +26,7 @@ import net.hydromatic.optiq.SchemaPlus;
 import org.apache.drill.common.JSONOptions;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.rpc.user.DrillUser;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.AbstractStoragePlugin;
@@ -64,9 +65,10 @@ public class HiveStoragePlugin extends AbstractStoragePlugin {
   }
 
   @Override
-  public HiveScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns) throws IOException {
+  public HiveScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
     HiveReadEntry hiveReadEntry = selection.getListWith(new ObjectMapper(), new TypeReference<HiveReadEntry>(){});
     try {
+      //TODO: condition is disabled for now.
       return new HiveScan(hiveReadEntry, this, columns);   
     } catch (ExecutionSetupException e) {
       throw new IOException(e);
