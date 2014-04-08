@@ -107,6 +107,10 @@ public class ParquetGroupScan extends AbstractGroupScan {
     return this.formatPlugin.getStorageConfig();
   }
 
+  public LogicalExpression getCondition() {
+    return this.condition;
+  }
+  
   @JsonCreator
   public ParquetGroupScan( //
       @JsonProperty("entries") List<ReadEntryWithPath> entries, //
@@ -118,6 +122,7 @@ public class ParquetGroupScan extends AbstractGroupScan {
       ) throws IOException, ExecutionSetupException {
     engineRegistry.init(DrillConfig.create());
     this.columns = columns;
+    this.condition = condition;
     if(formatConfig == null) formatConfig = new ParquetFormatConfig();
     Preconditions.checkNotNull(storageConfig);
     Preconditions.checkNotNull(formatConfig);

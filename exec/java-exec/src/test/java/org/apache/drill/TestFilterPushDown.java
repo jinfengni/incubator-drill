@@ -15,73 +15,66 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.drill;
 
 import org.apache.drill.common.util.TestTools;
-import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
-import org.apache.drill.exec.ops.QueryContext;
-import org.apache.drill.exec.physical.PhysicalPlan;
-import org.apache.drill.exec.planner.sql.DrillSqlWorker;
-import org.apache.drill.exec.pop.PopUnitTestBase;
-import org.apache.drill.exec.proto.UserBitShared.QueryId;
-import org.apache.drill.exec.server.Drillbit;
-import org.apache.drill.exec.server.RemoteServiceSet;
-import org.apache.drill.exec.store.StoragePluginRegistry;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.apache.drill.exec.client.QuerySubmitter;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
-import static org.junit.Assert.assertTrue;
-
-public class TestFilterPushDown extends PopUnitTestBase{
+public class TestFilterPushDown {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestFilterPushDown.class);
   
-  static Drillbit bit1;  
-  static DrillSqlWorker worker;
-   
-  //Initialize the Drillbit and DrillSqlWorker.
-  @BeforeClass
-  public static void setUp() throws Exception {
-    RemoteServiceSet serviceSet = RemoteServiceSet.getLocalServiceSet();
-    bit1 = new Drillbit(CONFIG, serviceSet);
-    bit1.run();
-    StoragePluginRegistry registry = new StoragePluginRegistry(bit1.getContext());
-    worker = new DrillSqlWorker(registry.getSchemaFactory(), new FunctionImplementationRegistry(CONFIG));
-  }
-    
+  @Rule public TestRule TIMEOUT = TestTools.getTimeoutRule(10000000);
+  
   @Test
-  public void testFilter() throws Exception{    
-    testPhysicalPlan("SELECT\n" + 
+  public void testFilterPushDown() throws Exception{
+    test("SELECT\n" + 
         "  nations.N_NAME \n" + 
         "FROM\n" + 
         "  dfs.`[WORKING_PATH]/../../sample-data/nation.parquet` nations\n" + 
-        "  WHERE nations.N_REGIONKEY = 12345"
+        "  WHERE nations.N_REGIONKEY = 3"
         );
-  }
+ }
+  
 
-  // This method will take a SQL string statement, and a list of expected columns (for join).
-  // Get the physical plan from DrillSqlWorker and serialize the physical plan into string.
-  // Verify all the expected columns are contained in the physical plan string. 
-  private void testPhysicalPlan(String sql, String... expectedSubstrs) throws Exception{   
-    
-    sql = sql.replace("[WORKING_PATH]", TestTools.getWorkingPath());
-    
-    QueryContext qContext = new QueryContext(QueryId.getDefaultInstance(), bit1.getContext());    
-    PhysicalPlan plan = worker.getPhysicalPlan(sql, qContext);    
-    String planStr = qContext.getConfig().getMapper().writeValueAsString(plan);
-    
-    System.out.print(qContext.getConfig().getMapper().writeValueAsString(plan));
-      
-    for (String colNames : expectedSubstrs) {
-      assertTrue(planStr.contains(colNames));
-    }
-    
-    Thread.sleep(2000);
+  @Test
+  public void testNoFilter() throws Exception{
+    test("SELECT\n" + 
+        "  nations.N_NAME, nations.N_NATIONKEY, nations.N_REGIONKEY \n" + 
+        "FROM\n" + 
+        "  dfs.`[WORKING_PATH]/../../sample-data/nation.parquet` nations\n" 
+        );
+ }
+
+  @Test
+  public void testJoinWithFilterPush() throws Exception{
+    test("SELECT\n" + 
+        "  nations.N_NAME,\n" + 
+        "  regions.R_NAME, \n" +
+        "  nations.N_NATIONKEY, \n" +
+        "  regions.R_REGIONKEY \n" +
+        "FROM\n" + 
+        "  dfs.`[WORKING_PATH]/../../sample-data/nation.parquet` nations\n" + 
+        "JOIN\n" + 
+        "  dfs.`[WORKING_PATH]/../../sample-data/region.parquet` regions\n" + 
+        "  on nations.N_REGIONKEY = regions.R_REGIONKEY \n" +
+        " WHERE nations.N_NATIONKEY = 24 and regions.R_REGIONKEY = 1");
   }
   
-  @AfterClass
-  public static void tearDown() throws Exception {
-    bit1.close();
+  private void test(String sql) throws Exception{
+    boolean good = false;
+    sql = sql.replace("[WORKING_PATH]", TestTools.getWorkingPath());
+    
+    try{
+      QuerySubmitter s = new QuerySubmitter();
+      s.submitQuery(null, sql, "sql", null, true, 1, "tsv");
+      good = true;
+    }finally{
+      if(!good) Thread.sleep(2000);
+    }
   }
+  
 }

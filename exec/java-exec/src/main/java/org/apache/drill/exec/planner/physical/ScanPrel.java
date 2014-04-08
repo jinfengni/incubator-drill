@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
@@ -30,7 +31,10 @@ import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.store.StoragePlugin;
 import org.eigenbase.rel.RelNode;
+import org.eigenbase.rel.RelWriter;
 import org.eigenbase.relopt.RelOptCluster;
+import org.eigenbase.relopt.RelOptCost;
+import org.eigenbase.relopt.RelOptPlanner;
 import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
 import org.eigenbase.rex.RexNode;
@@ -63,6 +67,12 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
   }
 
   @Override
+  public RelOptCost computeSelfCost(RelOptPlanner planner) {
+    return super.computeSelfCost(planner).multiplyBy(getSelectivity());
+  }
+
+  
+  @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     StoragePlugin plugin = this.drillTable.getPlugin();
 
@@ -82,13 +92,34 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
       columns = null;
     }
     
-    //Push the projected columns + filter condition into scan operator, if any. 
-    GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), columns, DrillOptiq.toDrill(new DrillParseContext(), this, this.condition));
-      
+    //Convert "condition" from RexNode to LogicalExpression. 
+    LogicalExpression conditionExp = null;    
+    if (this.condition !=null) {
+      conditionExp = DrillOptiq.toDrill(new DrillParseContext(), this, this.condition);
+    }
+
+    //Push the projected columns + filter condition into scan operator, if any.    
+    GroupScan scan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), columns, conditionExp);      
     creator.addPhysicalOperator(scan);
     
     return scan;    
   }
+ 
+  @Override
+  public RelWriter explainTerms(RelWriter pw) {
+    return super.explainTerms(pw)
+        .item("condition", condition);
+  }
   
+  //Calculate the selectivity of filter condition "pushed" into this Scan OP.
+  //For now, if there is no condition, selectivity = 1.0
+  //Otherwise, selectivity = 0.5
+  public double getSelectivity() {
+    if (this.condition == null) {
+      return 1.0d;
+    } else {
+      return 0.5d;
+    }
+  }
   
 }

@@ -36,7 +36,7 @@ public class PushFilterIntoScan extends RelOptRule{
     final ScanPrel scan = (ScanPrel) call.rel(1);
     
     //Assume all the condition expressions in Filter op could be pushed down into Scan operator.
-    final ScanPrel newScan = new ScanPrel(scan.getCluster(), scan.getTraitSet(), scan.getTable(), filter.getCondition());
+    final ScanPrel newScan = new ScanPrel(filter.getCluster(), filter.getTraitSet(), scan.getTable(), filter.getCondition());
     call.transformTo(newScan);
   }
   
