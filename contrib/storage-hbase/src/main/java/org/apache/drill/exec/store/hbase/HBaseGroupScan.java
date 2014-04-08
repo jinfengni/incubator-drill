@@ -23,8 +23,10 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.EndpointAffinity;
 import org.apache.drill.exec.physical.OperatorCost;
@@ -66,18 +68,25 @@ public class HBaseGroupScan extends AbstractGroupScan {
     return columns;
   }
 
+  @JsonProperty
+  public LogicalExpression getCondition() {
+    return condition;
+  }
+  
   private String tableName;
   private HBaseStoragePlugin storagePlugin;
   private HBaseStoragePluginConfig storagePluginConfig;
   private List<EndpointAffinity> endpointAffinities;
   private List<SchemaPath> columns;
-
+  private LogicalExpression condition;
+  
   private NavigableMap<HRegionInfo,ServerName> regionsMap;
 
   @JsonCreator
   public HBaseGroupScan(@JsonProperty("entries") List<HTableReadEntry> entries,
                           @JsonProperty("storage") HBaseStoragePluginConfig storageEngineConfig,
                           @JsonProperty("columns") List<SchemaPath> columns,
+                          @JsonProperty("condition") LogicalExpression condition,
                           @JacksonInject StoragePluginRegistry engineRegistry
                            )throws IOException, ExecutionSetupException {
     Preconditions.checkArgument(entries.size() == 1);
@@ -89,11 +98,12 @@ public class HBaseGroupScan extends AbstractGroupScan {
     getRegionInfos();
   }
 
-  public HBaseGroupScan(String tableName, HBaseStoragePlugin storageEngine, List<SchemaPath> columns) throws IOException {
+  public HBaseGroupScan(String tableName, HBaseStoragePlugin storageEngine, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
     this.storagePlugin = storageEngine;
     this.storagePluginConfig = storageEngine.getConfig();
     this.tableName = tableName;
     this.columns = columns;
+    this.condition = condition;
     getRegionInfos();
   }
 

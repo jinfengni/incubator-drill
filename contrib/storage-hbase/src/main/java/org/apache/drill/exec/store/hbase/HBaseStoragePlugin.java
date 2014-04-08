@@ -24,6 +24,7 @@ import net.hydromatic.optiq.Schema;
 import net.hydromatic.optiq.SchemaPlus;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.server.DrillbitContext;
@@ -58,10 +59,10 @@ public class HBaseStoragePlugin extends AbstractStoragePlugin {
   }
 
   @Override
-  public HBaseGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns) throws IOException {
+  public HBaseGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
     HTableReadEntry readEntry = selection.getListWith(new ObjectMapper(),
         new TypeReference<HTableReadEntry>() {});
-    return new HBaseGroupScan(readEntry.getTableName(), this, columns);
+    return new HBaseGroupScan(readEntry.getTableName(), this, columns, condition);
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.drill.exec.planner.physical.FilterPrule;
 import org.apache.drill.exec.planner.physical.LimitPrule;
 import org.apache.drill.exec.planner.physical.MergeJoinPrule;
 import org.apache.drill.exec.planner.physical.ProjectPrule;
+import org.apache.drill.exec.planner.physical.PushFilterIntoScan;
 import org.apache.drill.exec.planner.physical.ScanPrule;
 import org.apache.drill.exec.planner.physical.ScreenPrule;
 import org.apache.drill.exec.planner.physical.SortConvertPrule;
@@ -114,7 +115,8 @@ public class DrillRuleSets {
       StreamAggPrule.INSTANCE,
       MergeJoinPrule.INSTANCE,
       FilterPrule.INSTANCE,
-      LimitPrule.INSTANCE
+      LimitPrule.INSTANCE,
+      PushFilterIntoScan.INSTANCE
 
 //    ExpandConversionRule.INSTANCE,
 //    SwapJoinRule.INSTANCE,

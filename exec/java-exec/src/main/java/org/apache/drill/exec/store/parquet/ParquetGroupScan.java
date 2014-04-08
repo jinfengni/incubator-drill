@@ -26,6 +26,7 @@ import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.PhysicalOperatorSetupException;
 import org.apache.drill.common.expression.FieldReference;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -90,7 +91,8 @@ public class ParquetGroupScan extends AbstractGroupScan {
   private List<EndpointAffinity> endpointAffinities;
 
   private List<SchemaPath> columns;
-
+  private LogicalExpression condition;
+  
   public List<ReadEntryWithPath> getEntries() {
     return entries;
   }
@@ -111,7 +113,8 @@ public class ParquetGroupScan extends AbstractGroupScan {
       @JsonProperty("storage") StoragePluginConfig storageConfig, //
       @JsonProperty("format") FormatPluginConfig formatConfig, //
       @JacksonInject StoragePluginRegistry engineRegistry, // 
-      @JsonProperty("columns") List<SchemaPath> columns //
+      @JsonProperty("columns") List<SchemaPath> columns, //
+      @JsonProperty("condition") LogicalExpression condition
       ) throws IOException, ExecutionSetupException {
     engineRegistry.init(DrillConfig.create());
     this.columns = columns;
@@ -129,10 +132,12 @@ public class ParquetGroupScan extends AbstractGroupScan {
 
   public ParquetGroupScan(List<FileStatus> files, //
       ParquetFormatPlugin formatPlugin,
-      List<SchemaPath> columns) //
+      List<SchemaPath> columns, //
+      LogicalExpression condition)
       throws IOException {
     this.formatPlugin = formatPlugin;
     this.columns = columns;
+    this.condition = condition;
     this.formatConfig = formatPlugin.getConfig();
     this.fs = formatPlugin.getFileSystem().getUnderlying();
     

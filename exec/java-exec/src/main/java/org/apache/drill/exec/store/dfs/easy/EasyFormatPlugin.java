@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.FieldReference;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -105,7 +106,7 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
   }
   
   @Override
-  public AbstractGroupScan getGroupScan(FileSelection selection, List<SchemaPath> columns) throws IOException {
+  public AbstractGroupScan getGroupScan(FileSelection selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
     return new EasyGroupScan(selection, this, columns);
   }
 

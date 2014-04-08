@@ -24,6 +24,7 @@ import net.hydromatic.optiq.Schema;
 import net.hydromatic.optiq.SchemaPlus;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
@@ -50,13 +51,15 @@ public interface StoragePlugin {
    * 
    * @param scan
    *          The configured scan with a storage engine specific selection.
-   * @parm  columns  (optional)
+   * @param  columns  (optional)
    *          The list of column names to scan from the data source.
+   * @param  conditions (optional)
+   *          The filter expression applied to the scan operator. 
    * @return
    * @throws IOException
    */
-  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns) throws IOException;
-   
+  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException;
+  
   public Schema createAndAddSchema(SchemaPlus parent);
   public StoragePluginConfig getConfig();
 

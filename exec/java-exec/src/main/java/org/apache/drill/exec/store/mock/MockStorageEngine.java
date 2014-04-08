@@ -25,6 +25,7 @@ import net.hydromatic.optiq.Schema;
 import net.hydromatic.optiq.SchemaPlus;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
@@ -45,7 +46,7 @@ public class MockStorageEngine extends AbstractStoragePlugin {
   }
 
   @Override
-  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns) throws IOException {
+  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
 
     ArrayList<MockScanEntry> readEntries = selection.getListWith(new ObjectMapper(),
         new TypeReference<ArrayList<MockScanEntry>>() {
