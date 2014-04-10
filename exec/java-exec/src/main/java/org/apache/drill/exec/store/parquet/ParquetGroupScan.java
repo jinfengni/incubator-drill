@@ -25,9 +25,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.PhysicalOperatorSetupException;
+import org.apache.drill.common.expression.ExpressionStringBuilder;
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.metrics.DrillMetrics;
@@ -327,7 +329,18 @@ public class ParquetGroupScan extends AbstractGroupScan {
   @Override
   public Size getSize() {
     // TODO - this is wrong, need to populate correctly
-    return new Size(10, 10);
+    
+    //TODO : use serialized condition string to check if condition is true or not. 
+    StringBuilder sb = new StringBuilder();
+    ExpressionStringBuilder esb = new ExpressionStringBuilder();
+    condition.accept(esb, sb);
+    String condStr = sb.toString();
+    
+    if (condStr.equals("true")) {
+      return new Size(10, 10);
+    } else {
+      return new Size(5, 5);
+    }
   }
 
   @Override
@@ -338,4 +351,11 @@ public class ParquetGroupScan extends AbstractGroupScan {
     return this;
   }
 
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    ExpressionStringBuilder esb = new ExpressionStringBuilder();
+    condition.accept(esb, sb);
+    return sb.toString();
+  }
 }

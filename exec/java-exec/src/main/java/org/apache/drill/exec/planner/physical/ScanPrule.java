@@ -19,10 +19,14 @@ package org.apache.drill.exec.planner.physical;
 
 import java.io.IOException;
 
+import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.planner.common.DrillScanRelBase;
 import org.apache.drill.exec.planner.logical.DrillTable;
 import org.apache.drill.exec.planner.logical.DynamicDrillTable;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
+import org.apache.drill.exec.store.StoragePlugin;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
 import org.eigenbase.relopt.RelTraitSet;
@@ -39,20 +43,16 @@ public class ScanPrule extends RelOptRule{
   public void onMatch(RelOptRuleCall call) {
     try{
       final DrillScanRelBase scan = (DrillScanRelBase) call.rel(0);
-      DrillTable table = scan.getTable().unwrap(DrillTable.class);
+      DrillTable drillTable = scan.getTable().unwrap(DrillTable.class);
+      StoragePlugin plugin = drillTable.getPlugin();
       
-      DrillDistributionTrait partition = table.getGroupScan().getMaxParallelizationWidth() > 1 ? DrillDistributionTrait.RANDOM_DISTRIBUTED : DrillDistributionTrait.SINGLETON;
+      // The condition for scan is initialized to "true". 
+      GroupScan groupScan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), scan.getColumns(),ValueExpressions.getBit(true));
 
-//      DrillDistributionTrait partition = DrillDistributionTrait.SINGLETON;
-//      
-//      if (table instanceof DynamicDrillTable ) {
-//        if (table.getGroupScan().getMaxParallelizationWidth() > 1 ) 
-//          partition = DrillDistributionTrait.RANDOM_DISTRIBUTED;
-//      }
-      
+      DrillDistributionTrait partition = drillTable.getGroupScan().getMaxParallelizationWidth() > 1 ? DrillDistributionTrait.RANDOM_DISTRIBUTED : DrillDistributionTrait.SINGLETON;   
       final RelTraitSet traits = scan.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(partition);
 
-      DrillScanRelBase newScan = new ScanPrel(scan.getCluster(), traits, scan.getTable());
+      DrillScanRelBase newScan = ScanPrel.create(scan, traits, groupScan);      
       call.transformTo(newScan);
       
     }catch(IOException e){

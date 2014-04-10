@@ -18,9 +18,22 @@
 
 package org.apache.drill.exec.planner.physical;
 
+import java.io.IOException;
+
+import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.expression.LogicalExpression;
+import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.exec.physical.base.GroupScan;
+import org.apache.drill.exec.planner.logical.DrillOptiq;
+import org.apache.drill.exec.planner.logical.DrillParseContext;
+import org.apache.drill.exec.planner.logical.DrillTable;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
+import org.apache.drill.exec.store.StoragePlugin;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
+import org.eigenbase.rex.RexNode;
+
+
 
 public class PushFilterIntoScan extends RelOptRule{
   
@@ -32,12 +45,33 @@ public class PushFilterIntoScan extends RelOptRule{
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    final FilterPrel filter = (FilterPrel) call.rel(0);
-    final ScanPrel scan = (ScanPrel) call.rel(1);
+    try {  
+      final FilterPrel filter = (FilterPrel) call.rel(0);
+      final ScanPrel scan = (ScanPrel) call.rel(1);
     
-    //Assume all the condition expressions in Filter op could be pushed down into Scan operator.
-    final ScanPrel newScan = new ScanPrel(filter.getCluster(), filter.getTraitSet(), scan.getTable(), filter.getCondition());
-    call.transformTo(newScan);
+      DrillTable drillTable = scan.getTable().unwrap(DrillTable.class);
+      StoragePlugin plugin = drillTable.getPlugin();
+    
+      //Assume all the condition expressions in Filter op could be pushed down into Scan operator.       
+      //Convert "condition" from RexNode to LogicalExpression. 
+      //TODO : add logic to check if conditions qualify for push-down.
+      RexNode pushedCondition = filter.getCondition();  
+
+      LogicalExpression conditionExp = ValueExpressions.getBit(true);           
+      if (pushedCondition !=null) {
+        conditionExp = DrillOptiq.toDrill(new DrillParseContext(), scan, pushedCondition);
+      } else {
+        return;  //no filter pushdown ==> No transformation. 
+      }
+              
+      GroupScan  groupScan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), scan.getColumns(), conditionExp);
+      final ScanPrel newScan = ScanPrel.create(scan, filter.getTraitSet(), groupScan);
+      call.transformTo(newScan);
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+
   }
   
 }
