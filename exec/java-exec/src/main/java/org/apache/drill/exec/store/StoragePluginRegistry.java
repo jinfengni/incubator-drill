@@ -35,6 +35,7 @@ import net.hydromatic.optiq.Function;
 import net.hydromatic.optiq.Schema;
 import net.hydromatic.optiq.SchemaPlus;
 import net.hydromatic.optiq.Table;
+import net.hydromatic.optiq.tools.Frameworks;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -42,6 +43,7 @@ import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.util.PathScanner;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.planner.logical.StorageEngines;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.dfs.FileSystemPlugin;
@@ -63,9 +65,9 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
 
   private DrillbitContext context;
   private final DrillSchemaFactory schemaFactory = new DrillSchemaFactory();
-  
+
   private static final Expression EXPRESSION = new DefaultExpression(Object.class);
-  
+
   public StoragePluginRegistry(DrillbitContext context) {
     try{
     this.context = context;
@@ -96,10 +98,10 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
         logger.debug("Skipping registration of StorageEngine {} as it doesn't have a constructor with the parameters of (StorangeEngineConfig, Config)", engine.getCanonicalName());
       }
     }
-    
-    
+
+
   }
-  
+
   private Map<String, StoragePlugin> createEngines(){
     StorageEngines engines = null;
     Map<String, StoragePlugin> activeEngines = new HashMap<String, StoragePlugin>();
@@ -109,7 +111,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
     }catch(IOException e){
       throw new IllegalStateException("Failure while reading storage engines data.", e);
     }
-    
+
     for(Map.Entry<String, StoragePluginConfig> config : engines){
       try{
         StoragePlugin plugin = create(config.getKey(), config.getValue());
@@ -119,14 +121,14 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
       }
     }
     activeEngines.put("INFORMATION_SCHEMA", new InfoSchemaStoragePlugin(new InfoSchemaConfig(), context, "INFORMATION_SCHEMA"));
-    
+
     return activeEngines;
   }
 
   public StoragePlugin getEngine(String registeredStorageEngineName) throws ExecutionSetupException {
     return engines.get(registeredStorageEngineName);
   }
-  
+
   public StoragePlugin getEngine(StoragePluginConfig config) throws ExecutionSetupException {
     if(config instanceof NamedStoragePluginConfig){
       return engines.get(((NamedStoragePluginConfig) config).name);
@@ -135,7 +137,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
       return create(null, config);
     }
   }
-  
+
   public FormatPlugin getFormatPlugin(StoragePluginConfig storageConfig, FormatPluginConfig formatConfig) throws ExecutionSetupException{
     StoragePlugin p = getEngine(storageConfig);
     if(!(p instanceof FileSystemPlugin)) throw new ExecutionSetupException(String.format("You tried to request a format plugin for a stroage engine that wasn't of type FileSystemPlugin.  The actual type of plugin was %s.", p.getClass().getName()));
@@ -165,147 +167,23 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
   public Iterator<Entry<String, StoragePlugin>> iterator() {
     return engines.entrySet().iterator();
   }
-  
+
   public DrillSchemaFactory getSchemaFactory(){
     return schemaFactory;
   }
 
-  public class DrillSchemaFactory implements Function1<SchemaPlus, Schema>{
+  public class DrillSchemaFactory{
 
-    @Override
-    public Schema apply(SchemaPlus parent) {
-      Schema defaultSchema = null;
+    public SchemaPlus getDefaultSchema(String defaultSchema){
+      SchemaPlus rootSchema = Frameworks.createRootSchema();
+      SchemaPlus defaultSchema = rootSchema;
       for(Map.Entry<String, StoragePlugin> e : engines.entrySet()){
-        Schema s = e.getValue().createAndAddSchema(parent);
-        if(defaultSchema == null) defaultSchema = s;
+        SchemaPlus localDefault = e.getValue().createAndAddSchema(context, rootSchema);
+        if(localDefault != null) defaultSchema = localDefault;
       }
       return defaultSchema;
     }
-    
-    /**
-     * Used in situations where we want to get a schema without having to use in the context of an Optiq planner. 
-     * @return Root schema of the storage engine hiearchy.
-     */
-    public SchemaPlus getOrphanedRootSchema(){
-      SchemaPlus p = new OrphanPlus();
-      apply(p);
-      return p;
-    }
-    
-  }
-  
-
-  private class OrphanPlusWrap extends OrphanPlus{
-    private Schema inner;
-
-    public OrphanPlusWrap(Schema inner) {
-      super();
-      this.inner = inner;
-    }
-
-    @Override
-    public Table getTable(String name) {
-      return inner.getTable(name);
-    }
-
-    @Override
-    public Set<String> getTableNames() {
-      return inner.getTableNames();
-    }
-
-    @Override
-    public Collection<Function> getFunctions(String name) {
-      return inner.getFunctions(name);
-    }
-
-    @Override
-    public Set<String> getFunctionNames() {
-      return inner.getFunctionNames();
-    }
-
-    @Override
-    public Set<String> getSubSchemaNames() {
-      return inner.getSubSchemaNames();
-    }
-    
-  }
-
-  private class OrphanPlus implements SchemaPlus{
-
-    private HashMap<String, SchemaPlus> schemas = Maps.newHashMap();
-    
-    @Override
-    public SchemaPlus getParentSchema() {
-      return null;
-    }
-
-    @Override
-    public String getName() {
-      return "";
-    }
-
-    @Override
-    public Table getTable(String name) {
-      return null;
-    }
-
-    @Override
-    public Set<String> getTableNames() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public Collection<Function> getFunctions(String name) {
-      return Collections.emptyList();
-    }
-
-    @Override
-    public Set<String> getFunctionNames() {
-      return Collections.emptySet();
-    }
-
-    @Override
-    public Set<String> getSubSchemaNames() {
-      return schemas.keySet();
-    }
-
-    @Override
-    public SchemaPlus getSubSchema(String name) {
-      return schemas.get(name);
-    }
-
-    @Override
-    public void add(String name, Table table) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void add(String name, Function table) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isMutable() {
-      return false;
-    }
-
-    @Override
-    public <T> T unwrap(Class<T> clazz) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Expression getExpression(SchemaPlus parentSchema, String name) {
-      return EXPRESSION;
-    }
-
-    @Override
-    public SchemaPlus add(String name, Schema schema) {
-      OrphanPlusWrap plus = new OrphanPlusWrap(schema);
-      schemas.put(name, plus);
-      return plus;
-    }
 
   }
-  
+
 }

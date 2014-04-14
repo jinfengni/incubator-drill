@@ -58,6 +58,8 @@ import org.eigenbase.sql.SqlKind;
 import org.eigenbase.sql.SqlLiteral;
 import org.eigenbase.sql.SqlNode;
 import org.eigenbase.sql.parser.SqlParseException;
+import org.eigenbase.sql.parser.impl.SqlParserImpl;
+import org.eigenbase.sql2rel.StandardConvertletTable;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -68,19 +70,20 @@ public class DrillSqlWorker {
   private final static RuleSet[] RULES = new RuleSet[]{DrillRuleSets.DRILL_BASIC_RULES, DrillRuleSets.DRILL_PHYSICAL_MEM};
   private final static int LOGICAL_RULES = 0;
   private final static int PHYSICAL_MEM_RULES = 1;
-  
-  public DrillSqlWorker(DrillSchemaFactory schemaFactory, FunctionImplementationRegistry registry) throws Exception {
+
+  public DrillSqlWorker(QueryContext context, FunctionImplementationRegistry registry) throws Exception {
     final List<RelTraitDef> traitDefs = new ArrayList<RelTraitDef>();
     traitDefs.add(ConventionTraitDef.INSTANCE);
-    traitDefs.add(DrillDistributionTraitDef.INSTANCE);    
+    traitDefs.add(DrillDistributionTraitDef.INSTANCE);
     traitDefs.add(RelCollationTraitDef.INSTANCE);
-    
+
     DrillOperatorTable table = new DrillOperatorTable(registry);
     DrillParserFactory factory = new DrillParserFactory(table);
-    this.planner = Frameworks.getPlanner(Lex.MYSQL, factory, schemaFactory, table, traitDefs, RULES);
-//    this.planner = Frameworks.getPlanner(Lex.MYSQL, SqlParserImpl.FACTORY, schemaFactory, SqlStdOperatorTable.instance(), traitDefs, RULES);
+
+
+    this.planner = Frameworks.getPlanner(Lex.MYSQL, SqlParserImpl.FACTORY, context.getNewDefaultSchema(), table, traitDefs, StandardConvertletTable.INSTANCE, RULES);
   }
-  
+
   private class RelResult{
     final ResultMode mode;
     final RelNode node;
@@ -92,13 +95,13 @@ public class DrillSqlWorker {
   }
 
   /*
-   * Return the logical DrillRel tree 
+   * Return the logical DrillRel tree
    */
   private RelResult getRel(String sql) throws SqlParseException, ValidationException, RelConversionException{
     SqlNode sqlNode = planner.parse(sql);
-    
+
     ResultMode resultMode = ResultMode.EXEC;
-    
+
     if(sqlNode.getKind() == SqlKind.EXPLAIN){
       SqlExplain explain = (SqlExplain) sqlNode;
       SqlExplain.Depth depth = (SqlExplain.Depth) explain.getDepth();
@@ -112,26 +115,26 @@ public class DrillSqlWorker {
       default:
       }
     }
-    
+
     SqlNode validatedNode = planner.validate(sqlNode);
     RelNode relNode = planner.convert(validatedNode);
-    
+
     System.out.println(RelOptUtil.toString(relNode, SqlExplainLevel.ALL_ATTRIBUTES));
-    
+
     RelNode convertedRelNode = planner.transform(LOGICAL_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
     if(convertedRelNode instanceof DrillStoreRel){
       throw new UnsupportedOperationException();
     }else{
       convertedRelNode = new DrillScreenRel(convertedRelNode.getCluster(), convertedRelNode.getTraitSet(), convertedRelNode);
     }
-    
+
     System.out.println(RelOptUtil.toString(convertedRelNode, SqlExplainLevel.ALL_ATTRIBUTES));
-    
+
     return new RelResult(resultMode, convertedRelNode);
   }
-  
-  
-  
+
+
+
   public LogicalPlan getLogicalPlan(String sql) throws SqlParseException, ValidationException, RelConversionException{
     RelResult result = getRel(sql);
 
@@ -146,41 +149,41 @@ public class DrillSqlWorker {
     planner.close();
     planner.reset();
     return implementor.getPlan();
-    
+
   }
-  
+
   public PhysicalPlan getPhysicalPlan(String sql, QueryContext qcontext) throws SqlParseException, ValidationException, RelConversionException, IOException {
     RelResult result = getRel(sql);
 
-    RelTraitSet traits = result.node.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);    
+    RelTraitSet traits = result.node.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
     Prel phyRelNode = (Prel) planner.transform(PHYSICAL_MEM_RULES, traits, result.node);
-    
+
     //Debug.
     System.err.println("SQL : " + sql);
     logger.debug("SQL : " + sql);
     String msg = RelOptUtil.toString(phyRelNode, SqlExplainLevel.ALL_ATTRIBUTES);
     System.out.println(msg);
     logger.debug(msg);
-        
+
     PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(qcontext);
     PhysicalPlan plan = pplanCreator.build(phyRelNode, true /* rebuild */);
-        
+
     planner.close();
     planner.reset();
     return plan;
 
   }
- 
+
   public void runPhysicalPlan(PhysicalPlan phyPlan, DrillConfig config) {
     QuerySubmitter qs = new QuerySubmitter();
-    
+
     ObjectMapper mapper = config.getMapper();
-    
+
     try {
       String phyPlanStr = mapper.writeValueAsString(phyPlan);
-      
+
       System.out.println(phyPlanStr);
-      
+
       qs.submitQuery(null, phyPlanStr, "physical", null, true, 1, "csv");
     } catch (Exception e) {
       System.err.println("Query fails " + e.toString());
