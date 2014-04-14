@@ -20,18 +20,17 @@ package org.apache.drill;
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class TestTpchQueries extends BaseTestQuery{
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestTpchQueries.class);
+public class TestTpchDistributed extends BaseTestQuery{
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestTpchDistributed.class);
 
   @Test
   public void tpch01() throws Exception{
-    testSqlFromFile("queries/tpch/01.sql");
+    testSqlPlanFromFile("queries/tpch/01.sql");
   }
 
   @Test
-  @Ignore // cannot plan
   public void tpch02() throws Exception{
-    testSqlFromFile("queries/tpch/02.sql");
+    testSqlPlanFromFile("queries/tpch/02.sql");
   }
 
   @Test
@@ -40,117 +39,98 @@ public class TestTpchQueries extends BaseTestQuery{
   }
 
   @Test
-  @Ignore
   public void tpch04() throws Exception{
-    testSqlFromFile("queries/tpch/04.sql");
+    testSqlPlanFromFile("queries/tpch/04.sql");
   }
 
   @Test
-  @Ignore // DRILL-436
   public void tpch05() throws Exception{
-    testSqlFromFile("queries/tpch/05.sql");
+    testSqlPlanFromFile("queries/tpch/05.sql");
   }
 
-  @Test  // DRILL-356
-  @Ignore
+  @Test
   public void tpch06() throws Exception{
-    testSqlFromFile("queries/tpch/06.sql");
+    testSqlPlanFromFile("queries/tpch/06.sql");
   }
 
   @Test
-  @Ignore // DRILL-439
   public void tpch07() throws Exception{
-    testSqlFromFile("queries/tpch/07.sql");
+    testSqlPlanFromFile("queries/tpch/07.sql");
   }
 
   @Test
-  @Ignore // DRILL-356
   public void tpch08() throws Exception{
-    testSqlFromFile("queries/tpch/08.sql");
+    testSqlPlanFromFile("queries/tpch/08.sql");
   }
 
   @Test
-  @Ignore // DRILL-435
   public void tpch09() throws Exception{
-    testSqlFromFile("queries/tpch/09.sql");
+    testSqlPlanFromFile("queries/tpch/09.sql");
   }
 
   @Test
-  @Ignore // DRILL-356
   public void tpch10() throws Exception{
-    testSqlFromFile("queries/tpch/10.sql");
+    testSqlPlanFromFile("queries/tpch/10.sql");
   }
 
   @Test
-  @Ignore // DRILL-436
   public void tpch11() throws Exception{
-    testSqlFromFile("queries/tpch/11.sql");
+    testSqlPlanFromFile("queries/tpch/11.sql");
   }
 
   @Test
-  @Ignore // DRILL-403
   public void tpch12() throws Exception{
-    testSqlFromFile("queries/tpch/12.sql");
+    testSqlPlanFromFile("queries/tpch/12.sql");
   }
 
   @Test
-  @Ignore // DRILL-435
   public void tpch13() throws Exception{
-    testSqlFromFile("queries/tpch/13.sql");
+    testSqlPlanFromFile("queries/tpch/13.sql");
   }
 
   @Test
-  @Ignore // DRILL-435
   public void tpch14() throws Exception{
-    testSqlFromFile("queries/tpch/14.sql");
+    testSqlPlanFromFile("queries/tpch/14.sql");
   }
 
   @Test
-  @Ignore // DRILL-438
   public void tpch15() throws Exception{
-    testSqlFromFile("queries/tpch/15.sql");
+    testSqlPlanFromFile("queries/tpch/15.sql");
   }
 
   @Test
-  @Ignore // DRILL-435
   public void tpch16() throws Exception{
-    testSqlFromFile("queries/tpch/16.sql");
+    testSqlPlanFromFile("queries/tpch/16.sql");
   }
 
   @Test
-  @Ignore // DRILL-440
   public void tpch17() throws Exception{
-    testSqlFromFile("queries/tpch/17.sql");
+    testSqlPlanFromFile("queries/tpch/17.sql");
   }
 
   @Test
-  @Ignore // DRILL-436
   public void tpch18() throws Exception{
-    testSqlFromFile("queries/tpch/18.sql");
+    testSqlPlanFromFile("queries/tpch/18.sql");
   }
 
   @Test
-  @Ignore // DRILL-436
   public void tpch19() throws Exception{
-    testSqlFromFile("queries/tpch/19.sql");
+    testSqlPlanFromFile("queries/tpch/19.sql");
   }
 
   @Test
-  @Ignore // DRILL-435
   public void tpch20() throws Exception{
-    testSqlFromFile("queries/tpch/20.sql");
+    testSqlPlanFromFile("queries/tpch/20.sql");
   }
 
   @Test
-  @Ignore // DRILL-440
   public void tpch21() throws Exception{
-    testSqlFromFile("queries/tpch/21.sql");
+    testSqlPlanFromFile("queries/tpch/21.sql");
   }
 
   @Test
-  @Ignore // DRILL-441
   public void tpch22() throws Exception{
-    testSqlFromFile("queries/tpch/22.sql");
+    testSqlPlanFromFile("queries/tpch/22.sql");
   }
 
 }

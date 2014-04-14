@@ -21,20 +21,14 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import net.hydromatic.linq4j.expressions.DefaultExpression;
 import net.hydromatic.linq4j.expressions.Expression;
-import net.hydromatic.linq4j.function.Function1;
-import net.hydromatic.optiq.Function;
-import net.hydromatic.optiq.Schema;
 import net.hydromatic.optiq.SchemaPlus;
-import net.hydromatic.optiq.Table;
 import net.hydromatic.optiq.tools.Frameworks;
 
 import org.apache.drill.common.config.DrillConfig;
@@ -43,8 +37,8 @@ import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.util.PathScanner;
 import org.apache.drill.exec.ExecConstants;
-import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.planner.logical.StorageEngines;
+import org.apache.drill.exec.rpc.user.DrillUser;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.dfs.FileSystemPlugin;
 import org.apache.drill.exec.store.dfs.FormatPlugin;
@@ -53,7 +47,6 @@ import org.apache.drill.exec.store.ischema.InfoSchemaStoragePlugin;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.common.io.Resources;
 
 
@@ -172,16 +165,13 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
     return schemaFactory;
   }
 
-  public class DrillSchemaFactory{
+  public class DrillSchemaFactory implements SchemaFactory{
 
-    public SchemaPlus getDefaultSchema(String defaultSchema){
-      SchemaPlus rootSchema = Frameworks.createRootSchema();
-      SchemaPlus defaultSchema = rootSchema;
+    @Override
+    public void registerSchemas(DrillUser user, SchemaPlus parent) {
       for(Map.Entry<String, StoragePlugin> e : engines.entrySet()){
-        SchemaPlus localDefault = e.getValue().createAndAddSchema(context, rootSchema);
-        if(localDefault != null) defaultSchema = localDefault;
+        e.getValue().registerSchemas(user, parent);
       }
-      return defaultSchema;
     }
 
   }

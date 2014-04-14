@@ -18,7 +18,6 @@
 package org.apache.drill.exec.ops;
 
 import java.util.Collection;
-import java.util.List;
 
 import net.hydromatic.optiq.SchemaPlus;
 import net.hydromatic.optiq.tools.Frameworks;
@@ -31,6 +30,7 @@ import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.rpc.control.WorkEventBus;
 import org.apache.drill.exec.rpc.data.DataConnectionCreator;
+import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 
@@ -40,21 +40,26 @@ public class QueryContext {
   private final QueryId queryId;
   private final DrillbitContext drillbitContext;
   private final WorkEventBus workBus;
-  private final SchemaPlus rootSchema;
-  private DefaultSchema defaultSchema;
-  private List<String> defaultSchemaNames;
+  private UserSession session;
 
-  public QueryContext(QueryId queryId, DrillbitContext drllbitContext) {
+
+  public QueryContext(UserSession session, QueryId queryId, DrillbitContext drllbitContext) {
     super();
     this.queryId = queryId;
     this.drillbitContext = drllbitContext;
     this.workBus = drllbitContext.getWorkBus();
-    this.rootSchema = Frameworks.createRootSchema();
+    this.session = session;
   }
 
-  public boolean setDefaultSchema(String defaultSchemaPattern){
-    String[] names = defaultSchemaPattern.split("\\.");
-
+  public SchemaPlus getNewDefaultSchema(){
+    SchemaPlus rootSchema = Frameworks.createRootSchema();
+    drillbitContext.getSchemaFactory().registerSchemas(session.getUser(), rootSchema);
+    SchemaPlus defaultSchema = session.getDefaultSchema(rootSchema);
+    if(defaultSchema == null){
+      return rootSchema;
+    }else{
+      return defaultSchema;
+    }
   }
 
   public DrillbitEndpoint getCurrentEndpoint(){
@@ -92,14 +97,6 @@ public class QueryContext {
 
   public WorkEventBus getWorkBus(){
     return workBus;
-  }
-
-  public SchemaPlus getRootSchema(){
-    return rootSchema;
-  }
-
-  public SchemaPlus getNewDefaultSchema(String defaultSchemaName){
-    return drillbitContext.getSchemaFactory().getDefaultSchema(this);
   }
 
   public FunctionImplementationRegistry getFunctionRegistry(){

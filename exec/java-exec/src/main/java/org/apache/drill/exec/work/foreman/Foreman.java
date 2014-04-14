@@ -84,23 +84,23 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
   private WorkerBee bee;
   private UserClientConnection initiatingClient;
   private final AtomicState<QueryState> state;
-  
+
   public Foreman(WorkerBee bee, DrillbitContext dContext, UserClientConnection connection, QueryId queryId,
       RunQuery queryRequest) {
     this.queryId = queryId;
     this.queryRequest = queryRequest;
-    this.context = new QueryContext(queryId, dContext);
+    this.context = new QueryContext(connection.getSession(), queryId, dContext);
     this.initiatingClient = connection;
     this.fragmentManager = new QueryManager(new ForemanManagerListener(), dContext.getController());
     this.bee = bee;
-    
+
     this.state = new AtomicState<QueryState>(QueryState.PENDING) {
       protected QueryState getStateFromNumber(int i) {
         return QueryState.valueOf(i);
       }
     };
   }
-  
+
   private boolean isFinished(){
     switch(state.getState()){
     case PENDING:
@@ -109,7 +109,7 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
     default:
       return true;
     }
-    
+
   }
 
   private void fail(String message, Throwable t) {
@@ -127,19 +127,19 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
     cleanupAndSendResult(result);
   }
 
-  
+
   public void cancel() {
     if(isFinished()){
       return;
     }
-    
+
     // cancel remote fragments.
     fragmentManager.cancel();
-    
+
     QueryResult result = QueryResult.newBuilder().setQueryState(QueryState.CANCELED).setIsLastChunk(true).setQueryId(queryId).build();
     cleanupAndSendResult(result);
   }
-  
+
   void cleanupAndSendResult(QueryResult result){
     bee.retireForeman(this);
     initiatingClient.sendResult(new ResponseSendListener(), new QueryWritableBatch(result));
@@ -153,7 +153,7 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
               ex);
     }
   }
-  
+
 
 
   /**
@@ -163,10 +163,10 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
     // convert a run query request into action
     try{
       switch (queryRequest.getType()) {
-      
+
       case LOGICAL:
         parseAndRunLogicalPlan(queryRequest.getPlan());
-        
+
         break;
       case PHYSICAL:
         parseAndRunPhysicalPlan(queryRequest.getPlan());
@@ -183,21 +183,21 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
   }
 
   private void parseAndRunLogicalPlan(String json) {
-    
+
     try {
       LogicalPlan logicalPlan = context.getPlanReader().readLogicalPlan(json);
-      
+
       if(logicalPlan.getProperties().resultMode == ResultMode.LOGICAL){
         fail("Failure running plan.  You requested a result mode of LOGICAL and submitted a logical plan.  In this case you're output mode must be PHYSICAL or EXEC.", new Exception());
-      }      
+      }
       if(logger.isDebugEnabled()) logger.debug("Logical {}", logicalPlan.unparse(context.getConfig()));
       PhysicalPlan physicalPlan = convert(logicalPlan);
-      
+
       if(logicalPlan.getProperties().resultMode == ResultMode.PHYSICAL){
         returnPhysical(physicalPlan);
         return;
       }
-      
+
       if(logger.isDebugEnabled()) logger.debug("Physical {}", context.getConfig().getMapper().writeValueAsString(physicalPlan));
       runPhysicalPlan(physicalPlan);
     } catch (IOException e) {
@@ -207,17 +207,17 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
     }
   }
 
-  
+
   private void returnLogical(LogicalPlan plan){
     String jsonPlan = plan.toJsonStringSafe(context.getConfig());
     sendSingleString("logical", jsonPlan);
   }
-  
+
   private void returnPhysical(PhysicalPlan plan){
     String jsonPlan = plan.unparse(context.getConfig().getMapper().writer());
     sendSingleString("physical", jsonPlan);
   }
-  
+
   private void sendSingleString(String columnName, String value){
     MaterializedField f = MaterializedField.create(new SchemaPath(columnName, ExpressionPosition.UNKNOWN), Types.required(MinorType.VARCHAR));
     VarCharVector vector = new VarCharVector(f, bee.getContext().getAllocator());
@@ -233,7 +233,7 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
         .build();
     QueryWritableBatch b1 = new QueryWritableBatch(header, vector.getBuffers());
     vector.close();
-    
+
     QueryResult header2 = QueryResult.newBuilder() //
         .setQueryId(context.getQueryId()) //
         .setRowCount(0) //
@@ -241,25 +241,25 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
         .setIsLastChunk(true) //
         .build();
     QueryWritableBatch b2 = new QueryWritableBatch(header2);
-    
+
     SingleListener l = new SingleListener();
     this.initiatingClient.sendResult(l, b1);
     this.initiatingClient.sendResult(l, b2);
     l.acct.waitForSendComplete();
-    
+
   }
-  
-  
+
+
   class SingleListener implements RpcOutcomeListener<Ack>{
 
     final SendingAccountor acct;
-    
+
     public SingleListener(){
       acct  = new SendingAccountor();
       acct.increment();
       acct.increment();
     }
-    
+
     @Override
     public void failed(RpcException ex) {
       acct.decrement();
@@ -270,11 +270,11 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
     public void success(Ack value, ByteBuf buffer) {
       acct.decrement();
     }
-    
-  }
-  
 
-  
+  }
+
+
+
   private void parseAndRunPhysicalPlan(String json) {
     try {
       PhysicalPlan plan = context.getPlanReader().readPhysicalPlan(json);
@@ -290,7 +290,7 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
       fail(String.format("Failure running plan.  You requested a result mode of %s and a physical plan can only be output as EXEC", plan.getProperties().resultMode), new Exception());
     }
     PhysicalOperator rootOperator = plan.getSortedOperators(false).iterator().next();
-    
+
     MakeFragmentsVisitor makeFragmentsVisitor = new MakeFragmentsVisitor();
     Fragment rootFragment;
     try {
@@ -299,10 +299,10 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
       fail("Failure while fragmenting query.", e);
       return;
     }
-    
-    
 
-    
+
+
+
     PlanningSet planningSet = StatsCollector.collectStats(rootFragment);
     SimpleParallelizer parallelizer = new SimpleParallelizer();
 
@@ -318,26 +318,26 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
       // store fragments in distributed grid.
       logger.debug("Storing fragments");
       for (PlanFragment f : work.getFragments()) {
-        
+
         // store all fragments in grid since they are part of handshake.
-        
+
         context.getCache().storeFragment(f);
         if (f.getLeafFragment()) {
           leafFragments.add(f);
         } else {
           intermediateFragments.add(f);
         }
-        
-        
+
+
       }
 
       logger.debug("Fragments stored.");
-      
+
       logger.debug("Submitting fragments to run.");
       fragmentManager.runFragments(bee, work.getRootFragment(), work.getRootOperator(), initiatingClient, leafFragments, intermediateFragments);
       logger.debug("Fragments running.");
 
-    
+
     } catch (ExecutionSetupException | RpcException e) {
       fail("Failure while setting up query.", e);
     }
@@ -346,15 +346,15 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
 
   private void runSQL(String sql) {
     try{
-      DrillSqlWorker sqlWorker = new DrillSqlWorker(context.getFactory(), context.getFunctionRegistry());
-      
+      DrillSqlWorker sqlWorker = new DrillSqlWorker(context);
+
       PhysicalPlan physical = sqlWorker.getPhysicalPlan(sql, context);
-      
+
       if(logger.isDebugEnabled()) {
         logger.debug("Distributed Physical {}", context.getConfig().getMapper().writeValueAsString(physical));
         System.out.println(context.getConfig().getMapper().writeValueAsString(physical));
       }
-      
+
       runPhysicalPlan(physical);
     }catch(Exception e){
       fail("Failure while parsing sql.", e);
@@ -378,21 +378,21 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
   @Override
   public void close() throws IOException {
   }
-  
+
   QueryState getQueryState(){
     return this.state.getState();
   }
 
-  
+
   class ForemanManagerListener{
     void fail(String message, Throwable t) {
       ForemanManagerListener.this.fail(message, t);
     }
-    
+
     void cleanupAndSendResult(QueryResult result){
       Foreman.this.cleanupAndSendResult(result);
     }
-    
+
   }
 
 
@@ -401,7 +401,7 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
   public int compareTo(Object o) {
     return o.hashCode() - o.hashCode();
   }
-  
-  
+
+
 
 }

@@ -71,14 +71,13 @@ public class DrillSqlWorker {
   private final static int LOGICAL_RULES = 0;
   private final static int PHYSICAL_MEM_RULES = 1;
 
-  public DrillSqlWorker(QueryContext context, FunctionImplementationRegistry registry) throws Exception {
+  public DrillSqlWorker(QueryContext context) throws Exception {
     final List<RelTraitDef> traitDefs = new ArrayList<RelTraitDef>();
     traitDefs.add(ConventionTraitDef.INSTANCE);
     traitDefs.add(DrillDistributionTraitDef.INSTANCE);
     traitDefs.add(RelCollationTraitDef.INSTANCE);
 
-    DrillOperatorTable table = new DrillOperatorTable(registry);
-    DrillParserFactory factory = new DrillParserFactory(table);
+    DrillOperatorTable table = new DrillOperatorTable(context.getFunctionRegistry());
 
 
     this.planner = Frameworks.getPlanner(Lex.MYSQL, SqlParserImpl.FACTORY, context.getNewDefaultSchema(), table, traitDefs, StandardConvertletTable.INSTANCE, RULES);
