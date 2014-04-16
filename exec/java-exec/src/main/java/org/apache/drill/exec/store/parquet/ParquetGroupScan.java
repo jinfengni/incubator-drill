@@ -331,10 +331,7 @@ public class ParquetGroupScan extends AbstractGroupScan {
     // TODO - this is wrong, need to populate correctly
     
     //TODO : use serialized condition string to check if condition is true or not. 
-    StringBuilder sb = new StringBuilder();
-    ExpressionStringBuilder esb = new ExpressionStringBuilder();
-    condition.accept(esb, sb);
-    String condStr = sb.toString();
+    String condStr = this.toString();
     
     if (condStr.equals("true")) {
       return new Size(10, 10);
@@ -353,9 +350,12 @@ public class ParquetGroupScan extends AbstractGroupScan {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    ExpressionStringBuilder esb = new ExpressionStringBuilder();
-    condition.accept(esb, sb);
-    return sb.toString();
+    if (condition != null) {
+      StringBuilder sb = new StringBuilder();
+      ExpressionStringBuilder esb = new ExpressionStringBuilder();
+      condition.accept(esb, sb);
+      return sb.toString();
+    } else 
+      return "true";    
   }
 }

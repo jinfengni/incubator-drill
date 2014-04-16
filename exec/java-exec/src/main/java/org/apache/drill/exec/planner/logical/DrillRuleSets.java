@@ -117,6 +117,11 @@ public class DrillRuleSets {
       FilterPrule.INSTANCE,
       LimitPrule.INSTANCE,
       PushFilterIntoScan.INSTANCE
+      
+//      SwapJoinRule.INSTANCE, //
+//      PushJoinThroughJoinRule.RIGHT, //
+//      PushJoinThroughJoinRule.LEFT //
+
 
 //    ExpandConversionRule.INSTANCE,
 //    SwapJoinRule.INSTANCE,

@@ -56,7 +56,7 @@ public class InfoSchemaStoragePlugin extends AbstractStoragePlugin{
   }
 
   @Override
-  public InfoSchemaGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
+  public InfoSchemaGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, Object condition) throws IOException {
     SelectedTable table = selection.getWith(context.getConfig(),  SelectedTable.class);
     return new InfoSchemaGroupScan(table); //TODO : push project/filter to InfoSchema ? 
   }

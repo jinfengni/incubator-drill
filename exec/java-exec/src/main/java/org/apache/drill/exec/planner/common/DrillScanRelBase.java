@@ -27,7 +27,8 @@ import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
 
-import com.google.hive12.common.collect.Lists;
+import com.google.common.collect.Lists;
+
 
 /**
  * Base class for logical and physical Scans implemented in Drill
@@ -41,6 +42,12 @@ public abstract class DrillScanRelBase extends TableAccessRelBase implements Dri
     assert drillTable != null;
   }
 
+  public DrillScanRelBase(Convention convention, RelOptCluster cluster, RelTraitSet traits, RelOptTable table, DrillTable drillTable) {
+    super(cluster, traits, table);
+    this.drillTable = drillTable;
+    assert drillTable != null;
+  }
+  
   public List<SchemaPath> getColumns() { 
     boolean containStar = false;
     final List<String> fields = getRowType().getFieldNames();

@@ -53,7 +53,7 @@ public abstract class AbstractStoragePlugin implements StoragePlugin{
   }
   
   @Override
-  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
+  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, Object condition) throws IOException {
     throw new UnsupportedOperationException();
   }
     

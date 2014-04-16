@@ -44,15 +44,11 @@ public class ScanPrule extends RelOptRule{
     try{
       final DrillScanRelBase scan = (DrillScanRelBase) call.rel(0);
       DrillTable drillTable = scan.getTable().unwrap(DrillTable.class);
-      StoragePlugin plugin = drillTable.getPlugin();
       
-      // The condition for scan is initialized to "true". 
-      GroupScan groupScan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), scan.getColumns(),ValueExpressions.getBit(true));
-
       DrillDistributionTrait partition = drillTable.getGroupScan().getMaxParallelizationWidth() > 1 ? DrillDistributionTrait.RANDOM_DISTRIBUTED : DrillDistributionTrait.SINGLETON;   
       final RelTraitSet traits = scan.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(partition);
 
-      DrillScanRelBase newScan = ScanPrel.create(scan, traits, groupScan);      
+      DrillScanRelBase newScan = ScanPrel.create(scan, traits, scan.getTable());      
       call.transformTo(newScan);
       
     }catch(IOException e){

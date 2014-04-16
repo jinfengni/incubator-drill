@@ -58,7 +58,7 @@ public interface StoragePlugin extends SchemaFactory{
    * @return
    * @throws IOException
    */
-  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException;
+  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, Object condition) throws IOException;
   
   public StoragePluginConfig getConfig();
 

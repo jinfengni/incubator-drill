@@ -59,10 +59,10 @@ public class HBaseStoragePlugin extends AbstractStoragePlugin {
   }
 
   @Override
-  public HBaseGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
+  public HBaseGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, Object condition) throws IOException {
     HTableReadEntry readEntry = selection.getListWith(new ObjectMapper(),
         new TypeReference<HTableReadEntry>() {});
-    return new HBaseGroupScan(readEntry.getTableName(), this, columns, condition);
+    return new HBaseGroupScan(readEntry.getTableName(), this, columns, (LogicalExpression) condition);
   }
 
   @Override

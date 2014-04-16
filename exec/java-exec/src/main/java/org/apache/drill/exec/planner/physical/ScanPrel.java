@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.common.DrillScanRelBase;
+import org.apache.drill.exec.planner.logical.DrillTable;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.rel.RelWriter;
 import org.eigenbase.relopt.RelOptCluster;
@@ -34,54 +35,65 @@ import org.eigenbase.relopt.RelTraitSet;
 
 public class ScanPrel extends DrillScanRelBase implements Prel{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScanPrel.class);
-  
-  protected final GroupScan groupScan;
-  
-  private ScanPrel(RelOptCluster cluster, RelTraitSet traits, RelOptTable tbl, GroupScan groupScan) {
+    
+  private ScanPrel(RelOptCluster cluster, RelTraitSet traits, RelOptTable tbl) {
     super(DRILL_PHYSICAL, cluster, traits, tbl);
-    this.groupScan = groupScan;
+  }
+
+  private ScanPrel(RelOptCluster cluster, RelTraitSet traits, RelOptTable tbl, DrillTable drillTable) {
+    super(DRILL_PHYSICAL, cluster, traits, tbl, drillTable);
   }
 
   @Override
   public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    return new ScanPrel(this.getCluster(), traitSet, this.getTable(), this.groupScan);
+    return new ScanPrel(this.getCluster(), traitSet, this.getTable());
   }
 
 
   @Override
   protected Object clone() throws CloneNotSupportedException {
-    return new ScanPrel(this.getCluster(), this.getTraitSet(), this.getTable(), this.groupScan);
+    return new ScanPrel(this.getCluster(), this.getTraitSet(), this.getTable());
   }
 
   @Override
-  public RelOptCost computeSelfCost(RelOptPlanner planner) {
-//    return super.computeSelfCost(planner).multiplyBy(getSelectivity());
-    
-    //TODO : need more accurate estimation based on groupScan's SIZE. 
-    double dRows = this.groupScan.getSize().getRecordCount();
-    double dCpu = this.groupScan.getSize().getRecordCount();
-    double dIo = this.groupScan.getSize().getRecordCount();
-    return this.getCluster().getPlanner().getCostFactory().makeCost(dRows, dCpu, dIo); 
+  public RelOptCost computeSelfCost(RelOptPlanner planner) {    
+    //TODO : need more accurate estimation based on groupScan's SIZE.
+    GroupScan groupScan = this.getGroupScan();
+    double dRows = groupScan.getSize().getRecordCount();
+    double dCpu = groupScan.getSize().getRecordCount();
+    double dIo = groupScan.getSize().getRecordCount();
+    return this.getCluster().getPlanner().getCostFactory().makeCost(dRows, dCpu, dIo);    
+//  return super.computeSelfCost(planner).multiplyBy(0.1);
   }
   
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+    GroupScan groupScan;
+    groupScan = this.drillTable.getGroupScan();
     creator.addPhysicalOperator(groupScan);  
     return groupScan;
   }
  
   @Override
   public RelWriter explainTerms(RelWriter pw) {
-    return super.explainTerms(pw)
-        .item("groupscan", groupScan.toString());
+    GroupScan groupScan = this.getGroupScan();
+    return super.explainTerms(pw).item("groupscan", groupScan.toString());
   }
   
-  public static ScanPrel create(DrillScanRelBase old, RelTraitSet traitSets, GroupScan groupScan){
-    return new ScanPrel(old.getCluster(), traitSets, old.getTable(), groupScan);
+  public static ScanPrel create(DrillScanRelBase old, RelTraitSet traitSets, RelOptTable tbl, DrillTable drillTable){
+    return new ScanPrel(old.getCluster(), traitSets, tbl, drillTable);
   }
-  
-  public GroupScan getGroupScan() throws IOException{
-    return this.drillTable.getGroupScan();
+
+  public static ScanPrel create(DrillScanRelBase old, RelTraitSet traitSets, RelOptTable tbl){
+    return new ScanPrel(old.getCluster(), traitSets, tbl);
+  }
+
+  public GroupScan getGroupScan() {
+    try {
+      return this.drillTable.getGroupScan();
+    } catch (IOException e) {
+      throw new RuntimeException("Failure getting group scan.", e);
+    }   
   }
   
 }

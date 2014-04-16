@@ -106,7 +106,7 @@ public class FileSystemPlugin extends AbstractStoragePlugin{
   }
 
   @Override
-  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, LogicalExpression condition) throws IOException {
+  public AbstractGroupScan getPhysicalScan(JSONOptions selection, List<SchemaPath> columns, Object condition) throws IOException {
     FormatSelection formatSelection = selection.getWith(context.getConfig(), FormatSelection.class);
     FormatPlugin plugin;
     if(formatSelection.getFormat() instanceof NamedFormatPluginConfig){
@@ -115,7 +115,7 @@ public class FileSystemPlugin extends AbstractStoragePlugin{
       plugin = formatPluginsByConfig.get(formatSelection.getFormat());
     }
     if(plugin == null) throw new IOException(String.format("Failure getting requested format plugin named '%s'.  It was not one of the format plugins registered.", formatSelection.getFormat()));
-    return plugin.getGroupScan(formatSelection.getSelection(), columns, condition);
+    return plugin.getGroupScan(formatSelection.getSelection(), columns, (LogicalExpression) condition);
   }
 
   @Override
