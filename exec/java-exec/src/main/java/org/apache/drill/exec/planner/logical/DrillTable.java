@@ -18,7 +18,6 @@
 package org.apache.drill.exec.planner.logical;
 
 import java.io.IOException;
-import java.util.List;
 
 import net.hydromatic.optiq.Schema.TableType;
 import net.hydromatic.optiq.Statistic;
@@ -26,7 +25,6 @@ import net.hydromatic.optiq.Statistics;
 import net.hydromatic.optiq.Table;
 
 import org.apache.drill.common.JSONOptions;
-import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.store.StoragePlugin;
@@ -41,8 +39,6 @@ public abstract class DrillTable implements Table{
   private Object selection;
   private StoragePlugin plugin;
   private GroupScan scan; 
-  final private Object condition;
-  final private List<SchemaPath> columns;
   
   /** Creates a DrillTable. */
   public DrillTable(String storageEngineName, StoragePlugin plugin, Object selection) {
@@ -51,27 +47,11 @@ public abstract class DrillTable implements Table{
     
     this.storageEngineConfig = plugin.getConfig();
     this.storageEngineName = storageEngineName;
-    this.columns = null;
-    this.condition = null;
   }
 
-  /** Creates a DrillTable. */
-  public DrillTable(String storageEngineName, StoragePlugin plugin, Object selection, List<SchemaPath> columns, Object condition) {
-    this.selection = selection;
-    this.plugin = plugin;
-    
-    this.storageEngineConfig = plugin.getConfig();
-    this.storageEngineName = storageEngineName;
-    this.columns = columns;
-    this.condition = condition;
-  }
-  
   public GroupScan getGroupScan() throws IOException{
     if(scan == null){
-      if (columns == null && condition == null) 
-        this.scan = plugin.getPhysicalScan(new JSONOptions(selection));
-      else
-        this.scan = plugin.getPhysicalScan(new JSONOptions(selection), columns, condition);
+      this.scan = plugin.getPhysicalScan(new JSONOptions(selection));
     }
     return scan;
   }

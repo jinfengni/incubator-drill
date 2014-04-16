@@ -18,13 +18,17 @@
 
 package org.apache.drill.exec.planner.physical;
 
+import java.io.IOException;
+
+import org.apache.drill.common.JSONOptions;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.planner.logical.DrillOptiq;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.planner.logical.DrillTable;
-import org.apache.drill.exec.planner.logical.DynamicDrillTable;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
+import org.apache.drill.exec.store.StoragePlugin;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
 import org.eigenbase.rex.RexNode;
@@ -56,12 +60,17 @@ public class PushFilterIntoScan extends RelOptRule{
         return;  //no filter pushdown ==> No transformation. 
       }
               
-      DrillTable oldTable = scan.getTable().unwrap(DrillTable.class);
-      DrillTable newTable = new DynamicDrillTable(oldTable.getStorageEngineName(), oldTable.getPlugin(), oldTable.getSelection(), scan.getColumns(), conditionExp);
-      
-      final ScanPrel newScan = ScanPrel.create(scan, filter.getTraitSet(), scan.getTable(), newTable);
-      call.transformTo(newScan);
-
+      DrillTable drillTable = scan.getTable().unwrap(DrillTable.class);
+      StoragePlugin plugin = drillTable.getPlugin();    
+              
+      try {
+        GroupScan groupScan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), scan.getColumns(), conditionExp);
+        final DrillScanPrel newScan = new GroupScanPrel(scan.getCluster(), filter.getTraitSet(), groupScan, scan.getRowType());        
+        call.transformTo(newScan);
+      } catch (IOException e) {
+        e.printStackTrace();
+        return;
+      }
   }
   
 }

@@ -17,9 +17,6 @@
  */
 package org.apache.drill.exec.planner.logical;
 
-import java.util.List;
-
-import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.planner.types.RelDataTypeDrillImpl;
 import org.apache.drill.exec.planner.types.RelDataTypeHolder;
@@ -36,10 +33,6 @@ public class DynamicDrillTable extends DrillTable{
     super(storageEngineName, plugin, selection);
   }
 
-  public DynamicDrillTable(String storageEngineName, StoragePlugin plugin, Object selection, List<SchemaPath> columns, Object condition) {
-    super(storageEngineName, plugin, selection, columns, condition);
-  }
-  
   @Override
   public RelDataType getRowType(RelDataTypeFactory typeFactory) {
     return new RelDataTypeDrillImpl(holder, typeFactory);

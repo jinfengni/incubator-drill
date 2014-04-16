@@ -33,22 +33,17 @@ import org.eigenbase.relopt.RelOptPlanner;
 import org.eigenbase.relopt.RelOptTable;
 import org.eigenbase.relopt.RelTraitSet;
 
-public class ScanPrel extends DrillScanRelBase implements Prel{
+public class ScanPrel extends DrillScanRelBase implements DrillScanPrel{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScanPrel.class);
     
   private ScanPrel(RelOptCluster cluster, RelTraitSet traits, RelOptTable tbl) {
     super(DRILL_PHYSICAL, cluster, traits, tbl);
   }
 
-  private ScanPrel(RelOptCluster cluster, RelTraitSet traits, RelOptTable tbl, DrillTable drillTable) {
-    super(DRILL_PHYSICAL, cluster, traits, tbl, drillTable);
-  }
-
   @Override
   public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
     return new ScanPrel(this.getCluster(), traitSet, this.getTable());
   }
-
 
   @Override
   protected Object clone() throws CloneNotSupportedException {
@@ -60,8 +55,9 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
     //TODO : need more accurate estimation based on groupScan's SIZE.
     GroupScan groupScan = this.getGroupScan();
     double dRows = groupScan.getSize().getRecordCount();
-    double dCpu = groupScan.getSize().getRecordCount();
-    double dIo = groupScan.getSize().getRecordCount();
+    double dCpu = groupScan.getCost().getCpu();
+    double dIo = groupScan.getCost().getDisk();
+    double dMemory =groupScan.getCost().getMemory();
     return this.getCluster().getPlanner().getCostFactory().makeCost(dRows, dCpu, dIo);    
 //  return super.computeSelfCost(planner).multiplyBy(0.1);
   }
@@ -80,11 +76,7 @@ public class ScanPrel extends DrillScanRelBase implements Prel{
     return super.explainTerms(pw).item("groupscan", groupScan.toString());
   }
   
-  public static ScanPrel create(DrillScanRelBase old, RelTraitSet traitSets, RelOptTable tbl, DrillTable drillTable){
-    return new ScanPrel(old.getCluster(), traitSets, tbl, drillTable);
-  }
-
-  public static ScanPrel create(DrillScanRelBase old, RelTraitSet traitSets, RelOptTable tbl){
+  public static DrillScanPrel create(DrillScanRelBase old, RelTraitSet traitSets, RelOptTable tbl){
     return new ScanPrel(old.getCluster(), traitSets, tbl);
   }
 

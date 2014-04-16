@@ -41,12 +41,6 @@ public abstract class DrillScanRelBase extends TableAccessRelBase implements Dri
     this.drillTable = table.unwrap(DrillTable.class);
     assert drillTable != null;
   }
-
-  public DrillScanRelBase(Convention convention, RelOptCluster cluster, RelTraitSet traits, RelOptTable table, DrillTable drillTable) {
-    super(cluster, traits, table);
-    this.drillTable = drillTable;
-    assert drillTable != null;
-  }
   
   public List<SchemaPath> getColumns() { 
     boolean containStar = false;
