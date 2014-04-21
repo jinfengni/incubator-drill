@@ -33,13 +33,13 @@ public class TestProjectPushDown extends PlanningBase{
     
   @Test
   public void testGroupBy() throws Exception{
-    String expectedColNames = " \"columns\" : [ \"marital_status\" ]";
+    String expectedColNames = " \"columns\" : [ \"`marital_status`\" ]";
     testPhysicalPlan("select marital_status, COUNT(1) as cnt from cp.`employee.json` group by marital_status", expectedColNames);
   }
 
   @Test
   public void testOrderBy() throws Exception{
-    String expectedColNames = "\"columns\" : [ \"employee_id\", \"full_name\", \"first_name\", \"last_name\" ]";
+    String expectedColNames = "\"columns\" : [ \"`employee_id`\", \"`full_name`\", \"`first_name`\", \"`last_name`\" ]";
     testPhysicalPlan("select employee_id , full_name, first_name , last_name "
         + "from cp.`employee.json` order by first_name, last_name", 
         expectedColNames);
@@ -48,8 +48,8 @@ public class TestProjectPushDown extends PlanningBase{
   
   @Test
   public void testJoin() throws Exception{
-    String expectedColNames1 = "\"columns\" : [ \"N_REGIONKEY\", \"N_NAME\" ]";
-    String expectedColNames2 = "\"columns\" : [ \"R_REGIONKEY\", \"R_NAME\" ]";
+    String expectedColNames1 = "\"columns\" : [ \"`N_REGIONKEY`\", \"`N_NAME`\" ]";
+    String expectedColNames2 = "\"columns\" : [ \"`R_REGIONKEY`\", \"`R_NAME`\" ]";
     
     testPhysicalPlan("SELECT\n" + 
         "  nations.N_NAME,\n" + 

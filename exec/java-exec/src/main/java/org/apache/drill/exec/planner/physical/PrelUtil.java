@@ -91,12 +91,15 @@ public class PrelUtil {
     final List<String> fields = rowType.getFieldNames();
     List<SchemaPath> columns = Lists.newArrayList();
     for (String field : fields) {
-      columns.add(SchemaPath.getSimplePath(field));
-
-      if (field.startsWith("*")) {
-        containStar = true;  
+      
+      if (field.startsWith("*") && fields.size() == 1 ) {
+        containStar = true;
         break;
       }
+
+      //Non-star column
+      if (!field.startsWith("*"))
+        columns.add(SchemaPath.getSimplePath(field));
     }
   
     if (containStar) {
