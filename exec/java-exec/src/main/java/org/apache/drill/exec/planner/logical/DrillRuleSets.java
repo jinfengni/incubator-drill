@@ -26,6 +26,7 @@ import org.apache.drill.exec.planner.physical.LimitPrule;
 import org.apache.drill.exec.planner.physical.MergeJoinPrule;
 import org.apache.drill.exec.planner.physical.ProjectPrule;
 import org.apache.drill.exec.planner.physical.PushLimitToTopN;
+import org.apache.drill.exec.planner.physical.PushProjectIntoScan;
 import org.apache.drill.exec.planner.physical.ScanPrule;
 import org.apache.drill.exec.planner.physical.ScreenPrule;
 import org.apache.drill.exec.planner.physical.SortConvertPrule;
@@ -36,6 +37,7 @@ import org.eigenbase.rel.rules.MergeProjectRule;
 import org.eigenbase.rel.rules.PushFilterPastJoinRule;
 import org.eigenbase.rel.rules.PushFilterPastProjectRule;
 import org.eigenbase.rel.rules.PushJoinThroughJoinRule;
+import org.eigenbase.rel.rules.PushProjectPastJoinRule;
 import org.eigenbase.rel.rules.PushSortPastProjectRule;
 import org.eigenbase.rel.rules.ReduceAggregatesRule;
 import org.eigenbase.rel.rules.RemoveDistinctAggregateRule;
@@ -68,7 +70,7 @@ public class DrillRuleSets {
 //      SwapJoinRule.INSTANCE,
       RemoveDistinctRule.INSTANCE,
 //      UnionToDistinctRule.INSTANCE,
-//      RemoveTrivialProjectRule.INSTANCE,
+      RemoveTrivialProjectRule.INSTANCE,
 //      RemoveTrivialCalcRule.INSTANCE,
       RemoveSortRule.INSTANCE,
 
@@ -77,6 +79,7 @@ public class DrillRuleSets {
       new MergeProjectRule(true, RelFactories.DEFAULT_PROJECT_FACTORY),
       RemoveDistinctAggregateRule.INSTANCE, //
       ReduceAggregatesRule.INSTANCE, //
+      PushProjectPastJoinRule.INSTANCE,
 //      SwapJoinRule.INSTANCE, //
 //      PushJoinThroughJoinRule.RIGHT, //
 //      PushJoinThroughJoinRule.LEFT, //
@@ -115,8 +118,9 @@ public class DrillRuleSets {
       StreamAggPrule.INSTANCE,
       MergeJoinPrule.INSTANCE,
       FilterPrule.INSTANCE,
-      LimitPrule.INSTANCE
+      LimitPrule.INSTANCE,
 
+      PushProjectIntoScan.INSTANCE
 //      PushLimitToTopN.INSTANCE
 
 //    ExpandConversionRule.INSTANCE,
