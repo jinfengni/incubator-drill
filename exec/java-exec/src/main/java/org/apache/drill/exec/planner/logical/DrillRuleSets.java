@@ -17,7 +17,9 @@
  */
 package org.apache.drill.exec.planner.logical;
 
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import net.hydromatic.optiq.tools.RuleSet;
 
@@ -52,6 +54,7 @@ import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.volcano.AbstractConverter.ExpandConversionRule;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet.Builder;
 
 public class DrillRuleSets {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillRuleSets.class);
@@ -60,8 +63,8 @@ public class DrillRuleSets {
       // Add support for WHERE style joins.
       PushFilterPastProjectRule.INSTANCE,
       PushFilterPastJoinRule.FILTER_ON_JOIN,
-      PushJoinThroughJoinRule.RIGHT,
-      PushJoinThroughJoinRule.LEFT,
+      //PushJoinThroughJoinRule.RIGHT,
+      //PushJoinThroughJoinRule.LEFT,
       // End supprot for WHERE style joins.
 
       //Add back rules
@@ -70,7 +73,7 @@ public class DrillRuleSets {
 //      SwapJoinRule.INSTANCE,
       RemoveDistinctRule.INSTANCE,
 //      UnionToDistinctRule.INSTANCE,
-      RemoveTrivialProjectRule.INSTANCE,
+//      RemoveTrivialProjectRule.INSTANCE,
 //      RemoveTrivialCalcRule.INSTANCE,
       RemoveSortRule.INSTANCE,
 
@@ -78,7 +81,7 @@ public class DrillRuleSets {
       //MergeProjectRule.INSTANCE, //
       new MergeProjectRule(true, RelFactories.DEFAULT_PROJECT_FACTORY),
       RemoveDistinctAggregateRule.INSTANCE, //
-      ReduceAggregatesRule.INSTANCE, //
+//      ReduceAggregatesRule.INSTANCE, //
       PushProjectPastJoinRule.INSTANCE,
 //      SwapJoinRule.INSTANCE, //
 //      PushJoinThroughJoinRule.RIGHT, //
@@ -118,9 +121,9 @@ public class DrillRuleSets {
       StreamAggPrule.INSTANCE,
       MergeJoinPrule.INSTANCE,
       FilterPrule.INSTANCE,
-      LimitPrule.INSTANCE,
+      LimitPrule.INSTANCE
+//      PushProjectIntoScan.INSTANCE
 
-      PushProjectIntoScan.INSTANCE
 //      PushLimitToTopN.INSTANCE
 
 //    ExpandConversionRule.INSTANCE,
@@ -147,7 +150,17 @@ public class DrillRuleSets {
       ProjectPrule.INSTANCE
 
     ));
-
+  
+  public static RuleSet getCombinedRule() {
+    Builder<RelOptRule> builder = new Builder<RelOptRule>();
+    
+    builder.addAll( DRILL_BASIC_RULES);
+ 
+    builder.addAll( DRILL_PHYSICAL_MEM);
+        
+    return new DrillRuleSet(builder.build());
+  }
+  
   private static class DrillRuleSet implements RuleSet{
     final ImmutableSet<RelOptRule> rules;
 

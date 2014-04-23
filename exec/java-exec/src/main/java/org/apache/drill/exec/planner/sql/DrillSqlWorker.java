@@ -47,9 +47,10 @@ public class DrillSqlWorker {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillSqlWorker.class);
 
   private final Planner planner;
-  private final static RuleSet[] RULES = new RuleSet[]{DrillRuleSets.DRILL_BASIC_RULES, DrillRuleSets.DRILL_PHYSICAL_MEM};
+  private final static RuleSet[] RULES = new RuleSet[]{DrillRuleSets.DRILL_BASIC_RULES, DrillRuleSets.DRILL_PHYSICAL_MEM, DrillRuleSets.getCombinedRule()};
   public final static int LOGICAL_RULES = 0;
   public final static int PHYSICAL_MEM_RULES = 1;
+  public final static int PHYSICAL_MEM_RULES_COMBINED = 2;
   private final QueryContext context;
 
   public DrillSqlWorker(QueryContext context) throws Exception {

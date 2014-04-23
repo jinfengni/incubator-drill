@@ -58,8 +58,8 @@ public class ScanPrel extends DrillScanRelBase implements DrillScanPrel{
     double dMemory =groupScan.getCost().getMemory();
     int columnCount = this.getRowType().getFieldCount();
     
-    return this.getCluster().getPlanner().getCostFactory().makeCost(dRows * columnCount, dCpu, dIo);    
-//    return super.computeSelfCost(planner).multiplyBy(0.1);
+    //return this.getCluster().getPlanner().getCostFactory().makeCost(dRows * columnCount, dCpu, dIo);    
+    return super.computeSelfCost(planner).multiplyBy(0.1);
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.apache.drill.exec.planner.physical.DrillDistributionTrait;
 import org.apache.drill.exec.planner.physical.PhysicalPlanCreator;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.physical.Prel;
+import org.apache.drill.exec.planner.physical.ScreenPrel;
 import org.apache.drill.exec.planner.sql.DrillSqlWorker;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptUtil;
@@ -86,9 +87,10 @@ public class DefaultSqlHandler implements SqlHandler{
     SqlNode validated = validateNode(rewrittenSqlNode);
     RelNode rel = convertToRel(validated);
     log("Optiq Logical", rel);
-    DrillRel drel = convertToDrel(rel);
-    log("Drill Logical", drel);
-    Prel prel = convertToPrel(drel);
+//    DrillRel drel = convertToDrel(rel);
+//    log("Drill Logical", drel);
+//    Prel prel = convertToPrel(drel);
+    Prel prel = convertToPrel(rel);
     log("Drill Physical", prel);
     PhysicalOperator pop = convertToPop(prel);
     PhysicalPlan plan = convertToPlan(pop);
@@ -115,10 +117,13 @@ public class DefaultSqlHandler implements SqlHandler{
   }
 
   protected Prel convertToPrel(RelNode drel) throws RelConversionException{
-    Preconditions.checkArgument(drel.getConvention() == DrillRel.DRILL_LOGICAL);
+    //Preconditions.checkArgument(drel.getConvention() == DrillRel.DRILL_LOGICAL);
     RelTraitSet traits = drel.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
-    Prel phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES, traits, drel);
-    return phyRelNode;
+    //Prel phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES, traits, drel);
+    Prel phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES_COMBINED, traits, drel);
+    
+    return new ScreenPrel(phyRelNode.getCluster(), phyRelNode.getTraitSet(), phyRelNode);    
+    //return phyRelNode;
   }
 
   protected PhysicalOperator convertToPop(Prel prel) throws IOException{

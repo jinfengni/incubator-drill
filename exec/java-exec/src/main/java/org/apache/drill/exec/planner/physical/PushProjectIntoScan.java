@@ -15,6 +15,8 @@ import org.apache.drill.exec.store.StoragePlugin;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
 import org.eigenbase.reltype.RelDataType;
+import org.eigenbase.reltype.RelDataTypeFactory;
+import org.eigenbase.reltype.RelDataTypeField;
 import org.eigenbase.rex.RexInputRef;
 import org.eigenbase.rex.RexNode;
 import org.eigenbase.rex.RexShuttle;
@@ -38,16 +40,35 @@ public class PushProjectIntoScan  extends RelOptRule {
       StoragePlugin plugin = drillTable.getPlugin();    
      
       List<Integer> columnsIds = getRefColumnIds(proj);
+     
       try {
         GroupScan groupScan = plugin.getPhysicalScan(new JSONOptions(drillTable.getSelection()), getColumns(scan.getRowType(), columnsIds));
-        final DrillScanPrel newScan = new GroupScanPrel(scan.getCluster(), proj.getTraitSet(), groupScan, proj.getRowType());        
-        call.transformTo(newScan);
+        RelDataType newScanRowType = createStructType(scan.getCluster().getTypeFactory(), getProjectedFields(scan.getRowType(),columnsIds));
+        
+        final DrillScanPrel newScan = new GroupScanPrel(scan.getCluster(), proj.getTraitSet(), groupScan, newScanRowType);
+        
+        final ProjectPrel newProj = new ProjectPrel(proj.getCluster(), proj.getTraitSet(), newScan, proj.getProjects(), proj.getRowType());
+        
+        call.transformTo(newProj);
       } catch (IOException e) {
         e.printStackTrace();
         return;
       }
   }
   
+  private  RelDataType createStructType(
+      RelDataTypeFactory typeFactory,
+      final List<RelDataTypeField> fields
+      ) {
+    final RelDataTypeFactory.FieldInfoBuilder builder =
+        typeFactory.builder();
+    for (RelDataTypeField field : fields) {
+      builder.add(field.getName(), field.getType());
+    }
+    return builder.build();
+  }
+  
+
   private List<Integer> getRefColumnIds(ProjectPrel proj) {   
     RefFieldsVisitor v = new RefFieldsVisitor();
     
@@ -58,10 +79,20 @@ public class PushProjectIntoScan  extends RelOptRule {
     return new ArrayList<Integer>(v.getReferencedFieldIndex());
   }
   
+  private List<RelDataTypeField> getProjectedFields(RelDataType rowType, List<Integer> columnIds) {
+    List<RelDataTypeField> oldFields = rowType.getFieldList();
+    List<RelDataTypeField> newFields = Lists.newArrayList();
+
+    for (Integer id : columnIds) {
+      newFields.add(oldFields.get(id));
+    }
+    
+    return newFields;    
+  }
+  
   private List<SchemaPath> getColumns(RelDataType rowType, List<Integer> columnIds) {
     List<SchemaPath> columns = Lists.newArrayList();
     final List<String> fields = rowType.getFieldNames();
-    
     for (Integer id : columnIds) {
       columns.add(SchemaPath.getSimplePath(fields.get(id)));
     }

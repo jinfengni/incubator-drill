@@ -30,6 +30,7 @@ import org.apache.drill.exec.planner.logical.DrillImplementor;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.torel.ConversionContext;
+import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
@@ -54,6 +55,9 @@ public class LimitPrel extends DrillLimitRelBase implements Prel {
     Prel child = (Prel) this.getChild();
 
     PhysicalOperator childPOP = child.getPhysicalOperator(creator);
+
+    //Currently, Screen only accepts "NONE" or "SV2". For other, requires SelectionVectorRemover
+    childPOP = PrelUtil.removeSvIfRequired(childPOP, SelectionVectorMode.NONE, SelectionVectorMode.TWO_BYTE);
 
     // First offset to include into results (inclusive). Null implies it is starting from offset 0
     int first = offset != null ? Math.max(0, RexLiteral.intValue(offset)) : 0;
