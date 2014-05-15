@@ -55,6 +55,13 @@ public final class JoinStatus {
   private boolean initialSet = false;
   private boolean leftRepeating = false;
 
+  private int mycnt = 0;
+
+  public String toString() {
+    return " leftPosition = " + leftPosition + " rightPosition = " + rightPosition +
+        " lastLeft = " + lastLeft + " lastRight = " + lastRight;
+  }
+
   public JoinStatus(RecordBatch left, RecordBatch right, MergeJoinBatch output) {
     super();
     this.left = left;
@@ -146,6 +153,9 @@ public final class JoinStatus {
     if (lastLeft == IterOutcome.NONE)
       return false;
     if (!isLeftPositionInCurrentBatch()) {
+      mycnt += leftPosition;
+      logger.debug(" isLeftPositionAllowed : left position = " + leftPosition + " , " + left.getRecordCount() +
+          " join = " + this.outputBatch.getRecordCount() + " mycnt = " + mycnt);
       leftPosition = 0;
       releaseData(left);
       lastLeft = left.next();
