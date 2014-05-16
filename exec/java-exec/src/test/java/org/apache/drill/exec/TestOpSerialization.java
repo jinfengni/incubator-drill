@@ -12,6 +12,7 @@ import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Filter;
 import org.apache.drill.exec.physical.config.Screen;
+import org.apache.drill.exec.physical.config.UnionExchange;
 import org.apache.drill.exec.planner.PhysicalPlanReader;
 import org.apache.drill.exec.proto.CoordinationProtos;
 import org.apache.drill.exec.store.mock.MockSubScanPOP;
@@ -27,10 +28,12 @@ public class TestOpSerialization {
     DrillConfig c = DrillConfig.create();
     PhysicalPlanReader reader = new PhysicalPlanReader(c, c.getMapper(), CoordinationProtos.DrillbitEndpoint.getDefaultInstance());
     MockSubScanPOP s = new MockSubScanPOP("abc", null);
-    s.setOperatorId(2);
+    s.setOperatorId(3);
     Filter f = new Filter(s, new ValueExpressions.BooleanExpression("true", ExpressionPosition.UNKNOWN), 0.1f);
-    f.setOperatorId(1);
-    Screen screen = new Screen(f, CoordinationProtos.DrillbitEndpoint.getDefaultInstance());
+    f.setOperatorId(2);
+    UnionExchange e = new UnionExchange(f);
+    e.setOperatorId(1);
+    Screen screen = new Screen(e, CoordinationProtos.DrillbitEndpoint.getDefaultInstance());
     screen.setOperatorId(0);
 
     boolean reversed = false;
@@ -38,6 +41,7 @@ public class TestOpSerialization {
 
       List<PhysicalOperator> pops = Lists.newArrayList();
       pops.add(s);
+      pops.add(e);
       pops.add(f);
       pops.add(screen);
 

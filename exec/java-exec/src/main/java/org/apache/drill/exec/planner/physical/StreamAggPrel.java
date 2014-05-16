@@ -109,7 +109,7 @@ public class StreamAggPrel extends AggregateRelBase implements Prel{
 
     Prel child = (Prel) this.getChild();
     StreamingAggregate g = new StreamingAggregate(child.getPhysicalOperator(creator), keys.toArray(new NamedExpression[keys.size()]), exprs.toArray(new NamedExpression[exprs.size()]), 1.0f);
-
+    g.setOperatorId(creator.getOperatorId(this));
     return g;
 
   }

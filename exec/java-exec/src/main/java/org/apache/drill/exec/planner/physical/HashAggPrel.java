@@ -110,6 +110,8 @@ public class HashAggPrel extends AggregateRelBase implements Prel{
         exprs.toArray(new NamedExpression[exprs.size()]),
         1.0f);
 
+    g.setOperatorId(creator.getOperatorId(this));
+
     return g;
 
   }
