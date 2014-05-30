@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
+import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.ClassGenerator;
 import org.apache.drill.exec.expr.ClassGenerator.BlockType;
@@ -181,6 +182,10 @@ public abstract class DrillFuncHolder {
     return this.parameters[i].isConstant;
   }
 
+  public boolean isFieldReader(int i) {
+    return this.parameters[i].isFieldReader;
+  }
+
   public MajorType getReturnType(List<LogicalExpression> args) {
     if (nullHandling == NullHandling.NULL_IF_NULL) {
       // if any one of the input types is nullable, then return nullable return type
@@ -220,6 +225,7 @@ public abstract class DrillFuncHolder {
     MajorType type;
     String name;
     boolean isConstant;
+    boolean isFieldReader;
 
     public ValueReference(MajorType type, String name) {
       super();
@@ -228,6 +234,7 @@ public abstract class DrillFuncHolder {
       this.type = type;
       this.name = name;
       isConstant = false;
+      this.isFieldReader = false;
     }
 
     public void setConstant(boolean isConstant) {
@@ -239,6 +246,13 @@ public abstract class DrillFuncHolder {
       return "ValueReference [type=" + Types.toString(type) + ", name=" + name + "]";
     }
 
+    public static ValueReference createFieldReaderRef(String name) {
+      MajorType type = Types.required(MinorType.LATE);
+      ValueReference ref = new ValueReference(type, name);
+      ref.isFieldReader = true;
+
+      return ref;
+    }
   }
 
   public static class WorkspaceReference {

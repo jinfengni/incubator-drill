@@ -38,6 +38,7 @@ public class TestExampleQueries extends BaseTestQuery{
     test("select count(*) from cp.`customer.json` limit 1");
   }
 
+
   @Test
   public void testCaseReturnValueVarChar() throws Exception{
     test("select case when employee_id < 1000 then 'ABC' else 'DEF' end from cp.`employee.json` limit 5");

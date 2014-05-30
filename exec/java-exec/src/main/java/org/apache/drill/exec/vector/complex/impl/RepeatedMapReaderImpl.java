@@ -117,6 +117,9 @@ public class RepeatedMapReaderImpl extends AbstractFieldReader{
     return reader;
   }
 
+  public FieldReader reader() {
+    return new SingleLikeRepeatedMapReaderImpl(vector, this);
+  }
 
   private int currentOffset;
   private int maxOffset;
@@ -161,6 +164,10 @@ public class RepeatedMapReaderImpl extends AbstractFieldReader{
       currentOffset = NO_VALUES;
       return false;
     }
+  }
+
+  public boolean isNull() {
+    return currentOffset == NO_VALUES;
   }
 
   @Override
