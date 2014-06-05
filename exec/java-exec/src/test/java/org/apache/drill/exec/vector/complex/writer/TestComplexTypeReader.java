@@ -104,7 +104,7 @@ public class TestComplexTypeReader extends BaseTestQuery{
   }
 
   @Test
-  @Ignore //repeated list (Repeated BigInt ( BigInt) ) ) --> Json
+  //repeated list (Repeated BigInt ( BigInt) ) ) --> Json
   public void testZ1() throws Exception{
     test("select rl[1][2] from cp.`jsoninput/input2.json`;");
   }

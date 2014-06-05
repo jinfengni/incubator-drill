@@ -391,8 +391,7 @@ public class EvaluationVisitor {
       } else {
         JExpression vector = e.isSuperReader() ? vv1.component(componentVariable) : vv1;
         JExpression expr = vector.invoke("getAccessor").invoke("getReader");
-        JVar fieldReaderOut = generator.getEvalBlock().decl(generator.getModel()._ref(FieldReader.class),
-            "fieldReaderOut");
+        JVar isNull = generator.getEvalBlock().decl(generator.getModel().INT, "isNull", JExpr.lit(0));
 
         JLabel label = generator.getEvalBlock().label("complex");
         JBlock eval = generator.getEvalBlock().block();
@@ -403,6 +402,8 @@ public class EvaluationVisitor {
         int listNum = 0;
         boolean lastWasArray = false;
 
+
+
         while (seg != null) {
           if (seg.isArray()) {
             lastWasArray = true;
@@ -411,10 +412,10 @@ public class EvaluationVisitor {
               break;
 
             JVar list = generator.declareClassField("list", generator.getModel()._ref(FieldReader.class));
-            // generator.getSetupBlock().assign(list, expr);
-            // expr = list;
+            generator.getSetupBlock().assign(list, expr);
+            expr = list;
 
-            eval.assign(list, expr);
+            //eval.assign(list, expr);
 
             // if this is an array, set a single position for the expression to
             // allow us to read the right data lower down.
@@ -429,11 +430,11 @@ public class EvaluationVisitor {
                     .cand(list.invoke("next"))).body().assign(currentIndex, currentIndex.plus(JExpr.lit(1)));
 
             expr = list.invoke("reader");
-            eval.assign(fieldReaderOut, expr);
 
             JBlock ifNoVal = eval._if(desiredIndex.ne(currentIndex))._then().block();
             // if(!complex) ifNoVal.assign(out.getIsSet(), JExpr.lit(0));
             // ifNoVal._break(label);
+            ifNoVal.assign(isNull,  JExpr.lit(1));
             ifNoVal._break(label);
 
             listNum++;
@@ -441,7 +442,6 @@ public class EvaluationVisitor {
             lastWasArray = false;
             JExpression fieldName = JExpr.lit(seg.getNameSegment().getPath());
             expr = expr.invoke("reader").arg(fieldName);
-            eval.assign(fieldReaderOut, expr);
           }
           seg = seg.getChild();
 
@@ -450,37 +450,32 @@ public class EvaluationVisitor {
           // if(seg == null || seg.isLastPath() && seg.isArray()) break;
         }
 
-
-        // if (lastWasArray && complex)
-        // generator.getSetupBlock().assign(complexReader,
-        // JExpr._new(readerImpl).arg(vv1).arg(expr));
-        // else
-        // generator.getSetupBlock().assign(complexReader,
-        // JExpr.cast(readerImpl, expr));
-        //
-        // expr = complexReader;
-
         if (complex || repeated) {
           MajorType finalType = e.getFieldId().getFinalType();
           // //
-          JType readerImpl = generator.getModel()._ref(
-              TypeHelper.getReaderClassName(finalType.getMinorType(), finalType.getMode(), lastWasArray));
-          JVar complexReader = generator.declareClassField("reader", readerImpl);
+//          JType readerImpl = generator.getModel()._ref(
+//              TypeHelper.getReaderClassName(finalType.getMinorType(), finalType.getMode(), lastWasArray));
+//          JVar complexReader = generator.declareClassField("reader", readerImpl);
+          JVar complexReader = generator.declareClassField("reader", generator.getModel()._ref(FieldReader.class));
 
-          if (hasReadPath)
-            generator.getEvalBlock().assign(complexReader, JExpr.cast(readerImpl, fieldReaderOut));
-          else {
-            generator.getSetupBlock().assign(complexReader, JExpr.cast(readerImpl, expr));
-          }
+          JConditional jc = generator.getEvalBlock()._if(isNull.eq(JExpr.lit(0)));
+
+          JClass nrClass = generator.getModel().ref(org.apache.drill.exec.vector.complex.impl.NullReader.class);
+          JExpression nullReader = nrClass.staticRef("INSTANCE");
+
+          //if (hasReadPath) {
+            jc._then().assign(complexReader, expr);
+            jc._else().assign(complexReader, nullReader);
+          //}
 
           HoldingContainer hc = new HoldingContainer(e.getMajorType(), complexReader, null, null, false);
           return hc;
           // //eval.assign(out.getHolder().ref("reader"), expr);
         } else {
           if (seg != null) {
-            eval.add(expr.invoke("read").arg(JExpr.lit(seg.getArraySegment().getIndex())).arg(out.getHolder()));
+            generator.getEvalBlock().add(expr.invoke("read").arg(JExpr.lit(seg.getArraySegment().getIndex())).arg(out.getHolder()));
           } else {
-            eval.add(expr.invoke("read").arg(out.getHolder()));
+            generator.getEvalBlock().add(expr.invoke("read").arg(out.getHolder()));
           }
         }
 
