@@ -402,8 +402,6 @@ public class EvaluationVisitor {
         int listNum = 0;
         boolean lastWasArray = false;
 
-
-
         while (seg != null) {
           if (seg.isArray()) {
             lastWasArray = true;
@@ -414,8 +412,6 @@ public class EvaluationVisitor {
             JVar list = generator.declareClassField("list", generator.getModel()._ref(FieldReader.class));
             generator.getSetupBlock().assign(list, expr);
             expr = list;
-
-            //eval.assign(list, expr);
 
             // if this is an array, set a single position for the expression to
             // allow us to read the right data lower down.
@@ -434,6 +430,10 @@ public class EvaluationVisitor {
             JBlock ifNoVal = eval._if(desiredIndex.ne(currentIndex))._then().block();
             // if(!complex) ifNoVal.assign(out.getIsSet(), JExpr.lit(0));
             // ifNoVal._break(label);
+            if (out.isOptional()) {
+              ifNoVal.assign(out.getIsSet(), JExpr.lit(0));
+            }
+            
             ifNoVal.assign(isNull,  JExpr.lit(1));
             ifNoVal._break(label);
 
@@ -473,9 +473,9 @@ public class EvaluationVisitor {
           // //eval.assign(out.getHolder().ref("reader"), expr);
         } else {
           if (seg != null) {
-            generator.getEvalBlock().add(expr.invoke("read").arg(JExpr.lit(seg.getArraySegment().getIndex())).arg(out.getHolder()));
+            eval.add(expr.invoke("read").arg(JExpr.lit(seg.getArraySegment().getIndex())).arg(out.getHolder()));
           } else {
-            generator.getEvalBlock().add(expr.invoke("read").arg(out.getHolder()));
+            eval.add(expr.invoke("read").arg(out.getHolder()));
           }
         }
 

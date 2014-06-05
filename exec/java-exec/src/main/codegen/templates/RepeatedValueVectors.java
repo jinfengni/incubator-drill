@@ -341,12 +341,17 @@ package org.apache.drill.exec.vector;
     public void get(int index, int positionIndex, ${minor.class}Holder holder) {
       int offset = offsets.getAccessor().get(index);
       assert offset >= 0;
+      assert positionIndex < getCount(index);
       values.getAccessor().get(offset + positionIndex, holder);
     }
     
     public void get(int index, int positionIndex, Nullable${minor.class}Holder holder) {
       int offset = offsets.getAccessor().get(index);
       assert offset >= 0;
+      if (positionIndex >= getCount(index)) {
+        holder.isSet = 0;
+        return;
+      }
       values.getAccessor().get(offset + positionIndex, holder);
     }
 

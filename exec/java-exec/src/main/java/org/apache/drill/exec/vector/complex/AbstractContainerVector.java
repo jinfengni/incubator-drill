@@ -52,13 +52,13 @@ public abstract class AbstractContainerVector implements ValueVector{
 
       if(seg.isLastPath()){
 
-        if(addToBreadCrumb) builder.intermediateType(this.getField().getType());
+        //if(addToBreadCrumb) builder.intermediateType(this.getField().getType());
 
         return builder //
           .remainder(seg) //
           .withIndex() //
           .finalType(getLastPathType()) //
-          .secondaryFinal(this.getField().getType()) //
+          //.secondaryFinal(this.getField().getType()) //
           .build();
       }else{
         if(addToBreadCrumb){
@@ -77,12 +77,13 @@ public abstract class AbstractContainerVector implements ValueVector{
     VectorWithOrdinal vord = getVectorWithOrdinal(seg.isArray() ? null : seg.getNameSegment().getPath());
     if(vord == null) return null;
 
+    ValueVector v = vord.vector;
+
     if(addToBreadCrumb){
-      builder.intermediateType(this.getField().getType());
+      //builder.intermediateType(this.getField().getType());
+      builder.intermediateType(v.getField().getType());
       builder.addId(vord.ordinal);
     }
-
-    ValueVector v = vord.vector;
 
     if(v instanceof AbstractContainerVector){
       // we're looking for a multi path.
