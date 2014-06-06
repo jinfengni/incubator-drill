@@ -29,10 +29,12 @@ import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.ClassGenerator;
 import org.apache.drill.exec.expr.ClassGenerator.BlockType;
 import org.apache.drill.exec.expr.ClassGenerator.HoldingContainer;
+import org.apache.drill.exec.expr.TypeHelper;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.vector.complex.impl.NullableBigIntSingularReaderImpl;
+import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -131,9 +133,10 @@ public abstract class DrillFuncHolder {
         ValueReference parameter = parameters[i];
         HoldingContainer inputVariable = inputVariables[i];
         if (parameter.isFieldReader && ! Types.isComplex(inputVariable.getMajorType()) && ! Types.isRepeated(inputVariable.getMajorType())) {
-          JType singularReaderClass = g.getModel()._ref(NullableBigIntSingularReaderImpl.class);          
-          //JExpr._new(writerImpl).arg(vv).arg(JExpr._null())
-          sub.decl(singularReaderClass, parameter.name, JExpr._new(singularReaderClass).arg(inputVariable.getHolder()));
+          JType singularReaderClass = g.getModel()._ref(TypeHelper.getSingularReaderImpl(inputVariable.getMajorType().getMinorType(), 
+                                                                                         inputVariable.getMajorType().getMode()));   
+          JType fieldReadClass = g.getModel()._ref(FieldReader.class);
+          sub.decl(fieldReadClass, parameter.name, JExpr._new(singularReaderClass).arg(inputVariable.getHolder()));
         } else {
           sub.decl(inputVariable.getHolder().type(), parameter.name, inputVariable.getHolder());
         }

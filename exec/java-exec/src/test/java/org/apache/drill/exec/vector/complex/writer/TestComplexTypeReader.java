@@ -38,21 +38,26 @@ public class TestComplexTypeReader extends BaseTestQuery{
     test("select convert_to(x, 'JSON') from cp.`jsoninput/input2.json`;");
   }
 
-
   @Test
-  @Ignore //Map (mapfield) -> json.  Missing function Impl.
+  //Map (mapfield) -> json.  
   public void testX3() throws Exception{
     test("select convert_to(x['y'], 'JSON') from cp.`jsoninput/input2.json`;");
   }
 
   @Test
-  @Ignore //RepeatedMap (Map  (mapfield)) -> Json. Not Working! Missing Fucntion Implementation.
+  //float value -> json
   public void testX4() throws Exception{
-    test("select convert_to(z[0]['orange'], 'JSON') from cp.`jsoninput/input2.json`;");
+    test("select convert_to(`float`, 'JSON') from cp.`jsoninput/input2.json`;");
   }
 
   @Test
-  // repeated map -> json. Works fine.
+  //integer value -> json
+  public void testX5() throws Exception{
+    test("select convert_to(`integer`, 'JSON') from cp.`jsoninput/input2.json`;");
+  }
+  
+  @Test
+  // repeated map -> json. 
   public void testX6() throws Exception{
     test("select convert_to(z, 'JSON')  from cp.`jsoninput/input2.json`;");
   }

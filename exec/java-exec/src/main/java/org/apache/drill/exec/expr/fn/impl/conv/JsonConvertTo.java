@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.drill.exec.expr.fn.impl;
+package org.apache.drill.exec.expr.fn.impl.conv;
 
 import java.io.ByteArrayOutputStream;
 
@@ -37,15 +37,11 @@ import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
 import com.google.common.base.Charsets;
 
-public class JsonConvertFunctions {
+public class JsonConvertTo {
 
- static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(StringFunctions.class);
+ static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(JsonConvertTo.class);
 
-  private JsonConvertFunctions(){}
-
-  /*
-   * convert mock functions.
-   */
+  private JsonConvertTo(){}
 
   @FunctionTemplate(name = "convert_toJSON", scope = FunctionScope.SIMPLE, nulls = NullHandling.NULL_IF_NULL)
   public static class ConvertToJson implements DrillSimpleFunc{
@@ -55,12 +51,11 @@ public class JsonConvertFunctions {
     @Workspace ByteBuf buffer;
 
     public void setup(RecordBatch incoming){
-      buffer = io.netty.buffer.Unpooled.wrappedBuffer(new byte [8000]);
+      //buffer = io.netty.buffer.Unpooled.wrappedBuffer(new byte [8000]);
+      buffer = org.apache.drill.exec.util.ConvertUtil.createBuffer(256);
     }
 
     public void eval(){
-      //String typeStr = input.getType().toString();
-
       out.buffer = buffer;
       out.start = 0;
 
@@ -77,10 +72,6 @@ public class JsonConvertFunctions {
 
       out.buffer.setBytes(out.start, bytea);
       out.end = bytea.length;
-
-//      System.out.println("byte = " + new String(bytea));
-//      System.out.println("Read type = " + input.getType().toString());
-
     }
   }
 }

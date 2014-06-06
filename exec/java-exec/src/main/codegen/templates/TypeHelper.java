@@ -204,6 +204,25 @@ public class TypeHelper {
       }
       throw new UnsupportedOperationException();    
   }
+
+  public static Class<?> getSingularReaderImpl( MinorType type, DataMode mode){
+    switch (type) {      
+<#list vv.types as type>
+  <#list type.minor as minor>
+      case ${minor.class?upper_case}:
+        switch (mode) {
+          case REQUIRED:
+            return ${minor.class}SingularReaderImpl.class;
+          case OPTIONAL:
+            return Nullable${minor.class}SingularReaderImpl.class;
+        }
+  </#list>
+</#list>
+      default:
+        break;
+      }
+      throw new UnsupportedOperationException();    
+  }
   
   public static JType getHolderType(JCodeModel model, MinorType type, DataMode mode){
     switch (type) {
