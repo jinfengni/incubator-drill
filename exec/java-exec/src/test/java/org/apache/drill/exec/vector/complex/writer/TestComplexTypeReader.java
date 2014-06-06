@@ -124,11 +124,5 @@ public class TestComplexTypeReader extends BaseTestQuery{
   public void testZ3() throws Exception{
     test("select rl[0][1000] from cp.`jsoninput/input2.json`;");
   }
-  
-  @Test
-  //repeated list (Repeated BigInt ( BigInt) ) ) --> Json. The second index is out of boundary
-  public void testU() throws Exception{
-    test("select nestrl['x'][1][0] from dfs.`/Users/jni/work/query/ComplexReader/inputMy.json`;");
-  }
-  
+    
 }

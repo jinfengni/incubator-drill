@@ -39,6 +39,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import org.apache.drill.exec.expr.holders.*;
+import org.apache.hadoop.io.Text;
 import org.joda.time.Period;
 import org.mortbay.jetty.servlet.Holder;
 
@@ -78,6 +79,69 @@ public class ${nullMode}${name}SingularReaderImpl extends AbstractFieldReader {
   
   @Override
   public ${friendlyType} read${safeType}(){   
+    <#if nullMode == "Nullable">
+    
+    if (!holder.isSet()) {
+      return null;
+    }
+    </#if>
+    
+    <#if type.major == "VarLen">
+    
+      int length = holder.end - holder.start;
+      byte[] value = new byte [length];
+      holder.buffer.getBytes(holder.start, value, 0, length);
+    
+      <#if minor.class == "VarBinary">
+      return value;
+      <#elseif minor.class == "Var16Char">
+      return new String(value);
+      <#elseif minor.class == "VarChar">
+      Text text = new Text();
+      text.set(value);
+      return text;
+      </#if>
+    
+    <#elseif minor.class == "Interval">      
+      Period p = new Period();
+      return p.plusMonths(holder.months).plusDays(holder.days).plusMillis(holder.milliSeconds);
+    
+    <#elseif minor.class == "IntervalDay">
+      Period p = new Period();
+      return p.plusDays(holder.days).plusMillis(holder.milliSeconds);
+   
+    <#elseif minor.class == "Decimal9" ||  
+             minor.class == "Decimal18" >
+      BigInteger value = BigInteger.valueOf(holder.value);
+      return new BigDecimal(value, holder.scale);
+    
+    <#elseif minor.class == "Decimal28Dense" ||
+             minor.class == "Decimal38Dense">
+      return org.apache.drill.common.util.DecimalUtility.getBigDecimalFromDense(holder.buffer, 
+                                                                                holder.start, 
+                                                                                holder.nDecimalDigits, 
+                                                                                holder.scale, 
+                                                                                holder.maxPrecision, 
+                                                                                holder.WIDTH);
+    
+    <#elseif minor.class == "Decimal28Sparse" ||
+             minor.class == "Decimal38Sparse">
+      return org.apache.drill.common.util.DecimalUtility.getBigDecimalFromSparse(holder.buffer, 
+                                                                                 holder.start, 
+                                                                                 holder.nDecimalDigits, 
+                                                                                 holder.scale);
+         
+    <#elseif minor.class == "Bit" >
+      return new Boolean(holder.value != 0);
+    <#else>  
+      ${friendlyType} value = new ${friendlyType}(this.holder.value);
+      return value;
+    </#if>  
+      
+  }
+
+  @Override
+  public Object readObject(){   
     
     <#if nullMode == "Nullable">
     
@@ -97,7 +161,9 @@ public class ${nullMode}${name}SingularReaderImpl extends AbstractFieldReader {
       <#elseif minor.class == "Var16Char">
       return new String(value);
       <#elseif minor.class == "VarChar">
-      return new Text();
+      Text text = new Text();
+      text.set(value);
+      return text;
       </#if>
     
     <#elseif minor.class == "Interval">      
@@ -113,20 +179,30 @@ public class ${nullMode}${name}SingularReaderImpl extends AbstractFieldReader {
       BigInteger value = BigInteger.valueOf(holder.value);
       return new BigDecimal(value, holder.scale);
     
-    <#elseif minor.class == "Decimal28Dense"  ||    
-             minor.class == "Decimal28Sparse" || 
-             minor.class == "Decimal38Dense"  || 
-             minor.class == "Decimal38Sparse" >
-      return null;
+    <#elseif minor.class == "Decimal28Dense" ||
+             minor.class == "Decimal38Dense">
+      return org.apache.drill.common.util.DecimalUtility.getBigDecimalFromDense(holder.buffer, 
+                                                                                holder.start, 
+                                                                                holder.nDecimalDigits, 
+                                                                                holder.scale, 
+                                                                                holder.maxPrecision, 
+                                                                                holder.WIDTH);
+    
+    <#elseif minor.class == "Decimal28Sparse" ||
+             minor.class == "Decimal38Sparse">
+      return org.apache.drill.common.util.DecimalUtility.getBigDecimalFromSparse(holder.buffer, 
+                                                                                 holder.start, 
+                                                                                 holder.nDecimalDigits, 
+                                                                                 holder.scale);
+         
     <#elseif minor.class == "Bit" >
       return new Boolean(holder.value != 0);
     <#else>  
       ${friendlyType} value = new ${friendlyType}(this.holder.value);
       return value;
-    </#if>
-  
+    </#if>  
   }
-         
+  
 }
 
 </#list>
