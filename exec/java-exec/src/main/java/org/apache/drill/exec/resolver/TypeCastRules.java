@@ -799,10 +799,10 @@ public class TypeCastRules {
 
       //@Param FieldReader will match any type
       if (holder.isFieldReader(i)) {
-        if (Types.isComplex(call.args.get(i).getMajorType()) ||Types.isRepeated(call.args.get(i).getMajorType()) )
+//        if (Types.isComplex(call.args.get(i).getMajorType()) ||Types.isRepeated(call.args.get(i).getMajorType()) )
           continue;
-        else
-          return -1;
+//        else
+//          return -1;
       }
 
       if (!TypeCastRules.isCastable(argType, parmType, holder.getNullHandling())) {

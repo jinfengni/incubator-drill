@@ -32,12 +32,15 @@ import org.apache.drill.exec.expr.ClassGenerator.HoldingContainer;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
+import org.apache.drill.exec.vector.complex.impl.NullableBigIntSingularReaderImpl;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.sun.codemodel.JBlock;
+import com.sun.codemodel.JExpr;
+import com.sun.codemodel.JType;
 import com.sun.codemodel.JVar;
 
 public abstract class DrillFuncHolder {
@@ -127,7 +130,13 @@ public abstract class DrillFuncHolder {
 
         ValueReference parameter = parameters[i];
         HoldingContainer inputVariable = inputVariables[i];
-        sub.decl(inputVariable.getHolder().type(), parameter.name, inputVariable.getHolder());
+        if (parameter.isFieldReader && ! Types.isComplex(inputVariable.getMajorType()) && ! Types.isRepeated(inputVariable.getMajorType())) {
+          JType singularReaderClass = g.getModel()._ref(NullableBigIntSingularReaderImpl.class);          
+          //JExpr._new(writerImpl).arg(vv).arg(JExpr._null())
+          sub.decl(singularReaderClass, parameter.name, JExpr._new(singularReaderClass).arg(inputVariable.getHolder()));
+        } else {
+          sub.decl(inputVariable.getHolder().type(), parameter.name, inputVariable.getHolder());
+        }
       }
     }
 

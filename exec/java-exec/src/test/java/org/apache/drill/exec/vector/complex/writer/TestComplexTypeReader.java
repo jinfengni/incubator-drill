@@ -40,7 +40,7 @@ public class TestComplexTypeReader extends BaseTestQuery{
 
 
   @Test
-  @Ignore  //Map (mapfield) -> json.  Missing function Impl.
+  @Ignore //Map (mapfield) -> json.  Missing function Impl.
   public void testX3() throws Exception{
     test("select convert_to(x['y'], 'JSON') from cp.`jsoninput/input2.json`;");
   }
@@ -64,10 +64,9 @@ public class TestComplexTypeReader extends BaseTestQuery{
   }
 
   @Test
-  @Ignore
   //repeated list (Repeated BigInt) -> json
   public void testX8() throws Exception{
-    test("select convert_to(rl[1][2], 'JSON') from cp.`jsoninput/input2.json`;");
+    test("select convert_to(rl[0][1], 'JSON') from cp.`jsoninput/input2.json`;");
   }
 
   @Test
@@ -98,7 +97,7 @@ public class TestComplexTypeReader extends BaseTestQuery{
   }
 
   @Test
-  @Ignore //repeated list (Repeated BigInt) -> json
+  //repeated list (Repeated BigInt) -> json
   public void testZ() throws Exception{
     test("select rl[1] from cp.`jsoninput/input2.json`;");
   }
