@@ -38,7 +38,11 @@ public class MergingCollector extends AbstractDataCollector{
 
   
   public void streamFinished(int minorFragmentId) {
-    if(streamsRunning.decrementAndGet() == 0) buffers[0].finished();
+    logger.debug("streamFinished for minorFragmentID" +minorFragmentId );
+    if(streamsRunning.decrementAndGet() == 0) { 
+      buffers[0].finished();
+      logger.debug("buffer finished. MinorFragmentID = " +minorFragmentId );    
+    }
   }
 
   

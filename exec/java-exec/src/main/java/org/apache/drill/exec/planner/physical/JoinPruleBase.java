@@ -88,16 +88,41 @@ public abstract class JoinPruleBase extends Prule {
     return false;
   }
 
+  protected void createDistBothPlan(RelOptRuleCall call, DrillJoinRel join,
+      PhysicalJoinType physicalJoinType,
+      RelNode left, RelNode right,
+      RelCollation collationLeft, RelCollation collationRight)throws InvalidRelException {
+ 
+    DrillDistributionTrait hashLeftPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getLeftKeys())));
+    DrillDistributionTrait hashRightPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getRightKeys())));
+ 
+    createDistBothPlan(call, join, physicalJoinType, left, right, collationLeft, collationRight, hashLeftPartition, hashRightPartition);
+    
+    assert (join.getLeftKeys().size() == join.getRightKeys().size());
+    
+    int numJoinKeys = join.getLeftKeys().size();
+    if (numJoinKeys > 1) {
+      for (int i = 0; i< numJoinKeys; i++) {
+        hashLeftPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getLeftKeys().subList(i, i+1))));
+        hashRightPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getRightKeys().subList(i, i+1))));
+        
+        createDistBothPlan(call, join, physicalJoinType, left, right, collationLeft, collationRight, hashLeftPartition, hashRightPartition);
+      }
+    }
+  }
+
+      
   // Create join plan with both left and right children hash distributed. If the physical join type
   // is MergeJoin, a collation must be provided for both left and right child and the plan will contain
   // sort converter if necessary to provide the collation.
   protected void createDistBothPlan(RelOptRuleCall call, DrillJoinRel join,
       PhysicalJoinType physicalJoinType,
       RelNode left, RelNode right,
-      RelCollation collationLeft, RelCollation collationRight) throws InvalidRelException {
+      RelCollation collationLeft, RelCollation collationRight,
+      DrillDistributionTrait hashLeftPartition, DrillDistributionTrait hashRightPartition) throws InvalidRelException {
 
-    DrillDistributionTrait hashLeftPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getLeftKeys())));
-    DrillDistributionTrait hashRightPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getRightKeys())));
+    //DrillDistributionTrait hashLeftPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getLeftKeys())));
+    //DrillDistributionTrait hashRightPartition = new DrillDistributionTrait(DrillDistributionTrait.DistributionType.HASH_DISTRIBUTED, ImmutableList.copyOf(getDistributionField(join.getRightKeys())));
     RelTraitSet traitsLeft = null;
     RelTraitSet traitsRight = null;
 

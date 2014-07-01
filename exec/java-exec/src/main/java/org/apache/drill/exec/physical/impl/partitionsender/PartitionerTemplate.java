@@ -128,10 +128,12 @@ public abstract class PartitionerTemplate implements Partitioner {
     for (OutgoingRecordBatch batch : outgoingBatches) {
       logger.debug("Attempting to flush all outgoing batches");
       if (isLastBatch) {
+        logger.debug("this is the last batch");
         batch.setIsLast();
       }
       batch.flush();
       if (schemaChanged) {
+        logger.debug("this is the schameChanged");
         batch.resetBatch();
         batch.initializeBatch();
       }

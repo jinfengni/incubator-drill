@@ -71,7 +71,8 @@ public class DrillDistributionTrait implements RelTrait {
           // A subset of the required distribution columns can satisfy (subsume) the requirement
           // e.g: required distribution: {a, b, c}
           // Following can satisfy the requirements: {a}, {b}, {c}, {a, b}, {b, c}, {a, c} or {a, b, c}
-          return (requiredFields.containsAll(thisFields));
+          //return (requiredFields.containsAll(thisFields));
+          return this.equals(trait);
         }
         else if (requiredDist == DistributionType.RANDOM_DISTRIBUTED) {
           return true; // hash distribution subsumes random distribution and ANY distribution

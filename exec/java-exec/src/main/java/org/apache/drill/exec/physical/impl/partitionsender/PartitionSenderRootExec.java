@@ -254,6 +254,7 @@ public class PartitionSenderRootExec extends BaseRootExec {
               operator.getOppositeMajorFragmentId(),
               fieldId,
               incoming.getSchema());
+      logger.debug("sending emptyBatch from frag:" + handle.getMajorFragmentId() + ":" + handle.getMinorFragmentId() + " to frag:" + opposite.getMajorFragmentId() + ":" + opposite.getMinorFragmentId());
       stats.startWait();
       try {
         tunnel.sendRecordBatch(statusHandler, writableBatch);
