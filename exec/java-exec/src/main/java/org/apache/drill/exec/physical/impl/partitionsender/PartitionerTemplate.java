@@ -275,6 +275,7 @@ public abstract class PartitionerTemplate implements Partitioner {
           stats.stopWait();
         }
         this.sendCount.increment();
+        logger.debug("Flush requested. recordCount = " + recordCount + "fraq:" + handle.getMajorFragmentId() + ":" +handle.getMinorFragmentId() + " to frag:" + operator.getOppositeMajorFragmentId() + ":" + oppositeMinorFragmentId );
       } else {
         logger.debug("Flush requested on an empty outgoing record batch" + (isLast ? " (last batch)" : ""));
         if (isLast) {
