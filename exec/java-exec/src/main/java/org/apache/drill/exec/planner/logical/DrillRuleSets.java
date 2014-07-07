@@ -64,8 +64,8 @@ public class DrillRuleSets {
   public static final RuleSet DRILL_BASIC_RULES = new DrillRuleSet(ImmutableSet.of( //
       // Add support for WHERE style joins.
       PushFilterPastProjectRule.INSTANCE,
-      PushFilterPastJoinRule.FILTER_ON_JOIN,
-      PushFilterPastJoinRule.JOIN,
+      DrillPushFilterPastJoinRule.FILTER_ON_JOIN,
+      DrillPushFilterPastJoinRule.JOIN,
       PushJoinThroughJoinRule.RIGHT,
       PushJoinThroughJoinRule.LEFT,
       // End support for WHERE style joins.
