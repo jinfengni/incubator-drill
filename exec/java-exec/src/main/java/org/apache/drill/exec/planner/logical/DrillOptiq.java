@@ -38,6 +38,7 @@ import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.reltype.RelDataTypeField;
+import org.eigenbase.rex.RexBuilder;
 import org.eigenbase.rex.RexCall;
 import org.eigenbase.rex.RexCorrelVariable;
 import org.eigenbase.rex.RexDynamicParam;
@@ -163,6 +164,12 @@ public class DrillOptiq {
               .setIfCondition(new IfCondition(caseArgs.get(i + 1), caseArgs.get(i))).build();
           }
           return elseExpression;
+
+        case OTHER_FUNCTION:
+          if (call.getOperator() == RexBuilder.GET_OPERATOR) {
+            final RexLiteral literal = (RexLiteral) call.getOperands().get(1);
+            return FieldReference.getWithQuotedRef(literal.getValue2().toString());
+          }
         }
 
         if (call.getOperator() == SqlStdOperatorTable.ITEM) {

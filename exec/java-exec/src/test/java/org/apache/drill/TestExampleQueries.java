@@ -283,4 +283,66 @@ public class TestExampleQueries extends BaseTestQuery{
     test("select cast(r_name as varchar(20)) from cp.`tpch/region.parquet` order by r_name");
   }
 
+  // * in SubQ, View  or CTE.
+  @Test // regular columns appear in select clause, where, group by, order by.
+  public void testSelStarSubQParquet() throws Exception {
+    test("select n_regionkey, count(*) cnt from (select * from cp.`tpch/nation.parquet`) where n_nationkey > 0 group by n_regionkey order by cnt" );
+  }
+
+  @Test  // use table alias
+  public void testSelStarSubQParquet2() throws Exception {
+    test("select n_nationkey, t.n_name, t.n_regionkey from (select * from cp.`tpch/nation.parquet`) t " );
+  }
+
+  @Test
+  public void testSelStarSubQJson() throws Exception {
+    test("select first_name, last_name, employee_id from (select * from cp.`employee.json`) limit 2" );
+  }
+
+  @Test  // use table alias
+  public void testSelStardSubQJson2() throws Exception {
+    test("select t.first_name, t.last_name, 100, t.employee_id + 200 from (select * from cp.`employee.json`) t limit 2" );
+  }
+
+  @Test  // select star for a SchemaTable.
+  public void testSelStarSubQSchemaTable() throws Exception {
+    test("select name, kind, type from (select * from sys.options);");
+  }
+
+  @Test // DRILL-595
+  public void testDRILL_595WithClause() throws Exception {
+    test("with x as (select * from cp.`region.json`) select region_id, sales_city from x;");
+  }
+
+  @Test // DRILL-595
+  public void testDRILL_595SubQ() throws Exception {
+    test("select region_id, sales_city from ( select * from cp.`region.json`);");
+  }
+
+  @Test // DRILL-811
+  public void testDRILL_811Parquet() throws Exception {
+    test("use dfs.tmp");
+    test("create view nation_view as select * from cp.`tpch/nation.parquet`;");
+    test("select n_nationkey, n_name, n_regionkey from nation_view ");
+    test("drop view nation_view ");
+  }
+
+  @Test  // DRILL-811
+  public void testDRILL_811Json() throws Exception {
+    test("use dfs.tmp");
+    test("create view region_view as select * from cp.`region.json`;");
+    test("select sales_city, sales_region from region_view where region_id > 50 order by sales_country; ");
+    test("drop view region_view ");
+  }
+
+//  @Test  // DRILL-811
+//  public void testDRILL_811Join() throws Exception {
+//    test("use dfs.tmp");
+//    test("create view nation_view as select * from cp.`tpch/nation.parquet`;");
+//    test("create view region_view as select * from cp.`region.json`;");
+//    test("select r.region_id, r.sales_city, n.n_regionkey from region_view r join nation_view n on r.region_id = n.n_regionkey ");
+//    test("drop view region_view ");
+//    test("drop view nation_view ");
+//  }
+
 }

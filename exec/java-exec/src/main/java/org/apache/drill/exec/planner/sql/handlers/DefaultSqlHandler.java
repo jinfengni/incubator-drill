@@ -41,24 +41,21 @@ import org.apache.drill.exec.planner.logical.DrillStoreRel;
 import org.apache.drill.exec.planner.logical.RewriteProjectRel;
 import org.apache.drill.exec.planner.physical.DrillDistributionTrait;
 import org.apache.drill.exec.planner.physical.PhysicalPlanCreator;
-import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.planner.physical.explain.PrelSequencer;
 import org.apache.drill.exec.planner.physical.visitor.ExcessiveExchangeIdentifier;
 import org.apache.drill.exec.planner.physical.visitor.FinalColumnReorderer;
 import org.apache.drill.exec.planner.physical.visitor.ComplexToJsonPrelVisitor;
 import org.apache.drill.exec.planner.physical.visitor.JoinPrelRenameVisitor;
-import org.apache.drill.exec.planner.physical.visitor.ProducerConsumerPrelVisitor;
 import org.apache.drill.exec.planner.physical.visitor.RelUniqifier;
 import org.apache.drill.exec.planner.physical.visitor.SelectionVectorPrelVisitor;
-import org.apache.drill.exec.planner.sql.DrillOperatorTable;
 import org.apache.drill.exec.planner.physical.visitor.StarColumnConverter;
 import org.apache.drill.exec.planner.sql.DrillSqlWorker;
+import org.apache.drill.exec.planner.sql.rewriter.StarExpander;
 import org.apache.drill.exec.util.Pointer;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptUtil;
 import org.eigenbase.relopt.RelTraitSet;
-import org.eigenbase.rex.RexBuilder;
 import org.eigenbase.sql.SqlExplainLevel;
 import org.eigenbase.sql.SqlNode;
 
@@ -115,6 +112,11 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
     SqlNode rewrittenSqlNode = rewrite(sqlNode);
     SqlNode validated = validateNode(rewrittenSqlNode);
+
+    // star column special processing : first expand, then call validation for second time.
+    SqlNode expandedNode = expandStar(validated);
+    validated = validateNode(expandedNode);
+
     RelNode rel = convertToRel(validated);
 
     /* Traverse the tree and replace the convert_from, convert_to function to actual implementations
@@ -135,6 +137,10 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
   protected SqlNode validateNode(SqlNode sqlNode) throws ValidationException, RelConversionException {
     return planner.validate(sqlNode);
+  }
+
+  protected SqlNode expandStar(SqlNode sqlNode) {
+    return new StarExpander(planner.getValidator()).expandStar(sqlNode);
   }
 
   protected RelNode convertToRel(SqlNode node) throws RelConversionException {
@@ -275,4 +281,6 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   public SqlNode rewrite(SqlNode node) throws RelConversionException {
     return node;
   }
+
+
 }
