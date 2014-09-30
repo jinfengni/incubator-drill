@@ -51,6 +51,10 @@ public class Types {
     return type.getMode() == REPEATED ;
   }
 
+  public static boolean isRepeatedOrComplex(MajorType type) {
+    return isRepeated(type) || isComplex(type);
+  }
+
   public static boolean isNumericType(MajorType type) {
     if (type.getMode() == REPEATED) {
       return false;

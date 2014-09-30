@@ -28,6 +28,7 @@ import org.apache.drill.common.expression.FunctionCall;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.util.DecimalUtility;
@@ -848,10 +849,14 @@ public class TypeCastRules {
 
       //@Param FieldReader will match any type
       if (holder.isFieldReader(i)) {
-//        if (Types.isComplex(call.args.get(i).getMajorType()) ||Types.isRepeated(call.args.get(i).getMajorType()) )
           continue;
-//        else
-//          return -1;
+      }
+
+      //No implicit cast, When either @Param or @arg is of complex /repeated type.
+      if (Types.isRepeatedOrComplex(parmType) || Types.isRepeatedOrComplex(argType)) {
+        if (! parmType.equals(argType)) {
+          return -1;
+        }
       }
 
       if (!TypeCastRules.isCastableWithNullHandling(argType, parmType, holder.getNullHandling())) {
@@ -892,13 +897,6 @@ public class TypeCastRules {
       // Only when the function uses NULL_IF_NULL, nullable and non-nullable are inter-changable.
       // Otherwise, the function implementation is not a match.
       if (argType.getMode() != parmType.getMode()) {
-        // TODO - this does not seem to do what it is intended to
-//        if (!((holder.getNullHandling() == NullHandling.NULL_IF_NULL) &&
-//            (argType.getMode() == DataMode.OPTIONAL ||
-//             argType.getMode() == DataMode.REQUIRED ||
-//             parmType.getMode() == DataMode.OPTIONAL ||
-//             parmType.getMode() == DataMode.REQUIRED )))
-//          return -1;
         // if the function is designed to take optional with custom null handling, and a required
         // is being passed, increase the cost to account for a null check
         // this allows for a non-nullable implementation to be preferred
