@@ -35,6 +35,7 @@ import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptRule;
 import org.eigenbase.relopt.RelOptRuleCall;
 import org.eigenbase.relopt.RelOptRuleOperand;
+import org.eigenbase.relopt.RelOptUtil;
 import org.eigenbase.reltype.RelDataType;
 import org.eigenbase.reltype.RelDataTypeFactory;
 import org.eigenbase.reltype.RelDataTypeField;
@@ -168,7 +169,7 @@ public class DrillReduceAggregatesRule extends RelOptRule {
         inputExprs.size() - input.getRowType().getFieldCount();
     if (extraArgCount > 0) {
       input =
-          CalcRel.createProject(
+          RelOptUtil.createProject(
               input,
               inputExprs,
               CompositeList.of(
@@ -182,7 +183,7 @@ public class DrillReduceAggregatesRule extends RelOptRule {
             oldAggRel, input, newCalls);
 
     RelNode projectRel =
-        CalcRel.createProject(
+        RelOptUtil.createProject(
             newAggRel,
             projList,
             oldAggRel.getRowType().getFieldNames());

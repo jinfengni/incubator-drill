@@ -23,6 +23,7 @@ import org.apache.drill.common.logical.data.Filter;
 import org.apache.drill.common.logical.data.LogicalOperator;
 import org.apache.drill.exec.planner.common.DrillFilterRelBase;
 import org.apache.drill.exec.planner.torel.ConversionContext;
+import org.eigenbase.rel.FilterRelBase;
 import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
@@ -36,8 +37,8 @@ public class DrillFilterRel extends DrillFilterRelBase implements DrillRel {
   }
 
   @Override
-  public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    return new DrillFilterRel(getCluster(), traitSet, sole(inputs), getCondition());
+  public FilterRelBase copy(RelTraitSet traitSet, RelNode input, RexNode condition) {
+    return new DrillFilterRel(getCluster(), traitSet, input, condition);
   }
 
   @Override
