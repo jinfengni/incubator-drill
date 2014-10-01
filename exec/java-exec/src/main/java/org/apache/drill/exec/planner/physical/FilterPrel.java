@@ -28,6 +28,7 @@ import org.apache.drill.exec.planner.common.DrillFilterRelBase;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
 import org.apache.drill.exec.planner.physical.visitor.PrelVisitor;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
+import org.eigenbase.rel.FilterRelBase;
 import org.eigenbase.rel.RelNode;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelTraitSet;
@@ -40,8 +41,8 @@ public class FilterPrel extends DrillFilterRelBase implements Prel {
   }
 
   @Override
-  public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-    return new FilterPrel(getCluster(), traitSet, sole(inputs), getCondition());
+  public FilterRelBase copy(RelTraitSet traitSet, RelNode input, RexNode condition) {
+    return new FilterPrel(getCluster(), traitSet, input, condition);
   }
 
   @Override

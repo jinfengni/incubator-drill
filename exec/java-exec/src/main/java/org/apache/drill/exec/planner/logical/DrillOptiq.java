@@ -95,23 +95,7 @@ public class DrillOptiq {
       case BINARY:
         logger.debug("Binary");
         final String funcName = call.getOperator().getName().toLowerCase();
-        List<LogicalExpression> args = Lists.newArrayList();
-        for(RexNode r : call.getOperands()){
-          args.add(r.accept(this));
-        }
-
-        if (FunctionCallFactory.isBooleanOperator(funcName)) {
-          LogicalExpression func = FunctionCallFactory.createBooleanOperator(funcName, args);
-          return func;
-        } else {
-          args = Lists.reverse(args);
-          LogicalExpression lastArg = args.get(0);
-          for(int i = 1; i < args.size(); i++){
-            lastArg = FunctionCallFactory.createExpression(funcName, Lists.newArrayList(args.get(i), lastArg));
-          }
-
-          return lastArg;
-        }
+        return doFunction(call, funcName);
       case FUNCTION:
       case FUNCTION_ID:
         logger.debug("Function");
@@ -189,12 +173,36 @@ public class DrillOptiq {
           }
         }
 
+        if (call.getOperator() == SqlStdOperatorTable.DATETIME_PLUS) {
+          return doFunction(call, "+");
+        }
+
         // fall through
       default:
         throw new AssertionError("todo: implement syntax " + syntax + "(" + call + ")");
       }
     }
 
+    private LogicalExpression doFunction(RexCall call, String funcName) {
+      List<LogicalExpression> args = Lists.newArrayList();
+      for(RexNode r : call.getOperands()){
+        args.add(r.accept(this));
+      }
+
+      if (FunctionCallFactory.isBooleanOperator(funcName)) {
+        LogicalExpression func = FunctionCallFactory.createBooleanOperator(funcName, args);
+        return func;
+      } else {
+        args = Lists.reverse(args);
+        LogicalExpression lastArg = args.get(0);
+        for(int i = 1; i < args.size(); i++){
+          lastArg = FunctionCallFactory.createExpression(funcName, Lists.newArrayList(args.get(i), lastArg));
+        }
+
+        return lastArg;
+      }
+
+    }
     private LogicalExpression doUnknown(Object o){
       logger.warn("Doesn't currently support consumption of {}.", o);
       return NullExpression.INSTANCE;

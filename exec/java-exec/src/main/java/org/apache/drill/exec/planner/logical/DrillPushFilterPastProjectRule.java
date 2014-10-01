@@ -109,7 +109,7 @@ public class DrillPushFilterPastProjectRule extends RelOptRule {
 
 
     ProjectRel newProjRel =
-        (ProjectRel) CalcRel.createProject(
+        (ProjectRel) RelOptUtil.createProject(
             newFilterRel,
             projRel.getNamedProjects(),
             false);
