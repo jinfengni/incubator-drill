@@ -107,6 +107,7 @@ public class TestTpchDistributed extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // not in subquery
   public void tpch16() throws Exception{
     testDistributed("queries/tpch/16.sql");
   }

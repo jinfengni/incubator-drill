@@ -111,6 +111,7 @@ public class TestTpchExplain extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // not in subquery
   public void tpch16() throws Exception{
     doExplain("queries/tpch/16.sql");
   }

@@ -19,6 +19,7 @@ package org.apache.drill;
 
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.exec.rpc.RpcException;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestExampleQueries extends BaseTestQuery{
@@ -328,6 +329,7 @@ public class TestExampleQueries extends BaseTestQuery{
 
   // Select * in SubQuery,  View  or CTE (With clause)
   @Test  // Select * in SubQuery : regular columns appear in select clause, where, group by, order by.
+  @Ignore
   public void testSelStarSubQPrefix() throws Exception {
     test("select t.n_nationkey, t.n_name, t.n_regionkey from (select * from cp.`tpch/nation.parquet`) t where t.n_regionkey > 1 order by t.n_name" );
 
@@ -337,6 +339,7 @@ public class TestExampleQueries extends BaseTestQuery{
   }
 
   @Test  // Select * in SubQuery : regular columns appear in select clause, where, group by, order by.
+  @Ignore
   public void testSelStarSubQNoPrefix() throws Exception {
     test("select n_nationkey, n_name, n_regionkey from (select * from cp.`tpch/nation.parquet`)  where n_regionkey > 1 order by n_name" );
 
@@ -346,6 +349,7 @@ public class TestExampleQueries extends BaseTestQuery{
   }
 
   @Test  // join two SubQuery, each having select * : regular columns appear in the select , where and on clause, group by, order by.
+  @Ignore
   public void testSelStarSubQJoin() throws Exception {
     // select clause, where.
     test(" select n.n_nationkey, n.n_name, n.n_regionkey, r.r_name \n" +

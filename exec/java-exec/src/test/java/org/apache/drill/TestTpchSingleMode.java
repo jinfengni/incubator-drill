@@ -111,6 +111,7 @@ public class TestTpchSingleMode extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // not in subquery
   public void tpch16() throws Exception{
     testSingleMode("queries/tpch/16.sql");
   }
