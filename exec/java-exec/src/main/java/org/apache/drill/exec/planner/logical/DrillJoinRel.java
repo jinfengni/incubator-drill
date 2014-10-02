@@ -53,7 +53,7 @@ public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
 
     RexNode remaining = RelOptUtil.splitJoinCondition(left, right, condition, leftKeys, rightKeys);
     if (!remaining.isAlwaysTrue() && (leftKeys.size() == 0 || rightKeys.size() == 0)) {
-      throw new InvalidRelException("DrillJoinRel only supports equi-join");
+      // throw new InvalidRelException("DrillJoinRel only supports equi-join");
     }
   }
 
@@ -68,7 +68,7 @@ public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
       List<Integer> tmpRightKeys = Lists.newArrayList();
       RexNode remaining = RelOptUtil.splitJoinCondition(left, right, condition, tmpLeftKeys, tmpRightKeys);
       if (!remaining.isAlwaysTrue() && (tmpLeftKeys.size() == 0 || tmpRightKeys.size() == 0)) {
-        throw new InvalidRelException("DrillJoinRel only supports equi-join");
+        // throw new InvalidRelException("DrillJoinRel only supports equi-join");
       }
     }
     this.leftKeys = leftKeys;
