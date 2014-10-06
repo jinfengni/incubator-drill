@@ -134,7 +134,13 @@ public class InterpreterGenerator {
     int index = 0;
     DrillFuncHolder.ValueReference[] parameters = holder.getParameters();
 
+    int i = 0;
     for (DrillFuncHolder.ValueReference parm : parameters) {
+
+//      if (constantOnly && !holder.isConstant(i++)) {
+//        continue;
+//      }
+
       JType type = TypeHelper.getHolderType(model, parm.getType().getMinorType(), parm.getType().getMode());
       block.decl(type, parm.getName(), JExpr.cast(type, JExpr.component(JExpr.ref(argName), JExpr.lit(index++))));
     }

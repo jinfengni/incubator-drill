@@ -95,6 +95,16 @@ public class ExpressionInterpreterTest  extends PopUnitTestBase {
   }
 
 
+  @Test
+  public void interpreterRegExp() throws Exception {
+    String[] colNames = {"col1"};
+    TypeProtos.MajorType[] colTypes = {Types.optional(TypeProtos.MinorType.VARCHAR)};
+    String expressionStr =  "regexp_replace('aaaaaaaa', 'aaa', 'XYZ')";
+    String[] expectedFirstTwoValues = {"XYZXYZaa", "XYZXYZaa"};
+
+    doTest(expressionStr, colNames, colTypes, expectedFirstTwoValues);
+  }
+
   protected void doTest(String expressionStr, String[] colNames, TypeProtos.MajorType[] colTypes, String[] expectFirstTwoValues) throws Exception {
     RemoteServiceSet serviceSet = RemoteServiceSet.getLocalServiceSet();
 

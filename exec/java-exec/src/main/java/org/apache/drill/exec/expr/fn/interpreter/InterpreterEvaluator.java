@@ -26,6 +26,7 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.exec.compile.sig.ConstantExpressionIdentifier;
 import org.apache.drill.exec.expr.DrillFuncHolderExpr;
 import org.apache.drill.exec.expr.TypeHelper;
 import org.apache.drill.exec.expr.ValueVectorReadExpression;
@@ -38,13 +39,25 @@ import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.vector.ValueHolderHelper;
 import org.apache.drill.exec.vector.ValueVector;
 
+import java.util.IdentityHashMap;
+import java.util.Set;
+
 
 public class InterpreterEvaluator {
 
   public static void evaluate(RecordBatch incoming, ValueVector outVV, LogicalExpression expr) {
 
-    InterpreterInitVisitor initVisitor = new InterpreterInitVisitor();
-    InterEvalVisitor evalVisitor = new InterEvalVisitor(incoming);
+    Set<LogicalExpression> constantBoundaries;
+    constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(expr);
+
+    IdentityHashMap<LogicalExpression, ValueHolder> constantBoundariesValues = new IdentityHashMap<>();
+
+    for (LogicalExpression constExpr: constantBoundaries) {
+      constantBoundariesValues.put(constExpr, null);
+    }
+
+    InterpreterEvalVisitor evalVisitor = new InterpreterEvalVisitor(incoming, constantBoundariesValues);
+    InterpreterInitVisitor initVisitor = new InterpreterInitVisitor(evalVisitor, constantBoundariesValues);
 
     expr.accept(initVisitor, incoming);
 
@@ -56,54 +69,103 @@ public class InterpreterEvaluator {
     outVV.getMutator().setValueCount(incoming.getRecordCount());
   }
 
-  public static class InterpreterInitVisitor extends AbstractExprVisitor<LogicalExpression, RecordBatch, RuntimeException> {
+  public static class InterpreterInitVisitor extends AbstractExprVisitor<Boolean, RecordBatch, RuntimeException> {
+    private IdentityHashMap<LogicalExpression, ValueHolder> constantBoundariesValues;
+    private InterpreterEvalVisitor evalVisitor;
+
+    protected InterpreterInitVisitor(InterpreterEvalVisitor evalVisitor, IdentityHashMap<LogicalExpression, ValueHolder> constantBoundariesValues) {
+      this.constantBoundariesValues = constantBoundariesValues;
+      this.evalVisitor = evalVisitor;
+    }
+
     @Override
-    public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression holderExpr, RecordBatch incoming) {
+    public Boolean visitFunctionHolderExpression(FunctionHolderExpression holderExpr, RecordBatch incoming) {
       if (! (holderExpr.getHolder() instanceof DrillSimpleFuncHolder)) {
         throw new UnsupportedOperationException("Only Drill simple UDF can be used in interpreter mode!");
       }
 
       DrillSimpleFuncHolder holder = (DrillSimpleFuncHolder) holderExpr.getHolder();
+      DrillSimpleFuncInterpreter interpreter = null;
+
+      try {
+        interpreter = holder.createInterpreter();
+        ((DrillFuncHolderExpr) holderExpr).setInterpreter(interpreter);
+      } catch (Exception ex) {
+        throw new RuntimeException("Error when init function of " + holderExpr.getName() + ": " + ex);
+      }
+
+      ValueHolder[] args = new ValueHolder[holderExpr.args.size()];
+
 
       for (int i = 0; i < holderExpr.args.size(); i++) {
         holderExpr.args.get(i).accept(this, incoming);
+
+        if (holder.isConstant(i) && constantBoundariesValues.containsKey(holderExpr.args.get(i))) {
+          args[i] = holderExpr.args.get(i).accept(evalVisitor, -1);
+        } else {
+          args[i] = null;
+        }
       }
 
-      try {
-        DrillSimpleFuncInterpreter interpreter = holder.createInterpreter();
-
-        ((DrillFuncHolderExpr) holderExpr).setInterpreter(interpreter);
-
-        return holderExpr;
-
-      } catch (Exception ex) {
-        throw new RuntimeException("Error in evaluating function of " + holderExpr.getName() + ": " + ex);
+      if (constantBoundariesValues.containsKey(holderExpr)) {
+        renderConstantExpression(holderExpr);
+      } else {
+        interpreter.doSetup(args, incoming);
       }
+
+      return Boolean.FALSE;
     }
 
     @Override
-    public LogicalExpression visitUnknown(LogicalExpression e, RecordBatch incoming) throws RuntimeException {
+    public Boolean visitUnknown(LogicalExpression e, RecordBatch incoming) throws RuntimeException {
       for (LogicalExpression child : e) {
         child.accept(this, incoming);
       }
 
-      return e;
+      if (constantBoundariesValues.containsKey(e)) {
+        renderConstantExpression(e);
+      }
+
+      return Boolean.FALSE;
+    }
+
+    private void renderConstantExpression(LogicalExpression e){
+      evalVisitor.enterConstant();
+      ValueHolder out = e.accept(evalVisitor, -1);
+      evalVisitor.exitConstant();
+      constantBoundariesValues.put(e, out);
     }
   }
 
 
-  public static class InterEvalVisitor extends AbstractExprVisitor<ValueHolder, Integer, RuntimeException> {
+  public static class InterpreterEvalVisitor extends AbstractExprVisitor<ValueHolder, Integer, RuntimeException> {
     private RecordBatch incoming;
+    private IdentityHashMap<LogicalExpression, ValueHolder> constantBoundariesValues;
+    private boolean isWithinConstant;
 
-    protected InterEvalVisitor(RecordBatch incoming) {
+    protected InterpreterEvalVisitor(RecordBatch incoming, IdentityHashMap<LogicalExpression, ValueHolder> constantBoundariesValues) {
       super();
       this.incoming = incoming;
+      this.constantBoundariesValues = constantBoundariesValues;
+      this.isWithinConstant = false;
+    }
+
+    public void enterConstant() {
+      this.isWithinConstant = true;
+    }
+
+    public void exitConstant() {
+      this.isWithinConstant = false;
     }
 
     @Override
     public ValueHolder visitFunctionHolderExpression(FunctionHolderExpression holderExpr, Integer inIndex) {
       if (! (holderExpr.getHolder() instanceof DrillSimpleFuncHolder)) {
         throw new UnsupportedOperationException("Only Drill simple UDF can be used in interpreter mode!");
+      }
+
+      if (constantBoundariesValues.containsKey(holderExpr) && constantBoundariesValues.get(holderExpr) != null) {
+        return constantBoundariesValues.get(holderExpr);
       }
 
       DrillSimpleFuncHolder holder = (DrillSimpleFuncHolder) holderExpr.getHolder();
@@ -134,7 +196,10 @@ public class InterpreterEvaluator {
 
         Preconditions.checkArgument(interpreter != null, "interpreter could not be null when use interpreted model to evaluate function " + holder.getRegisteredNames()[0]);
 
-        interpreter.doSetup(args, incoming);
+        if (isWithinConstant) {
+          interpreter.doSetup(args, incoming);
+        }
+
         ValueHolder out = interpreter.doEval(args);
 
         if (TypeHelper.getValueHolderType(out).getMode() == TypeProtos.DataMode.OPTIONAL &&
@@ -155,6 +220,10 @@ public class InterpreterEvaluator {
 
     @Override
     public ValueHolder visitBooleanOperator(BooleanOperator op, Integer inIndex) {
+      if (constantBoundariesValues.containsKey(op) && constantBoundariesValues.get(op) != null) {
+        return constantBoundariesValues.get(op);
+      }
+
       // Apply short circuit evaluation to boolean operator.
       if (op.getName().equals("booleanAnd")) {
         return visitBooleanAnd(op, inIndex);
@@ -167,6 +236,10 @@ public class InterpreterEvaluator {
 
     @Override
     public ValueHolder visitIfExpression(IfExpression ifExpr, Integer inIndex) throws RuntimeException {
+      if (constantBoundariesValues.containsKey(ifExpr) && constantBoundariesValues.get(ifExpr) != null) {
+        return constantBoundariesValues.get(ifExpr);
+      }
+
       ValueHolder condHolder = ifExpr.ifCondition.condition.accept(this, inIndex);
 
       assert (condHolder instanceof BitHolder || condHolder instanceof NullableBitHolder);
