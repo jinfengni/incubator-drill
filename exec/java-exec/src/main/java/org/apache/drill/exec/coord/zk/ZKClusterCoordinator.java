@@ -23,6 +23,9 @@ import static com.google.common.collect.Collections2.transform;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -47,6 +50,7 @@ import org.apache.drill.exec.coord.DrillServiceInstanceHelper;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 
 import com.google.common.base.Function;
+import org.apache.drill.exec.work.foreman.DrillbitStatusListener;
 
 /**
  * Manages cluster coordination utilizing zookeeper. *
@@ -62,6 +66,8 @@ public class ZKClusterCoordinator extends ClusterCoordinator {
   private final CountDownLatch initialConnection = new CountDownLatch(1);
 
   private static final Pattern ZK_COMPLEX_STRING = Pattern.compile("(^.*?)/(.*)/([^/]*)$");
+
+
 
   public ZKClusterCoordinator(DrillConfig config) throws IOException{
     this(config, null);
@@ -197,6 +203,7 @@ public class ZKClusterCoordinator extends ClusterCoordinator {
     return new ZkDistributedSemaphore(curator, "/semaphore/" + name, maximumLeases);
   }
 
+
   private void updateEndpoints() {
     try {
       endpoints = transform(discovery.queryForInstances(serviceName),
@@ -206,6 +213,21 @@ public class ZKClusterCoordinator extends ClusterCoordinator {
             return input.getPayload();
           }
         });
+
+      Set<DrillbitEndpoint> activeBits = new HashSet<>(endpoints);
+
+      if (logger.isDebugEnabled()) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("# of active drillbits : " + activeBits.size() + "");
+        builder.append("Active drillbits : ");
+        for (DrillbitEndpoint bit: activeBits) {
+          builder.append(bit.toString() + "\t");
+        }
+        logger.debug("Active drillbits set changed: {}", builder.toString());
+      }
+
+      notifyDrillbitStatus(activeBits);
+
     } catch (Exception e) {
       logger.error("Failure while update Drillbit service location cache.", e);
     }

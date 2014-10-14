@@ -19,8 +19,11 @@ package org.apache.drill.exec.coord;
 
 import java.io.Closeable;
 import java.util.Collection;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.work.foreman.DrillbitStatusListener;
 
 /**
  * Pluggable interface built to manage cluster coordination. Allows Drillbit or DrillClient to register its capabilities
@@ -28,6 +31,9 @@ import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
  **/
 public abstract class ClusterCoordinator implements Closeable {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ClusterCoordinator.class);
+
+  protected ConcurrentHashMap<DrillbitStatusListener, DrillbitStatusListener> listeners = new ConcurrentHashMap<>(
+      16, 0.75f, 16);
 
   /**
    * Start the cluster coordinator.  Millis to wait is
@@ -53,5 +59,20 @@ public abstract class ClusterCoordinator implements Closeable {
 
   public abstract DistributedSemaphore getSemaphore(String name, int maximumLeases);
 
+  public void notifyDrillbitStatus(Set<DrillbitEndpoint> activeBits) {
+    for (DrillbitStatusListener listener : listeners.keySet()) {
+      listener.drillbitStatusChanged(activeBits);
+    }
+  }
+
+  public void registerDrillbitStatusListener(DrillbitStatusListener listener) {
+    logger.debug("Register drillbitStatusListener {}", listener.toString());
+    listeners.putIfAbsent(listener, listener);
+  }
+
+  public void unregisterDrillbitStatusListener(DrillbitStatusListener listener) {
+    logger.debug("Unregister drillbitStatusListener {}", listener.toString());
+    listeners.remove(listener);
+  }
 
 }

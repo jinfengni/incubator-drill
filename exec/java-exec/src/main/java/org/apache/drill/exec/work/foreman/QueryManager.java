@@ -23,9 +23,13 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.drill.common.exceptions.DrillException;
+import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.exec.coord.ClusterCoordinator;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.proto.BitControl.FragmentStatus;
@@ -34,6 +38,7 @@ import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
+import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryResult;
 import org.apache.drill.exec.proto.UserBitShared.QueryResult.QueryState;
@@ -45,6 +50,7 @@ import org.apache.drill.exec.rpc.control.WorkEventBus;
 import org.apache.drill.exec.rpc.user.UserServer.UserClientConnection;
 import org.apache.drill.exec.store.sys.PStoreProvider;
 import org.apache.drill.exec.work.EndpointListener;
+import org.apache.drill.exec.work.ErrorHelper;
 import org.apache.drill.exec.work.WorkManager.WorkerBee;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
 import org.apache.drill.exec.work.foreman.Foreman.ForemanManagerListener;
@@ -58,7 +64,7 @@ import com.google.common.collect.Multimap;
 /**
  * Each Foreman holds its own fragment manager.  This manages the events associated with execution of a particular query across all fragments.
  */
-public class QueryManager implements FragmentStatusListener{
+public class QueryManager implements FragmentStatusListener, DrillbitStatusListener{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryManager.class);
 
   private final QueryStatus status;
@@ -66,6 +72,7 @@ public class QueryManager implements FragmentStatusListener{
   private ForemanManagerListener foremanManagerListener;
   private AtomicInteger remainingFragmentCount;
   private WorkEventBus workBus;
+  private ClusterCoordinator coord;
   private QueryId queryId;
   private FragmentExecutor rootRunner;
   private RunQuery query;
@@ -97,6 +104,7 @@ public class QueryManager implements FragmentStatusListener{
     remainingFragmentCount.set(nonRootFragments.size() + 1);
     assert queryId == rootFragment.getHandle().getQueryId();
     workBus = bee.getContext().getWorkBus();
+    coord = bee.getContext().getClusterCoordinator();
 
     // set up the root fragment first so we'll have incoming buffers available.
     {
@@ -143,6 +151,8 @@ public class QueryManager implements FragmentStatusListener{
     running = true;
     if (cancelled && !stopped) {
       stopQuery();
+      QueryResult result = QueryResult.newBuilder().setQueryId(queryId).setQueryState(QueryState.CANCELED).setIsLastChunk(true).build();
+      foremanManagerListener.cleanupAndSendResult(result);
     }
   }
 
@@ -158,6 +168,24 @@ public class QueryManager implements FragmentStatusListener{
     controller.getTunnel(assignment).sendFragments(listener, initFrags);
   }
 
+  @Override
+  public void drillbitStatusChanged(Set<DrillbitEndpoint> activeDrillbits) {
+    List<FragmentData> fragments = status.getFragmentData();
+
+    for (FragmentData fragment : fragments) {
+      if (! (activeDrillbits.contains(fragment.getEndpoint())) ) {
+        logger.warn("Drillbit {} for major{}:minor{} is not responding. Stop query {}",
+            fragment.getEndpoint(),
+            fragment.getHandle().getMajorFragmentId(),
+            fragment.getHandle().getMinorFragmentId(),
+            fragment.getHandle().getQueryId());
+
+        UserBitShared.DrillPBError error = ErrorHelper.logAndConvertError(fragment.getEndpoint(), "Failure while sending fragment.", new DrillRuntimeException("Drillbit not responding"), logger);
+        failWithError(error);
+        break;
+      }
+    }
+  }
 
   @Override
   public void statusUpdate(FragmentStatus status) {
@@ -198,22 +226,25 @@ public class QueryManager implements FragmentStatusListener{
       this.status.setEndTime(System.currentTimeMillis());
       foremanManagerListener.cleanupAndSendResult(result);
       workBus.removeFragmentStatusListener(queryId);
+      coord.unregisterDrillbitStatusListener(this);
     }
     this.status.incrementFinishedFragments();
     updateFragmentStatus(status);
   }
 
   private void fail(FragmentStatus status){
-    stopQuery();
-    QueryResult result = QueryResult.newBuilder().setQueryId(queryId).setQueryState(QueryState.FAILED).addError(status.getProfile().getError()).build();
-    foremanManagerListener.cleanupAndSendResult(result);
-    this.status.setEndTime(System.currentTimeMillis());
     updateFragmentStatus(status);
+    failWithError(status.getProfile().getError());
   }
 
+  private void failWithError(UserBitShared.DrillPBError error) {
+    stopQuery();
+    QueryResult result = QueryResult.newBuilder().setQueryId(queryId).setQueryState(QueryState.FAILED).addError(error).setIsLastChunk(true).build();
+    foremanManagerListener.cleanupAndSendResult(result);
+    this.status.setEndTime(System.currentTimeMillis());
+  }
 
   private void stopQuery(){
-    workBus.removeFragmentStatusListener(queryId);
     // Stop all queries with a currently active status.
     List<FragmentData> fragments = status.getFragmentData();
     Collections.sort(fragments, new Comparator<FragmentData>() {
@@ -238,13 +269,21 @@ public class QueryManager implements FragmentStatusListener{
         break;
       }
     }
+
+    workBus.removeFragmentStatusListener(queryId);
+    coord.unregisterDrillbitStatusListener(this);
+
+    stopped = true;
   }
 
   public void cancel(){
+    logger.warn("Cancel the query. {}", queryId, status.toString());
     cancelled = true;
     if (running) {
       stopQuery();
       stopped = true;
+      QueryResult result = QueryResult.newBuilder().setQueryId(queryId).setQueryState(QueryState.CANCELED).setIsLastChunk(true).build();
+      foremanManagerListener.cleanupAndSendResult(result);
     }
   }
 
@@ -283,7 +322,8 @@ public class QueryManager implements FragmentStatusListener{
     @Override
     public void failed(RpcException ex) {
       logger.debug("Failure while sending fragment.  Stopping query.", ex);
-      stopQuery();
+      UserBitShared.DrillPBError error = ErrorHelper.logAndConvertError(endpoint, "Failure while sending fragment.", ex, logger);
+      failWithError(error);
     }
 
   }
