@@ -106,6 +106,7 @@ public class DrillSqlWorker {
   }
 
   public PhysicalPlan getPlan(String sql, Pointer<String> textPlan) throws SqlParseException, ValidationException, RelConversionException, IOException{
+    logger.warn("Start running SQL: {}", sql);
     SqlNode sqlNode = planner.parse(sql);
 
     AbstractSqlHandler handler;

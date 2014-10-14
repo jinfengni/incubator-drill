@@ -19,8 +19,11 @@ package org.apache.drill.exec.coord.local;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -30,12 +33,15 @@ import org.apache.drill.exec.coord.DistributedSemaphore;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 
 import com.google.common.collect.Maps;
+import org.apache.drill.exec.work.foreman.DrillbitStatusListener;
 
 public class LocalClusterCoordinator extends ClusterCoordinator {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LocalClusterCoordinator.class);
 
   private volatile Map<RegistrationHandle, DrillbitEndpoint> endpoints = Maps.newConcurrentMap();
   private volatile ConcurrentMap<String, DistributedSemaphore> semaphores = Maps.newConcurrentMap();
+  private ConcurrentHashMap<DrillbitStatusListener, DrillbitStatusListener> listeners = new ConcurrentHashMap<>(
+      16, 0.75f, 16);
 
   @Override
   public void close() throws IOException {
@@ -62,6 +68,9 @@ public class LocalClusterCoordinator extends ClusterCoordinator {
     }
 
     endpoints.remove(handle);
+
+    Set<DrillbitEndpoint> activeBits = new HashSet<>(endpoints.values());
+    notifyDrillbitStatus(activeBits);
   }
 
   @Override
