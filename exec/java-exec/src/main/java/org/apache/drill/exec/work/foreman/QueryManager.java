@@ -22,9 +22,11 @@ import io.netty.buffer.ByteBuf;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.exec.coord.ClusterCoordinator;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.proto.BitControl.FragmentStatus;
@@ -53,7 +55,7 @@ import org.apache.drill.exec.work.fragment.RootFragmentManager;
 /**
  * Each Foreman holds its own fragment manager.  This manages the events associated with execution of a particular query across all fragments.
  */
-public class QueryManager implements FragmentStatusListener{
+public class QueryManager implements FragmentStatusListener, DrillbitStatusListener{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryManager.class);
 
   private final QueryStatus status;
@@ -61,6 +63,7 @@ public class QueryManager implements FragmentStatusListener{
   private ForemanManagerListener foremanManagerListener;
   private AtomicInteger remainingFragmentCount;
   private WorkEventBus workBus;
+  private ClusterCoordinator coord;
   private QueryId queryId;
   private FragmentExecutor rootRunner;
   private RunQuery query;
@@ -93,6 +96,7 @@ public class QueryManager implements FragmentStatusListener{
     remainingFragmentCount.set(intermediateFragments.size() + leafFragments.size() + 1);
     assert queryId == rootFragment.getHandle().getQueryId();
     workBus = bee.getContext().getWorkBus();
+    coord = bee.getContext().getClusterCoordinator();
 
     // set up the root fragment first so we'll have incoming buffers available.
     {
@@ -134,6 +138,27 @@ public class QueryManager implements FragmentStatusListener{
     running = true;
     if (cancelled && !stopped) {
       stopQuery();
+    }
+  }
+
+  @Override
+  public void drillbitStatusChanged(Set<DrillbitEndpoint> activeDrillbits) {
+    List<FragmentData> fragments = status.getFragmentData();
+
+    for (DrillbitEndpoint active: activeDrillbits) {
+      logger.warn("active drillbit address : {}, {}", active.getAddress(), active);
+    }
+
+    for (FragmentData fragment : fragments) {
+      if (! (activeDrillbits.contains(fragment.getEndpoint())) ) {
+        logger.warn("Drillbit {} for major{}:minor{} is not RESPONDING. Cancel query {}",
+            fragment.getEndpoint(),
+            fragment.getHandle().getMajorFragmentId(),
+            fragment.getHandle().getMinorFragmentId(),
+            fragment.getHandle().getQueryId());
+        cancel();
+        break;
+      }
     }
   }
 
@@ -183,7 +208,9 @@ public class QueryManager implements FragmentStatusListener{
               .build();
       foremanManagerListener.cleanupAndSendResult(result);
       workBus.removeFragmentStatusListener(queryId);
+      coord.unregisterDrillBitStatusListener(this);
     }
+
     this.status.setEndTime(System.currentTimeMillis());
     this.status.incrementFinishedFragments();
     updateStatus(status, true);
@@ -200,6 +227,9 @@ public class QueryManager implements FragmentStatusListener{
 
   private void stopQuery(){
     workBus.removeFragmentStatusListener(queryId);
+
+    coord.unregisterDrillBitStatusListener(this);
+
     // Stop all queries with a currently active status.
     List<FragmentData> fragments = status.getFragmentData();
     Collections.sort(fragments, new Comparator<FragmentData>() {
@@ -286,5 +316,6 @@ public class QueryManager implements FragmentStatusListener{
 
 
   }
+
 
 }

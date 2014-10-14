@@ -376,6 +376,8 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
           queryId, context.getActiveEndpoints(), context.getPlanReader(), rootFragment, planningSet, initiatingClient.getSession());
 
       this.context.getWorkBus().setFragmentStatusListener(work.getRootFragment().getHandle().getQueryId(), fragmentManager);
+      this.context.getClusterCoordinator().registerDrillBitStatusListener(fragmentManager);
+
       List<PlanFragment> leafFragments = Lists.newArrayList();
       List<PlanFragment> intermediateFragments = Lists.newArrayList();
 
