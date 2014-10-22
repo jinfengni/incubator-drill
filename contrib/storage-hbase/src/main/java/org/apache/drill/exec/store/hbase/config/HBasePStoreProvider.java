@@ -19,13 +19,21 @@ package org.apache.drill.exec.store.hbase.config;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
+import com.google.common.collect.Maps;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
+import org.apache.drill.exec.coord.ClusterCoordinator;
+import org.apache.drill.exec.coord.zk.ZKClusterCoordinator;
 import org.apache.drill.exec.store.hbase.DrillHBaseConstants;
+import org.apache.drill.exec.store.sys.EStore;
 import org.apache.drill.exec.store.sys.PStore;
 import org.apache.drill.exec.store.sys.PStoreConfig;
 import org.apache.drill.exec.store.sys.PStoreProvider;
 import org.apache.drill.exec.store.sys.PStoreRegistry;
+import org.apache.drill.exec.store.sys.local.MapEStore;
+import org.apache.drill.exec.store.sys.zk.ZkEStore;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -56,6 +64,10 @@ public class HBasePStoreProvider implements PStoreProvider {
 
   private HTableInterface table;
 
+  private final CuratorFramework curator;
+  private final boolean zkAvailable;
+  private ConcurrentMap<PStoreConfig<?>, EStore<?>> estores;
+
   public HBasePStoreProvider(PStoreRegistry registry) {
     @SuppressWarnings("unchecked")
     Map<String, Object> config = (Map<String, Object>) registry.getConfig().getAnyRef(DrillHBaseConstants.SYS_STORE_PROVIDER_HBASE_CONFIG);
@@ -67,12 +79,27 @@ public class HBasePStoreProvider implements PStoreProvider {
       }
     }
     this.storeTableName = registry.getConfig().getString(DrillHBaseConstants.SYS_STORE_PROVIDER_HBASE_TABLE);
+
+    ClusterCoordinator coord = registry.getClusterCoordinator();
+    if ((coord instanceof ZKClusterCoordinator)) {
+      this.curator = ((ZKClusterCoordinator)registry.getClusterCoordinator()).getCurator();
+      this.zkAvailable = true;
+      this.estores = null;
+    } else {
+      this.curator = null;
+      this.zkAvailable = false;
+      estores = Maps.newConcurrentMap();
+    }
+
   }
 
   @VisibleForTesting
   public HBasePStoreProvider(Configuration conf, String storeTableName) {
     this.hbaseConf = conf;
     this.storeTableName = storeTableName;
+    this.curator = null;
+    this.zkAvailable = false;
+    estores = Maps.newConcurrentMap();
   }
 
   @Override
@@ -102,6 +129,26 @@ public class HBasePStoreProvider implements PStoreProvider {
 
     this.table = connection.getTable(storeTableName);
     this.table.setAutoFlush(true);
+  }
+
+  @Override
+  public <V> EStore<V> getEStore(PStoreConfig<V> store) throws IOException {
+    // when ZK is available, use ZK as the Ephemeral store.
+    // when ZK is not available, use a Map as the Ephemeral store.
+    if (this.zkAvailable) {
+      return new ZkEStore<V>(curator,store);
+    } else {
+      if (! (estores.containsKey(store)) ) {
+        EStore<V> p = new MapEStore<V>();
+        EStore<?> p2 = estores.putIfAbsent(store, p);
+        if(p2 != null) {
+          return (EStore<V>) p2;
+        }
+        return p;
+      } else {
+        return (EStore<V>) estores.get(store);
+      }
+    }
   }
 
   @Override
