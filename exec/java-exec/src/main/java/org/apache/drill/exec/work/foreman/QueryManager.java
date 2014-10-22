@@ -164,7 +164,7 @@ public class QueryManager implements FragmentStatusListener{
     logger.debug("New fragment status was provided to Foreman of {}", status);
     switch(status.getProfile().getState()){
     case AWAITING_ALLOCATION:
-      updateStatus(status, true);
+      updateFragmentStatus(status);
       break;
     case CANCELLED:
       // we don't care about cancellation messages since we're the only entity that should drive cancellations.
@@ -176,15 +176,15 @@ public class QueryManager implements FragmentStatusListener{
       finished(status);
       break;
     case RUNNING:
-      updateStatus(status, false);
+      updateFragmentStatus(status);
       break;
     default:
       throw new UnsupportedOperationException(String.format("Received status of %s", status));
     }
   }
 
-  private void updateStatus(FragmentStatus status, boolean updateCache){
-    this.status.update(status, updateCache);
+  private void updateFragmentStatus(FragmentStatus status){
+    this.status.updateFragmentStatus(status);
   }
 
   private void finished(FragmentStatus status){
@@ -195,12 +195,12 @@ public class QueryManager implements FragmentStatusListener{
               .setQueryState(QueryState.COMPLETED) //
               .setQueryId(queryId) //
               .build();
+      this.status.setEndTime(System.currentTimeMillis());
       foremanManagerListener.cleanupAndSendResult(result);
       workBus.removeFragmentStatusListener(queryId);
     }
-    this.status.setEndTime(System.currentTimeMillis());
     this.status.incrementFinishedFragments();
-    updateStatus(status, true);
+    updateFragmentStatus(status);
   }
 
   private void fail(FragmentStatus status){
@@ -208,7 +208,7 @@ public class QueryManager implements FragmentStatusListener{
     QueryResult result = QueryResult.newBuilder().setQueryId(queryId).setQueryState(QueryState.FAILED).addError(status.getProfile().getError()).build();
     foremanManagerListener.cleanupAndSendResult(result);
     this.status.setEndTime(System.currentTimeMillis());
-    updateStatus(status, true);
+    updateFragmentStatus(status);
   }
 
 

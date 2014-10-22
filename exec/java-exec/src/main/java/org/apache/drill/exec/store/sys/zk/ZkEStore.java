@@ -15,13 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.sys;
+package org.apache.drill.exec.store.sys.zk;
 
-import java.io.Closeable;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.drill.exec.store.sys.EStore;
+import org.apache.drill.exec.store.sys.PStoreConfig;
+import org.apache.zookeeper.CreateMode;
+
 import java.io.IOException;
 
-public interface PStoreProvider extends AutoCloseable, Closeable{
-  public <V> PStore<V> getPStore(PStoreConfig<V> table) throws IOException;
-  public void start() throws IOException;
-  public <V> EStore<V> getEStore(PStoreConfig<V> table) throws IOException;
+/**
+ * Implementation of EStore using Zookeeper's EPHEMERAL node.
+ * @param <V>
+ */
+public class ZkEStore<V> extends ZkAbstractStore<V> implements EStore<V>{
+
+  public ZkEStore(CuratorFramework framework, PStoreConfig<V> config) throws IOException{
+    super(framework,config);
+  }
+
+  @Override
+  public void createNodeInZK(String key, V value) {
+    try {
+      framework.create().withMode(CreateMode.EPHEMERAL).forPath(p(key), config.getSerializer().serialize(value));
+    } catch (Exception e) {
+      throw new RuntimeException("Failure while accessing Zookeeper", e);
+    }
+  }
 }

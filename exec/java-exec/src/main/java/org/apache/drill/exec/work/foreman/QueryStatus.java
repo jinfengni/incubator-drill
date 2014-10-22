@@ -29,6 +29,7 @@ import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
 import org.apache.drill.exec.proto.UserBitShared.QueryResult.QueryState;
 import org.apache.drill.exec.proto.UserProtos.RunQuery;
 import org.apache.drill.exec.proto.helper.QueryIdHelper;
+import org.apache.drill.exec.store.sys.EStore;
 import org.apache.drill.exec.store.sys.PStore;
 import org.apache.drill.exec.store.sys.PStoreConfig;
 import org.apache.drill.exec.store.sys.PStoreProvider;
@@ -57,14 +58,16 @@ public class QueryStatus {
   private int totalFragments;
   private int finishedFragments = 0;
 
-  private final PStore<QueryProfile> profileCache;
+  private final PStore<QueryProfile> profilePStore;
+  private final EStore<QueryProfile> profileEStore;
 
   public QueryStatus(RunQuery query, QueryId id, PStoreProvider provider, Foreman foreman) {
     this.id = id;
     this.query = query;
     this.queryId = QueryIdHelper.getQueryId(id);
     try {
-      this.profileCache = provider.getPStore(QUERY_PROFILE);
+      this.profilePStore = provider.getPStore(QUERY_PROFILE);
+      this.profileEStore = provider.getEStore(QUERY_PROFILE);
     } catch (IOException e) {
       throw new DrillRuntimeException(e);
     }
@@ -77,8 +80,6 @@ public class QueryStatus {
 
   public void setPlanText(String planText) {
     this.planText = planText;
-    updateCache();
-
   }
 
   public void setStartTime(long startTime) {
@@ -111,20 +112,28 @@ public class QueryStatus {
     fragmentDataSet.add(data);
   }
 
-  void update(FragmentStatus status, boolean updateCache) {
-    int majorFragmentId = status.getHandle().getMajorFragmentId();
-    int minorFragmentId = status.getHandle().getMinorFragmentId();
-    fragmentDataMap.get(majorFragmentId).get(minorFragmentId).setStatus(status);
-    if (updateCache) {
-      updateCache();
-    }
+  void updateFragmentStatus(FragmentStatus fragmentStatus) {
+    int majorFragmentId = fragmentStatus.getHandle().getMajorFragmentId();
+    int minorFragmentId = fragmentStatus.getHandle().getMinorFragmentId();
+    fragmentDataMap.get(majorFragmentId).get(minorFragmentId).setStatus(fragmentStatus);
   }
 
-  public void updateCache() {
+  public void updateQueryStateInStore() {
     QueryState queryState = foreman.getQueryState();
-    profileCache.put(queryId, getAsProfile(false));
-    if (queryState == QueryState.COMPLETED || queryState == QueryState.FAILED) {
-      profileCache.putBlob(queryId, getAsProfile(true));
+    switch (queryState) {
+      case PENDING:   // fall through
+      case RUNNING:
+        profileEStore.put(queryId, getAsProfile(false));  // store as ephemeral query profile.
+        break;
+      case COMPLETED:
+      case CANCELED:
+      case FAILED:
+      case UNKNOWN_QUERY:
+        profileEStore.delete(queryId);  // delete the ephemeral query profile.
+        profilePStore.put(queryId, getAsProfile(false));
+        profilePStore.putBlob(queryId, getAsProfile(true));
+        break;
+      default:
     }
   }
 
