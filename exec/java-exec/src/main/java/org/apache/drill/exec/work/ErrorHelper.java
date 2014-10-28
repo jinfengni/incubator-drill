@@ -60,7 +60,7 @@ public class ErrorHelper {
     DrillPBError.Builder builder = DrillPBError.newBuilder();
     builder.setEndpoint(endpoint);
     builder.setErrorId(id);
-    builder.setMessage(message);
+    builder.setMessage(message + " id: " + id + " endpoint: " + endpoint);
     builder.setException(getWrapper(t));
 
     // record the error to the log for later reference.
