@@ -32,7 +32,9 @@ public class DrillParserWithCompoundIdConverter extends DrillParserImpl {
    */
   public static final SqlParserImplFactory FACTORY = new SqlParserImplFactory() {
     public SqlAbstractParserImpl getParser(Reader stream) {
-      return new DrillParserWithCompoundIdConverter(stream);
+      SqlAbstractParserImpl parserImpl = new DrillParserWithCompoundIdConverter(stream);
+      parserImpl.setIdentifierMaxLength(1024);
+      return parserImpl;
     }
   };
 

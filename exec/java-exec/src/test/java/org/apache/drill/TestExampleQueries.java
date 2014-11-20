@@ -560,4 +560,9 @@ public class TestExampleQueries extends BaseTestQuery{
         expectedRecordCount, actualRecordCount), expectedRecordCount, actualRecordCount);
   }
 
+  @Test
+  public void test() throws  Exception {
+    test("select employee_id as  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa from cp.`employee.json` limit 1");
+  }
+
 }

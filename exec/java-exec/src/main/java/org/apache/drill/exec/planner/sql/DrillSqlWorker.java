@@ -52,6 +52,7 @@ import org.eigenbase.relopt.hep.HepPlanner;
 import org.eigenbase.relopt.hep.HepProgramBuilder;
 import org.eigenbase.sql.SqlNode;
 import org.eigenbase.sql.parser.SqlParseException;
+import org.eigenbase.sql.parser.SqlParser;
 
 public class DrillSqlWorker {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillSqlWorker.class);
@@ -62,6 +63,7 @@ public class DrillSqlWorker {
   public final static int PHYSICAL_MEM_RULES = 1;
   private final QueryContext context;
 
+  public static final int IDENTIFIER_MAX_LENGTH = 1024;
 
   public DrillSqlWorker(QueryContext context) throws Exception {
     final List<RelTraitDef> traitDefs = new ArrayList<RelTraitDef>();
@@ -73,7 +75,7 @@ public class DrillSqlWorker {
     RelOptCostFactory costFactory = (context.getPlannerSettings().useDefaultCosting()) ?
         null : new DrillCostBase.DrillCostFactory() ;
     FrameworkConfig config = Frameworks.newConfigBuilder() //
-        .lex(Lex.MYSQL) //
+        .parserConfig(new SqlParser.ParserConfigImpl(Lex.MYSQL, IDENTIFIER_MAX_LENGTH)) //
         .parserFactory(DrillParserWithCompoundIdConverter.FACTORY) //
         .defaultSchema(context.getNewDefaultSchema()) //
         .operatorTable(context.getDrillOperatorTable()) //
