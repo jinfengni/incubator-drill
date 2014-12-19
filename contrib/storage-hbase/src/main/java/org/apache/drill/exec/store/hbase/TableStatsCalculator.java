@@ -155,7 +155,7 @@ public class TableStatsCalculator {
    */
   public long getRegionSizeInBytes(byte[] regionId) {
     if (sizeMap == null) {
-      return avgRowSizeInBytes*1024*1024; // 1 million rows
+      return (long)avgRowSizeInBytes*1024L*1024L; // 1 million rows
     } else {
       Long size = sizeMap.get(regionId);
       if (size == null) {
