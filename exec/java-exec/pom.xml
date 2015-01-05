@@ -123,7 +123,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>net.hydromatic</groupId>
+      <groupId>org.apache.optiq</groupId>
       <artifactId>optiq-core</artifactId>
     </dependency>
     <dependency>
@@ -492,7 +492,7 @@
             <configuration>
               <artifactItems>
                 <artifactItem>
-                  <groupId>net.hydromatic</groupId>
+                  <groupId>org.apache.optiq</groupId>
                   <artifactId>optiq-core</artifactId>
                   <type>jar</type>
                   <overWrite>true</overWrite>

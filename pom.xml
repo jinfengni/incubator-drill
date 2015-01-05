@@ -953,9 +953,9 @@
           </dependency>
 
           <dependency>
-            <groupId>net.hydromatic</groupId>
+            <groupId>org.apache.optiq</groupId>
             <artifactId>optiq-core</artifactId>
-            <version>0.9-drill-r20</version>
+            <version>0.9-drill-test-r1</version>
             <exclusions>
               <exclusion>
                 <groupId>org.jgrapht</groupId>
