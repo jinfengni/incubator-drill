@@ -42,6 +42,8 @@ import org.apache.drill.exec.planner.physical.StreamingWindowPrule;
 import org.apache.drill.exec.planner.physical.UnionAllPrule;
 import org.apache.drill.exec.planner.physical.WriterPrule;
 import org.eigenbase.rel.RelFactories;
+import org.eigenbase.rel.rules.MergeFilterRule;
+import org.eigenbase.rel.rules.MergeProjectRule;
 import org.eigenbase.rel.rules.PushFilterPastJoinRule;
 import org.eigenbase.rel.rules.PushFilterPastProjectRule;
 import org.eigenbase.rel.rules.PushJoinThroughJoinRule;
@@ -75,7 +77,7 @@ public class DrillRuleSets {
       // End support for WHERE style joins.
 
       //Add back rules
-
+      DrillMergeFilterRule.INSTANCE,
       ExpandConversionRule.INSTANCE,
 //      SwapJoinRule.INSTANCE,
       RemoveDistinctRule.INSTANCE,
@@ -147,6 +149,9 @@ public class DrillRuleSets {
     ruleList.add(StreamingWindowPrule.INSTANCE);
     ruleList.add(PushLimitToTopN.INSTANCE);
     ruleList.add(UnionAllPrule.INSTANCE);
+
+
+
     // ruleList.add(UnionDistinctPrule.INSTANCE);
 
     PlannerSettings ps = qcontext.getPlannerSettings();
