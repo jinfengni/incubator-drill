@@ -97,7 +97,7 @@ public class ProjectPrule extends Prule {
       }
     }
 
-    if (newFields.isEmpty()) {
+    if (newFields.isEmpty() || newFields.size() < srcDist.getFields().size()) {
       if (srcDist.getType() != DistributionType.SINGLETON) {
         return DrillDistributionTrait.RANDOM_DISTRIBUTED;
       } else {

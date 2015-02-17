@@ -604,18 +604,25 @@ public class TestExampleQueries extends BaseTestQuery{
 
   }
 
-  @Test //DRILL-2163
-  public void testNestedTypesPastJoinReportsValidResult() throws Exception {
-    final String query = "select t1.uid, t1.events, t1.events[0].evnt_id as event_id, t2.transactions, " +
-        "t2.transactions[0] as trans, t1.odd, t2.even from cp.`project/complex/a.json` t1, " +
-        "cp.`project/complex/b.json` t2 where t1.uid = t2.uid";
+  @Test
+  public void testDRILL2242() throws Exception {
+    test("alter session set `planner.slice_target` = 1; alter session set `planner.enable_multiphase_agg` = false ;");
 
     testBuilder()
-        .sqlQuery(query)
         .ordered()
-        .jsonBaselineFile("project/complex/drill-2163-result.json")
-        .build()
-        .run();
-  }
+        .sqlQuery(" select count(*) as cnt from (select l_partkey from\n" +
+            "   (select l_partkey, l_suppkey from cp.`tpch/lineitem.parquet`\n" +
+            "      group by l_partkey, l_suppkey) \n" +
+            "   group by l_partkey )")
+        .baselineColumns("cnt")
+        .baselineValues(2000L)
+        .build().run();
 
+//    test("alter session set `planner.slice_target` = 1;" +
+//        " alter session set `planner.enable_multiphase_agg` = false ; " +
+//        " select l_partkey from\n" +
+//        "   (select l_partkey, l_suppkey from cp.`tpch/lineitem.parquet`\n" +
+//        "      group by l_partkey, l_suppkey) \n" +
+//        "   group by l_partkey");
+  }
 }
