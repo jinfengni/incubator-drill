@@ -47,7 +47,7 @@ public abstract class DrillFilterRelBase extends FilterRelBase implements DrillR
     // save the number of conjuncts that make up the filter condition such
     // that repeated calls to the costing function can use the saved copy
     numConjuncts = RelOptUtil.conjunctions(condition).size();
-    assert numConjuncts >= 1;
+    // assert numConjuncts >= 1;
   }
 
   @Override
