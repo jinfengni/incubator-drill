@@ -955,7 +955,7 @@
           <dependency>
             <groupId>org.apache.optiq</groupId>
             <artifactId>optiq-core</artifactId>
-            <version>0.9-drill-test-r1</version>
+            <version>0.9-drill-test-r2</version>
             <exclusions>
               <exclusion>
                 <groupId>org.jgrapht</groupId>
