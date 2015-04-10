@@ -18,12 +18,14 @@
 package org.apache.drill.exec.store.parquet;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.collect.ArrayListMultimap;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
@@ -171,15 +173,15 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
    * This is used to clone another copy of the group scan.
    */
   private ParquetGroupScan(ParquetGroupScan that) {
-    this.columns = that.columns;
-    this.endpointAffinities = that.endpointAffinities;
-    this.entries = that.entries;
+    this.columns = that.columns == null ? null : Lists.newArrayList(that.columns);
+    this.endpointAffinities = that.endpointAffinities == null ? null : Lists.newArrayList(that.endpointAffinities);
+    this.entries = that.entries == null ? null : Lists.newArrayList(that.entries);
     this.formatConfig = that.formatConfig;
     this.formatPlugin = that.formatPlugin;
     this.fs = that.fs;
-    this.mappings = that.mappings;
+    this.mappings = that.mappings == null ? null : ArrayListMultimap.create(that.mappings);
     this.rowCount = that.rowCount;
-    this.rowGroupInfos = that.rowGroupInfos;
+    this.rowGroupInfos = that.rowGroupInfos == null ? null : Lists.newArrayList(that.rowGroupInfos);
     this.selectionRoot = that.selectionRoot;
     this.columnValueCounts = that.columnValueCounts;
   }
