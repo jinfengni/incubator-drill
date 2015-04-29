@@ -22,9 +22,29 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import com.google.common.collect.ImmutableList;
+import org.apache.calcite.plan.RelOptRule;
+import org.apache.calcite.plan.hep.HepMatchOrder;
+import org.apache.calcite.plan.hep.HepProgram;
+import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.logical.LogicalProject;
+import org.apache.calcite.rel.metadata.CachingRelMetadataProvider;
+import org.apache.calcite.rel.metadata.ChainedRelMetadataProvider;
+import org.apache.calcite.rel.metadata.DefaultRelMetadataProvider;
+import org.apache.calcite.rel.metadata.RelMetadataProvider;
+import org.apache.calcite.rel.rules.FilterAggregateTransposeRule;
+import org.apache.calcite.rel.rules.FilterJoinRule;
+import org.apache.calcite.rel.rules.FilterMergeRule;
+import org.apache.calcite.rel.rules.FilterProjectTransposeRule;
+import org.apache.calcite.rel.rules.JoinPushTransitivePredicatesRule;
+import org.apache.calcite.rel.rules.JoinToMultiJoinRule;
+import org.apache.calcite.rel.rules.LoptOptimizeJoinRule;
+import org.apache.calcite.rel.rules.ProjectMergeRule;
 import org.apache.calcite.rel.rules.ProjectRemoveRule;
+import org.apache.calcite.rel.rules.SemiJoinFilterTransposeRule;
+import org.apache.calcite.rel.rules.SemiJoinJoinTransposeRule;
+import org.apache.calcite.rel.rules.SemiJoinProjectTransposeRule;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexNode;
@@ -46,8 +66,10 @@ import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.impl.join.JoinUtils;
+import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillProjectRel;
 import org.apache.drill.exec.planner.logical.DrillRel;
+import org.apache.drill.exec.planner.logical.DrillRelFactories;
 import org.apache.drill.exec.planner.logical.DrillScreenRel;
 import org.apache.drill.exec.planner.logical.DrillStoreRel;
 import org.apache.drill.exec.planner.logical.PreProcessLogicalRel;
@@ -238,8 +260,14 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
   protected DrillRel convertToDrel(RelNode relNode, RelDataType validatedRowType) throws RelConversionException, SqlUnsupportedException {
     try {
-      RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_RULES,
-          relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+      RelNode convertedRelNode;
+
+      if (! context.getPlannerSettings().isHepJoinOptEnabled()) {
+        convertedRelNode = logicalPlanningVolcano(relNode);
+      } else {
+        convertedRelNode = logicalPlanningVolcanoAndLopt(relNode);
+      }
+
       if (convertedRelNode instanceof DrillStoreRel) {
         throw new UnsupportedOperationException();
       } else {
@@ -257,6 +285,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
       }
     }
   }
+
 
   protected Prel convertToPrel(RelNode drel) throws RelConversionException {
     Preconditions.checkArgument(drel.getConvention() == DrillRel.DRILL_LOGICAL);
@@ -419,4 +448,123 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   public SqlNode rewrite(SqlNode node) throws RelConversionException, ForemanSetupException {
     return node;
   }
+
+  private RelNode logicalPlanningVolcano(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
+    return planner.transform(DrillSqlWorker.LOGICAL_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+  }
+
+  private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
+    RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_HEP_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+
+    log("VolCalciteRel", convertedRelNode);
+
+    // RelNode preJoinOrderNode = preJoinOrderingTransforms(convertedRelNode, new DefaultRelMetadataProvider());
+    RelNode preJoinOrderNode = convertedRelNode;
+
+    RelNode loptNode = getLoptJoinOrderTree(preJoinOrderNode);
+
+    log("HepCalciteRel", loptNode);
+
+
+    return loptNode;
+  }
+
+  /**
+   * Perform heuristic-rule based optimizations before Join Ordering.
+   *
+   * @param rootRel
+   *          original plan
+   * @param mdProvider
+   *          meta data provider
+   * @return
+   */
+  private RelNode hepRuleTransform(RelNode rootRel, RelMetadataProvider mdProvider) {
+    // 1. Push Down Semi Joins
+    rootRel = hepPlan(rootRel, true, mdProvider, SemiJoinJoinTransposeRule.INSTANCE,
+        SemiJoinFilterTransposeRule.INSTANCE, SemiJoinProjectTransposeRule.INSTANCE);
+
+    // 2. Push down Filter
+    rootRel = hepPlan(rootRel, true, mdProvider,
+        FilterProjectTransposeRule.INSTANCE,
+        FilterMergeRule.INSTANCE,
+        FilterJoinRule.JOIN,
+        FilterJoinRule.FILTER_ON_JOIN,
+        FilterAggregateTransposeRule.INSTANCE
+    );
+
+    // 3. Transitive inference
+    rootRel = hepPlan(rootRel, false, mdProvider,
+        JoinPushTransitivePredicatesRule.INSTANCE
+    );
+
+    return rootRel;
+  }
+
+  /**
+   * Run the HEP Planner with the given rule set.
+   *
+   * @param basePlan
+   * @param topDown
+   * @param mdProvider
+   * @param rules
+   * @return optimized RelNode
+   */
+  private RelNode hepPlan(RelNode basePlan, boolean topDown,
+                          RelMetadataProvider mdProvider, RelOptRule... rules) {
+
+    RelNode optimizedRelNode = basePlan;
+    HepProgramBuilder programBuilder = new HepProgramBuilder();
+    if (topDown) {
+      programBuilder.addMatchOrder(HepMatchOrder.TOP_DOWN);
+    }
+
+    for (RelOptRule r : rules) {
+      programBuilder.addRuleInstance(r);
+    }
+
+    HepPlanner planner = new HepPlanner(programBuilder.build());
+    List<RelMetadataProvider> list = Lists.newArrayList();
+    list.add(mdProvider);
+    planner.registerMetadataProviders(list);
+    RelMetadataProvider chainedProvider = ChainedRelMetadataProvider.of(list);
+    basePlan.getCluster().setMetadataProvider(
+        new CachingRelMetadataProvider(chainedProvider, planner));
+
+    planner.setRoot(basePlan);
+    optimizedRelNode = planner.findBestExp();
+
+    return optimizedRelNode;
+  }
+
+
+  /**
+   * Appy Join Order Optimizations using Hep Planner.
+   */
+  public static RelNode getLoptJoinOrderTree(RelNode root) {
+    final HepProgramBuilder hepPgmBldr = new HepProgramBuilder()
+        .addMatchOrder(HepMatchOrder.BOTTOM_UP)
+        .addRuleInstance(new JoinToMultiJoinRule(DrillJoinRel.class))
+        .addRuleInstance(new LoptOptimizeJoinRule(DrillRelFactories.DRILL_LOGICAL_JOIN_FACTORY,
+            DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY,
+            DrillRelFactories.DRILL_LOGICAL_FILTER_FACTORY))
+        .addRuleInstance(ProjectRemoveRule.INSTANCE)
+        .addRuleInstance(new ProjectMergeRule(true, DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY));
+
+
+    final HepProgram hepPgm = hepPgmBldr.build();
+    final HepPlanner hepPlanner = new HepPlanner(hepPgm);
+
+    List<RelMetadataProvider> list = Lists.newArrayList();
+    list.add(new DefaultRelMetadataProvider());
+    hepPlanner.registerMetadataProviders(list);
+    RelMetadataProvider chainedProvider = ChainedRelMetadataProvider.of(list);
+    root.getCluster().setMetadataProvider(new CachingRelMetadataProvider(chainedProvider, hepPlanner));
+
+    hepPlanner.setRoot(root);
+
+    RelNode calciteOptimizedPlan = hepPlanner.findBestExp();
+
+    return calciteOptimizedPlan;
+  }
+
 }

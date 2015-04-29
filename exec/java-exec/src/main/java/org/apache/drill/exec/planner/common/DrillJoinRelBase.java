@@ -51,7 +51,7 @@ public abstract class DrillJoinRelBase extends Join implements DrillRelNode {
   private final double joinRowFactor;
 
   public DrillJoinRelBase(RelOptCluster cluster, RelTraitSet traits, RelNode left, RelNode right, RexNode condition,
-      JoinRelType joinType) throws InvalidRelException {
+      JoinRelType joinType){
     super(cluster, traits, left, right, condition, joinType, Collections.<String> emptySet());
     this.joinRowFactor = PrelUtil.getPlannerSettings(cluster.getPlanner()).getRowCountEstimateFactor();
   }

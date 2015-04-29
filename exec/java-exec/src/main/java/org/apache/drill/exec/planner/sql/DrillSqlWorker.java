@@ -37,6 +37,7 @@ import org.apache.drill.exec.planner.cost.DrillCostBase;
 import org.apache.drill.exec.planner.logical.DrillConstExecutor;
 import org.apache.drill.exec.planner.logical.DrillRuleSets;
 import org.apache.drill.exec.planner.physical.DrillDistributionTraitDef;
+import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.sql.handlers.AbstractSqlHandler;
 import org.apache.drill.exec.planner.sql.handlers.DefaultSqlHandler;
 import org.apache.drill.exec.planner.sql.handlers.ExplainHandler;
@@ -45,12 +46,10 @@ import org.apache.drill.exec.planner.sql.handlers.SqlHandlerConfig;
 import org.apache.drill.exec.planner.sql.parser.DrillSqlCall;
 import org.apache.drill.exec.planner.sql.parser.SqlCreateTable;
 import org.apache.drill.exec.planner.sql.parser.impl.DrillParserWithCompoundIdConverter;
-import org.apache.drill.exec.proto.UserBitShared.DrillPBError.ErrorType;
 import org.apache.drill.exec.planner.types.DrillRelDataTypeSystem;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.testing.ExecutionControlsInjector;
 import org.apache.drill.exec.util.Pointer;
-import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.drill.exec.work.foreman.ForemanSetupException;
 import org.apache.calcite.rel.RelCollationTraitDef;
 import org.apache.calcite.rel.rules.ReduceExpressionsRule;
@@ -60,10 +59,8 @@ import org.apache.calcite.plan.RelTraitDef;
 import org.apache.calcite.plan.hep.HepPlanner;
 import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.calcite.sql.parser.SqlParserImplFactory;
 import org.apache.hadoop.security.AccessControlException;
 
 public class DrillSqlWorker {
@@ -74,6 +71,7 @@ public class DrillSqlWorker {
   private final HepPlanner hepPlanner;
   public final static int LOGICAL_RULES = 0;
   public final static int PHYSICAL_MEM_RULES = 1;
+  public final static int LOGICAL_HEP_RULES = 2;
   private final QueryContext context;
 
   public DrillSqlWorker(QueryContext context) {
@@ -120,7 +118,10 @@ public class DrillSqlWorker {
     RuleSet drillPhysicalMem = DrillRuleSets.mergedRuleSets(
         DrillRuleSets.getPhysicalRules(context),
         storagePluginRegistry.getStoragePluginRuleSet());
-    RuleSet[] allRules = new RuleSet[] {drillLogicalRules, drillPhysicalMem};
+    RuleSet drillLogicalHepRules = DrillRuleSets.mergedRuleSets(DrillRuleSets.getHepLogicalRules(context),
+        DrillRuleSets.getDrillUserConfigurableLogicalRules(context));
+
+    RuleSet[] allRules = new RuleSet[] {drillLogicalRules, drillPhysicalMem, drillLogicalHepRules};
     return allRules;
   }
 
@@ -129,6 +130,8 @@ public class DrillSqlWorker {
   }
 
   public PhysicalPlan getPlan(String sql, Pointer<String> textPlan) throws ForemanSetupException {
+    final PlannerSettings ps = this.context.getPlannerSettings();
+
     SqlNode sqlNode;
     try {
       injector.injectChecked(context.getExecutionControls(), "sql-parsing", ForemanSetupException.class);

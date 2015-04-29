@@ -183,6 +183,54 @@ public class DrillRuleSets {
     return DRILL_BASIC_RULES;
   }
 
+  public static RuleSet getHepLogicalRules (QueryContext context) {
+    return new DrillRuleSet(ImmutableSet.<RelOptRule> builder().add( //
+        // Add support for WHERE style joins.
+        DrillPushFilterPastProjectRule.INSTANCE,
+        DrillFilterJoinRules.DRILL_FILTER_ON_JOIN,
+        DrillFilterJoinRules.DRILL_JOIN,
+        JoinPushThroughJoinRule.RIGHT,
+//        JoinPushThroughJoinRule.LEFT,
+        // End support for WHERE style joins.
+
+        FilterMergeRule.INSTANCE,
+        ExpandConversionRule.INSTANCE,
+        AggregateRemoveRule.INSTANCE,   // RemoveDistinctRule
+        ProjectRemoveRule.NAME_CALC_INSTANCE,     // RemoveTrivialProjectRule
+        SortRemoveRule.INSTANCE,      //RemoveSortRule.INSTANCE,
+
+        DrillMergeProjectRule.getInstance(true, RelFactories.DEFAULT_PROJECT_FACTORY, context.getFunctionRegistry()),
+        AggregateExpandDistinctAggregatesRule.INSTANCE, //RemoveDistinctAggregateRule.INSTANCE, //
+
+        /*
+        Projection push-down related rules
+        */
+        DrillPushProjectPastFilterRule.INSTANCE,  // Preserve ITEM
+        DrillPushProjectPastJoinRule.INSTANCE,    // Preserve ITEM
+        DrillPushProjIntoScan.INSTANCE,
+
+        PruneScanRule.getFilterOnProject(context),
+        PruneScanRule.getFilterOnScan(context),
+
+        ////////////////////////////////
+        DrillScanRule.INSTANCE,
+        DrillFilterRule.INSTANCE,
+        DrillProjectRule.INSTANCE,
+        DrillWindowRule.INSTANCE,
+        DrillAggregateRule.INSTANCE,
+
+        DrillLimitRule.INSTANCE,
+        DrillSortRule.INSTANCE,
+        DrillJoinRule.INSTANCE,
+        DrillUnionRule.INSTANCE,
+        DrillValuesRule.INSTANCE,
+
+        DrillReduceAggregatesRule.INSTANCE
+    )
+        .build());
+
+  }
+
   public static final RuleSet DRILL_PHYSICAL_DISK = new DrillRuleSet(ImmutableSet.of( //
       ProjectPrule.INSTANCE
 
