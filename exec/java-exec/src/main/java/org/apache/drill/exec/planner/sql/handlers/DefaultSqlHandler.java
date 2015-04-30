@@ -27,8 +27,12 @@ import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.hep.HepMatchOrder;
 import org.apache.calcite.plan.hep.HepProgram;
 import org.apache.calcite.plan.hep.HepProgramBuilder;
+import org.apache.calcite.rel.RelShuttleImpl;
 import org.apache.calcite.rel.core.Project;
+import org.apache.calcite.rel.core.TableFunctionScan;
+import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.logical.LogicalProject;
+import org.apache.calcite.rel.logical.LogicalValues;
 import org.apache.calcite.rel.metadata.CachingRelMetadataProvider;
 import org.apache.calcite.rel.metadata.ChainedRelMetadataProvider;
 import org.apache.calcite.rel.metadata.DefaultRelMetadataProvider;
@@ -554,11 +558,13 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     final HepProgram hepPgm = hepPgmBldr.build();
     final HepPlanner hepPlanner = new HepPlanner(hepPgm);
 
-    List<RelMetadataProvider> list = Lists.newArrayList();
+    final List<RelMetadataProvider> list = Lists.newArrayList();
     list.add(new DefaultRelMetadataProvider());
     hepPlanner.registerMetadataProviders(list);
-    RelMetadataProvider chainedProvider = ChainedRelMetadataProvider.of(list);
-    root.getCluster().setMetadataProvider(new CachingRelMetadataProvider(chainedProvider, hepPlanner));
+    final RelMetadataProvider cachingMetaDataProvider = new CachingRelMetadataProvider(ChainedRelMetadataProvider.of(list), hepPlanner);
+
+    // Modify RelMetaProvider for every RelNode in the SQL operator Rel tree.
+    root.accept(new MetaDataProviderModifier(cachingMetaDataProvider));
 
     hepPlanner.setRoot(root);
 
@@ -567,4 +573,37 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     return calciteOptimizedPlan;
   }
 
+
+  public static class MetaDataProviderModifier extends RelShuttleImpl {
+    private final RelMetadataProvider metadataProvider;
+
+    public MetaDataProviderModifier(RelMetadataProvider metadataProvider) {
+      this.metadataProvider = metadataProvider;
+    }
+
+    @Override
+    public RelNode visit(TableScan scan) {
+      scan.getCluster().setMetadataProvider(metadataProvider);
+      return super.visit(scan);
+    }
+
+    @Override
+    public RelNode visit(TableFunctionScan scan) {
+      scan.getCluster().setMetadataProvider(metadataProvider);
+      return super.visit(scan);
+    }
+
+    @Override
+    public RelNode visit(LogicalValues values) {
+      values.getCluster().setMetadataProvider(metadataProvider);
+      return super.visit(values);
+    }
+
+    @Override
+    protected RelNode visitChild(RelNode parent, int i, RelNode child) {
+      child.accept(this);
+      parent.getCluster().setMetadataProvider(metadataProvider);
+      return parent;
+    }
+  }
 }
