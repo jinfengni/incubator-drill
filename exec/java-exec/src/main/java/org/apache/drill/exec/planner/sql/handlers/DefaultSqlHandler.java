@@ -29,6 +29,7 @@ import org.apache.calcite.plan.hep.HepProgram;
 import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.rel.RelShuttleImpl;
 import org.apache.calcite.rel.core.Project;
+import org.apache.calcite.rel.core.RelFactories;
 import org.apache.calcite.rel.core.TableFunctionScan;
 import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.logical.LogicalProject;
@@ -458,17 +459,26 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   }
 
   private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
-    RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_HEP_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+//    final RelNode preOptNode = getLoptJoinOrderTree(
+//        relNode,
+//        RelFactories.DEFAULT_JOIN_FACTORY,
+//        RelFactories.DEFAULT_FILTER_FACTORY,
+//        RelFactories.DEFAULT_PROJECT_FACTORY);
+
+    final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_HEP_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
 
     log("VolCalciteRel", convertedRelNode);
 
     // RelNode preJoinOrderNode = preJoinOrderingTransforms(convertedRelNode, new DefaultRelMetadataProvider());
-    RelNode preJoinOrderNode = convertedRelNode;
+    final RelNode preJoinOrderNode = convertedRelNode;
 
-    RelNode loptNode = getLoptJoinOrderTree(preJoinOrderNode);
+    final RelNode loptNode = getLoptJoinOrderTree(
+        preJoinOrderNode,
+        DrillRelFactories.DRILL_LOGICAL_JOIN_FACTORY,
+        DrillRelFactories.DRILL_LOGICAL_FILTER_FACTORY,
+        DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY);
 
     log("HepCalciteRel", loptNode);
-
 
     return loptNode;
   }
@@ -544,15 +554,16 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   /**
    * Appy Join Order Optimizations using Hep Planner.
    */
-  public static RelNode getLoptJoinOrderTree(RelNode root) {
+  public static RelNode getLoptJoinOrderTree(RelNode root,
+                                             RelFactories.JoinFactory joinFactory,
+                                             RelFactories.FilterFactory filterFactory,
+                                             RelFactories.ProjectFactory projectFactory) {
     final HepProgramBuilder hepPgmBldr = new HepProgramBuilder()
         .addMatchOrder(HepMatchOrder.BOTTOM_UP)
         .addRuleInstance(new JoinToMultiJoinRule(DrillJoinRel.class))
-        .addRuleInstance(new LoptOptimizeJoinRule(DrillRelFactories.DRILL_LOGICAL_JOIN_FACTORY,
-            DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY,
-            DrillRelFactories.DRILL_LOGICAL_FILTER_FACTORY))
+        .addRuleInstance(new LoptOptimizeJoinRule(joinFactory, projectFactory, filterFactory))
         .addRuleInstance(ProjectRemoveRule.INSTANCE)
-        .addRuleInstance(new ProjectMergeRule(true, DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY));
+        .addRuleInstance(new ProjectMergeRule(true, projectFactory));
 
 
     final HepProgram hepPgm = hepPgmBldr.build();
