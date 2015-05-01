@@ -458,6 +458,13 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     return planner.transform(DrillSqlWorker.LOGICAL_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
   }
 
+  /**
+   * Do logical planning using both VolcanoPlanner and HepPlanner.
+   * @param relNode
+   * @return
+   * @throws RelConversionException
+   * @throws SqlUnsupportedException
+   */
   private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
 //    final RelNode preOptNode = getLoptJoinOrderTree(
 //        relNode,
