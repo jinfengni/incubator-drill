@@ -72,6 +72,7 @@ import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.impl.join.JoinUtils;
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
+import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRel;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillRelFactories;
@@ -561,7 +562,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   /**
    * Appy Join Order Optimizations using Hep Planner.
    */
-  public static RelNode getLoptJoinOrderTree(RelNode root,
+  public RelNode getLoptJoinOrderTree(RelNode root,
                                              RelFactories.JoinFactory joinFactory,
                                              RelFactories.FilterFactory filterFactory,
                                              RelFactories.ProjectFactory projectFactory) {
@@ -569,8 +570,10 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
         .addMatchOrder(HepMatchOrder.BOTTOM_UP)
         .addRuleInstance(new JoinToMultiJoinRule(DrillJoinRel.class))
         .addRuleInstance(new LoptOptimizeJoinRule(joinFactory, projectFactory, filterFactory))
-        .addRuleInstance(ProjectRemoveRule.INSTANCE)
-        .addRuleInstance(new ProjectMergeRule(true, projectFactory));
+        .addRuleInstance(ProjectRemoveRule.INSTANCE);
+        // .addRuleInstance(new ProjectMergeRule(true, projectFactory));
+
+        // .addRuleInstance(DrillMergeProjectRule.getInstance(true, projectFactory, this.context.getFunctionRegistry()));
 
 
     final HepProgram hepPgm = hepPgmBldr.build();
