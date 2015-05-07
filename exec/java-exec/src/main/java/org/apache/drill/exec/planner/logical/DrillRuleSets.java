@@ -205,9 +205,9 @@ public class DrillRuleSets {
         /*
         Projection push-down related rules
         */
-        DrillPushProjectPastFilterRule.DRILL_LOGICAL_INSTANCE,  // Preserve ITEM
-        DrillPushProjectPastJoinRule.DRILL_LOGICAL_INSTANCE,    // Preserve ITEM
-        DrillPushProjIntoScan.DRILL_LOGICAL_INSTANCE,
+//        DrillPushProjectPastFilterRule.INSTANCE,  // Preserve ITEM
+//        DrillPushProjectPastJoinRule.INSTANCE,    // Preserve ITEM
+//        DrillPushProjIntoScan.DRILL_LOGICAL_INSTANCE,
 
         PruneScanRule.getFilterOnProject(context),
         PruneScanRule.getFilterOnScan(context),
@@ -252,9 +252,9 @@ public class DrillRuleSets {
         /*
         Projection push-down related rules
         */
-//        DrillPushProjectPastFilterRule.INSTANCE,  // Preserve ITEM   Logical
-//        DrillPushProjectPastJoinRule.INSTANCE,    // Preserve ITEM   Logical
-//        DrillPushProjIntoScan.INSTANCE,           // Logical
+        DrillPushProjectPastFilterRule.INSTANCE,  // Preserve ITEM   Logical
+        DrillPushProjectPastJoinRule.INSTANCE,    // Preserve ITEM   Logical
+        DrillPushProjIntoScan.INSTANCE,           // Logical
 //
 //        PruneScanRule.getFilterOnProject(context),
 //        PruneScanRule.getFilterOnScan(context),

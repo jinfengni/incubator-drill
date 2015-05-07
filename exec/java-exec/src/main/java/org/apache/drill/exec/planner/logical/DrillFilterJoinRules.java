@@ -67,13 +67,13 @@ public class DrillFilterJoinRules {
 
   /** Rule that pushes predicates from a Filter into the Join below them. */
   public static final FilterJoinRule DRILL_FILTER_ON_JOIN =
-      new FilterJoinRule.FilterIntoJoinRule(true, DrillFilterRel.class, DrillJoinRel.class, DrillRelFactories.DRILL_LOGICAL_FILTER_FACTORY,
-          DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY, EQUAL_IS_DISTINCT_FROM);
+      new FilterJoinRule.FilterIntoJoinRule(true, RelFactories.DEFAULT_FILTER_FACTORY,
+          RelFactories.DEFAULT_PROJECT_FACTORY, EQUAL_IS_DISTINCT_FROM);
 
 
   /** Rule that pushes predicates in a Join into the inputs to the join. */
   public static final FilterJoinRule DRILL_JOIN =
-      new FilterJoinRule.JoinConditionPushRule(DrillJoinRel.class, DrillRelFactories.DRILL_LOGICAL_FILTER_FACTORY,
-          DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY, EQUAL_IS_DISTINCT_FROM);
+      new FilterJoinRule.JoinConditionPushRule(RelFactories.DEFAULT_FILTER_FACTORY,
+          RelFactories.DEFAULT_PROJECT_FACTORY, EQUAL_IS_DISTINCT_FROM);
 
 }

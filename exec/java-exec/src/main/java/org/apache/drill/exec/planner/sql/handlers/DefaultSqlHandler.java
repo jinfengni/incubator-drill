@@ -243,11 +243,10 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
   protected RelNode convertToRel(SqlNode node) throws RelConversionException {
     RelNode convertedNode = planner.convert(node);
-    return convertedNode;
-//    hepPlanner.setRoot(convertedNode);
-//    RelNode rel = hepPlanner.findBestExp();
+    hepPlanner.setRoot(convertedNode);
+    RelNode rel = hepPlanner.findBestExp();
 
-//    return rel;
+    return rel;
   }
 
   protected RelNode preprocessNode(RelNode rel) throws SqlUnsupportedException{
@@ -474,9 +473,9 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
    * @throws SqlUnsupportedException
    */
   private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
-    // RelNode preJoinOrderNode = hepRuleTransform(relNode, new DefaultRelMetadataProvider());
+    RelNode preJoinOrderNode = hepRuleTransform(relNode, new DefaultRelMetadataProvider());
 
-    final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_CONVERT_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+    final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_CONVERT_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), preJoinOrderNode);
 //
     log("VolCalciteRel", convertedRelNode);
 

@@ -51,7 +51,6 @@ public class DrillJoinRel extends DrillJoinRelBase implements DrillRel {
   public DrillJoinRel(RelOptCluster cluster, RelTraitSet traits, RelNode left, RelNode right, RexNode condition,
       JoinRelType joinType)  {
     super(cluster, traits, left, right, condition, joinType);
-    assert left.getConvention() == DRILL_LOGICAL && right.getConvention() == DRILL_LOGICAL;
 
     RelOptUtil.splitJoinCondition(left, right, condition, leftKeys, rightKeys);
   }
