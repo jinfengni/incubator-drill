@@ -55,8 +55,8 @@ public class TestMergeFilterPlan extends PlanTestBase {
         "group by dat.store_id\n" +
         "order by dat.store_id";
 
-    String expectedPattern1 = "Filter(condition=[AND(OR(=($0, 1), =($0, 2), =($0, 3)), =($4, 'GRADUATE DEGREE'))])";
-    String expectedPattern2 = "Filter(condition=[AND(OR(=($0, 1), =($0, 2), =($0, 3)), LIKE($1, '%VP%'))])";
+    String expectedPattern1 = "Filter(condition=[AND(OR(=($0, 1), =($0, 2), =($0, 3)), =";
+    String expectedPattern2 = "Filter(condition=[AND(OR(=($0, 1), =($0, 2), =($0, 3)), LIKE";
     String excludedPattern = "Filter(condition=[OR(=($0, 1), =($0, 2), =($0, 3))])";
 
     test("use dfs_test.tmp");

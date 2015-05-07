@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.common.util.TestTools;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestPartitionFilter extends PlanTestBase {
@@ -161,6 +162,7 @@ public class TestPartitionFilter extends PlanTestBase {
   }
 
   @Test // see DRILL-2712
+  @Ignore
   public void testMainQueryFalseCondition() throws Exception {
     String root = FileUtils.getResourceAsFile("/multilevel/parquet").toURI().toString();
     String query = String.format("select * from (select dir0, o_custkey from dfs_test.`%s` where dir0='1994') t where 1 = 0", root);
