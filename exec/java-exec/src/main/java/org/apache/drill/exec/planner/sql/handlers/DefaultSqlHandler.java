@@ -80,6 +80,7 @@ import org.apache.drill.exec.planner.cost.DrillDefaultRelMetadataProvider;
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRel;
+import org.apache.drill.exec.planner.logical.DrillPushProjectPastFilterRule;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillRelFactories;
 import org.apache.drill.exec.planner.logical.DrillScreenRel;
@@ -278,9 +279,6 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
         convertedRelNode = logicalPlanningVolcano(relNode);
       } else {
         convertedRelNode = logicalPlanningVolcanoAndLopt(relNode);
-        if(JoinUtils.checkCartesianJoin(convertedRelNode, new ArrayList<Integer>(), new ArrayList<Integer>())) {
-          throw new UnsupportedRelOperatorException("This query cannot be planned possibly due to either a cartesian join or an inequality join");
-        }
       }
 
       if (convertedRelNode instanceof DrillStoreRel) {
@@ -302,10 +300,22 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   }
 
 
-  protected Prel convertToPrel(RelNode drel) throws RelConversionException {
+  protected Prel convertToPrel(RelNode drel) throws RelConversionException, SqlUnsupportedException {
     Preconditions.checkArgument(drel.getConvention() == DrillRel.DRILL_LOGICAL);
     RelTraitSet traits = drel.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
-    Prel phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES, traits, drel);
+    Prel phyRelNode;
+    try {
+      phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES, traits, drel);
+    } catch (RelOptPlanner.CannotPlanException ex) {
+      logger.error(ex.getMessage());
+
+      if(JoinUtils.checkCartesianJoin(drel, new ArrayList<Integer>(), new ArrayList<Integer>())) {
+        throw new UnsupportedRelOperatorException("This query cannot be planned possibly due to either a cartesian join or an inequality join");
+      } else {
+        throw ex;
+      }
+    }
+
     OptionManager queryOptions = context.getOptions();
 
     if (context.getPlannerSettings().isMemoryEstimationEnabled()
@@ -316,7 +326,17 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
       queryOptions.setOption(OptionValue.createBoolean(OptionValue.OptionType.QUERY, PlannerSettings.HASHJOIN.getOptionName(), false));
       queryOptions.setOption(OptionValue.createBoolean(OptionValue.OptionType.QUERY, PlannerSettings.HASHAGG.getOptionName(), false));
 
-      phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES, traits, drel);
+      try {
+        phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES, traits, drel);
+      } catch (RelOptPlanner.CannotPlanException ex) {
+        logger.error(ex.getMessage());
+
+        if(JoinUtils.checkCartesianJoin(drel, new ArrayList<Integer>(), new ArrayList<Integer>())) {
+          throw new UnsupportedRelOperatorException("This query cannot be planned possibly due to either a cartesian join or an inequality join");
+        } else {
+          throw ex;
+        }
+      }
     }
 
     /*  The order of the following transformation is important */
@@ -516,7 +536,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
     // 2. Push down Filter
     rootRel = hepPlan(rootRel, true, mdProvider,
-        FilterProjectTransposeRule.INSTANCE,
+        DrillPushProjectPastFilterRule.INSTANCE, //FilterProjectTransposeRule.INSTANCE,
         FilterMergeRule.INSTANCE,
         FilterJoinRule.JOIN,
         FilterJoinRule.FILTER_ON_JOIN,
