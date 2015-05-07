@@ -122,9 +122,8 @@ public class DrillSqlWorker {
         storagePluginRegistry.getStoragePluginRuleSet());
 
     // Following two are used for LOPT join OPT.
-    RuleSet drillLogicalHepRules = DrillRuleSets.mergedRuleSets(DrillRuleSets.getHepLogicalRules(context),
-        DrillRuleSets.getDrillUserConfigurableLogicalRules(context));
-    RuleSet logicalConvertRules = DrillRuleSets.getLogicalConvertRules(context);
+    RuleSet drillLogicalHepRules = DrillRuleSets.getHepLogicalRules(context);
+    RuleSet logicalConvertRules = DrillRuleSets.mergedRuleSets(DrillRuleSets.getLogicalConvertRules(context),        DrillRuleSets.getDrillUserConfigurableLogicalRules(context));
 
     RuleSet[] allRules = new RuleSet[] {drillLogicalRules, drillPhysicalMem, drillLogicalHepRules, logicalConvertRules};
 

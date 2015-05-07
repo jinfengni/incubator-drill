@@ -278,6 +278,9 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
         convertedRelNode = logicalPlanningVolcano(relNode);
       } else {
         convertedRelNode = logicalPlanningVolcanoAndLopt(relNode);
+        if(JoinUtils.checkCartesianJoin(convertedRelNode, new ArrayList<Integer>(), new ArrayList<Integer>())) {
+          throw new UnsupportedRelOperatorException("This query cannot be planned possibly due to either a cartesian join or an inequality join");
+        }
       }
 
       if (convertedRelNode instanceof DrillStoreRel) {
