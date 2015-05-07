@@ -17,6 +17,11 @@
  */
 package org.apache.drill.exec.planner.logical;
 
+import org.apache.calcite.rel.core.Filter;
+import org.apache.calcite.rel.core.Project;
+import org.apache.calcite.rel.core.RelFactories;
+import org.apache.calcite.rel.logical.LogicalFilter;
+import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.rules.ProjectFilterTransposeRule;
 import org.apache.calcite.rel.rules.PushProjector;
 import org.apache.calcite.plan.RelOptRule;
@@ -25,8 +30,22 @@ public class DrillPushProjectPastFilterRule extends ProjectFilterTransposeRule {
 
   public final static RelOptRule INSTANCE = new DrillPushProjectPastFilterRule(DrillConditions.PRESERVE_ITEM);
 
+  public final static RelOptRule DRILL_LOGICAL_INSTANCE = new DrillPushProjectPastFilterRule(DrillProjectRel.class,
+      DrillFilterRel.class,
+      DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY,
+      DrillRelFactories.DRILL_LOGICAL_FILTER_FACTORY,
+      DrillConditions.PRESERVE_ITEM);
+
   protected DrillPushProjectPastFilterRule(PushProjector.ExprCondition preserveExprCondition) {
     super(preserveExprCondition);
+  }
+
+  protected DrillPushProjectPastFilterRule(Class<? extends Project> projectClass,
+                                       Class<? extends Filter> filterClass,
+                                       RelFactories.ProjectFactory projectFactory,
+                                       RelFactories.FilterFactory filterFactory,
+                                       PushProjector.ExprCondition preserveExprCondition) {
+    super(projectClass, filterClass, projectFactory, filterFactory, preserveExprCondition);
   }
 
 }

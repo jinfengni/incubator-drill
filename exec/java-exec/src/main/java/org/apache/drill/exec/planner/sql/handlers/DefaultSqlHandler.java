@@ -28,10 +28,13 @@ import org.apache.calcite.plan.hep.HepMatchOrder;
 import org.apache.calcite.plan.hep.HepProgram;
 import org.apache.calcite.plan.hep.HepProgramBuilder;
 import org.apache.calcite.rel.RelShuttleImpl;
+import org.apache.calcite.rel.core.Filter;
+import org.apache.calcite.rel.core.Join;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.core.RelFactories;
 import org.apache.calcite.rel.core.TableFunctionScan;
 import org.apache.calcite.rel.core.TableScan;
+import org.apache.calcite.rel.logical.LogicalJoin;
 import org.apache.calcite.rel.logical.LogicalProject;
 import org.apache.calcite.rel.logical.LogicalValues;
 import org.apache.calcite.rel.metadata.CachingRelMetadataProvider;
@@ -42,6 +45,7 @@ import org.apache.calcite.rel.rules.FilterAggregateTransposeRule;
 import org.apache.calcite.rel.rules.FilterJoinRule;
 import org.apache.calcite.rel.rules.FilterMergeRule;
 import org.apache.calcite.rel.rules.FilterProjectTransposeRule;
+import org.apache.calcite.rel.rules.JoinPushThroughJoinRule;
 import org.apache.calcite.rel.rules.JoinPushTransitivePredicatesRule;
 import org.apache.calcite.rel.rules.JoinToMultiJoinRule;
 import org.apache.calcite.rel.rules.LoptOptimizeJoinRule;
@@ -56,6 +60,7 @@ import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexUtil;
 import org.apache.calcite.sql.TypedSqlNode;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
+import org.apache.calcite.sql2rel.RelFieldTrimmer;
 import org.apache.calcite.tools.Planner;
 import org.apache.calcite.tools.RelConversionException;
 import org.apache.calcite.tools.ValidationException;
@@ -71,6 +76,7 @@ import org.apache.drill.exec.physical.PhysicalPlan;
 import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.impl.join.JoinUtils;
+import org.apache.drill.exec.planner.cost.DrillDefaultRelMetadataProvider;
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRel;
@@ -237,10 +243,11 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
   protected RelNode convertToRel(SqlNode node) throws RelConversionException {
     RelNode convertedNode = planner.convert(node);
-    hepPlanner.setRoot(convertedNode);
-    RelNode rel = hepPlanner.findBestExp();
+    return convertedNode;
+//    hepPlanner.setRoot(convertedNode);
+//    RelNode rel = hepPlanner.findBestExp();
 
-    return rel;
+//    return rel;
   }
 
   protected RelNode preprocessNode(RelNode rel) throws SqlUnsupportedException{
@@ -467,28 +474,28 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
    * @throws SqlUnsupportedException
    */
   private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
-//    final RelNode preOptNode = getLoptJoinOrderTree(
-//        relNode,
-//        RelFactories.DEFAULT_JOIN_FACTORY,
-//        RelFactories.DEFAULT_FILTER_FACTORY,
-//        RelFactories.DEFAULT_PROJECT_FACTORY);
+    // RelNode preJoinOrderNode = hepRuleTransform(relNode, new DefaultRelMetadataProvider());
 
-    final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_HEP_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
-
+    final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_CONVERT_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+//
     log("VolCalciteRel", convertedRelNode);
 
-    // RelNode preJoinOrderNode = preJoinOrderingTransforms(convertedRelNode, new DefaultRelMetadataProvider());
-    final RelNode preJoinOrderNode = convertedRelNode;
+//    RelNode preJoinOrderNode = hepRuleTransform(convertedRelNode, new DefaultRelMetadataProvider());
+    //final RelNode preJoinOrderNode = convertedRelNode;
 
     final RelNode loptNode = getLoptJoinOrderTree(
-        preJoinOrderNode,
+        convertedRelNode,
+        DrillJoinRel.class,
         DrillRelFactories.DRILL_LOGICAL_JOIN_FACTORY,
         DrillRelFactories.DRILL_LOGICAL_FILTER_FACTORY,
         DrillRelFactories.DRILL_LOGICAL_PROJECT_FACTORY);
 
     log("HepCalciteRel", loptNode);
 
-    return loptNode;
+    final RelNode optNode = planner.transform(DrillSqlWorker.LOGICAL_HEP_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), loptNode);
+
+    log("LogHepRel", optNode);
+    return optNode;
   }
 
   /**
@@ -518,6 +525,10 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     rootRel = hepPlan(rootRel, false, mdProvider,
         JoinPushTransitivePredicatesRule.INSTANCE
     );
+
+//    // 4. Project push down.
+//    RelFieldTrimmer fieldTrimmer = new RelFieldTrimmer(null);
+//    rootRel = fieldTrimmer.trim(rootRel);
 
     return rootRel;
   }
@@ -563,12 +574,13 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
    * Appy Join Order Optimizations using Hep Planner.
    */
   public RelNode getLoptJoinOrderTree(RelNode root,
+                                      Class<? extends Join> joinClass,
                                              RelFactories.JoinFactory joinFactory,
                                              RelFactories.FilterFactory filterFactory,
                                              RelFactories.ProjectFactory projectFactory) {
     final HepProgramBuilder hepPgmBldr = new HepProgramBuilder()
         .addMatchOrder(HepMatchOrder.BOTTOM_UP)
-        .addRuleInstance(new JoinToMultiJoinRule(DrillJoinRel.class))
+        .addRuleInstance(new JoinToMultiJoinRule(joinClass))
         .addRuleInstance(new LoptOptimizeJoinRule(joinFactory, projectFactory, filterFactory))
         .addRuleInstance(ProjectRemoveRule.INSTANCE);
         // .addRuleInstance(new ProjectMergeRule(true, projectFactory));
@@ -580,7 +592,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     final HepPlanner hepPlanner = new HepPlanner(hepPgm);
 
     final List<RelMetadataProvider> list = Lists.newArrayList();
-    list.add(new DefaultRelMetadataProvider());
+    list.add(DrillDefaultRelMetadataProvider.INSTANCE);
     hepPlanner.registerMetadataProviders(list);
     final RelMetadataProvider cachingMetaDataProvider = new CachingRelMetadataProvider(ChainedRelMetadataProvider.of(list), hepPlanner);
 

@@ -72,6 +72,8 @@ public class DrillSqlWorker {
   public final static int LOGICAL_RULES = 0;
   public final static int PHYSICAL_MEM_RULES = 1;
   public final static int LOGICAL_HEP_RULES = 2;
+  public final static int LOGICAL_CONVERT_RULES = 3;
+
   private final QueryContext context;
 
   public DrillSqlWorker(QueryContext context) {
@@ -118,10 +120,14 @@ public class DrillSqlWorker {
     RuleSet drillPhysicalMem = DrillRuleSets.mergedRuleSets(
         DrillRuleSets.getPhysicalRules(context),
         storagePluginRegistry.getStoragePluginRuleSet());
+
+    // Following two are used for LOPT join OPT.
     RuleSet drillLogicalHepRules = DrillRuleSets.mergedRuleSets(DrillRuleSets.getHepLogicalRules(context),
         DrillRuleSets.getDrillUserConfigurableLogicalRules(context));
+    RuleSet logicalConvertRules = DrillRuleSets.getLogicalConvertRules(context);
 
-    RuleSet[] allRules = new RuleSet[] {drillLogicalRules, drillPhysicalMem, drillLogicalHepRules};
+    RuleSet[] allRules = new RuleSet[] {drillLogicalRules, drillPhysicalMem, drillLogicalHepRules, logicalConvertRules};
+
     return allRules;
   }
 

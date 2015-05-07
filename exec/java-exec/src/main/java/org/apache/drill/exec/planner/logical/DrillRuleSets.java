@@ -189,7 +189,7 @@ public class DrillRuleSets {
         DrillPushFilterPastProjectRule.INSTANCE,
         DrillFilterJoinRules.DRILL_FILTER_ON_JOIN,
         DrillFilterJoinRules.DRILL_JOIN,
-        JoinPushThroughJoinRule.RIGHT,
+//        JoinPushThroughJoinRule.RIGHT,
 //        JoinPushThroughJoinRule.LEFT,
         // End support for WHERE style joins.
 
@@ -205,9 +205,9 @@ public class DrillRuleSets {
         /*
         Projection push-down related rules
         */
-        DrillPushProjectPastFilterRule.INSTANCE,  // Preserve ITEM
-        DrillPushProjectPastJoinRule.INSTANCE,    // Preserve ITEM
-        DrillPushProjIntoScan.INSTANCE,
+        DrillPushProjectPastFilterRule.DRILL_LOGICAL_INSTANCE,  // Preserve ITEM
+        DrillPushProjectPastJoinRule.DRILL_LOGICAL_INSTANCE,    // Preserve ITEM
+        DrillPushProjIntoScan.DRILL_LOGICAL_INSTANCE,
 
         PruneScanRule.getFilterOnProject(context),
         PruneScanRule.getFilterOnScan(context),
@@ -229,6 +229,54 @@ public class DrillRuleSets {
     )
         .build());
 
+  }
+
+  public static RuleSet getLogicalConvertRules (QueryContext context) {
+    return new DrillRuleSet(ImmutableSet.<RelOptRule> builder().add( //
+        // Add support for WHERE style joins.
+        DrillPushFilterPastProjectRule.INSTANCE,   // logical
+        DrillFilterJoinRules.DRILL_FILTER_ON_JOIN, // Need to push down filter.
+        DrillFilterJoinRules.DRILL_JOIN,           // Need to push down filter.
+//        JoinPushThroughJoinRule.RIGHT,
+//        JoinPushThroughJoinRule.LEFT,
+        // End support for WHERE style joins.
+
+//        FilterMergeRule.INSTANCE,
+        AggregateRemoveRule.INSTANCE,   // RemoveDistinctRule    Logical
+//        ProjectRemoveRule.NAME_CALC_INSTANCE,     // RemoveTrivialProjectRule
+//        SortRemoveRule.INSTANCE,      //RemoveSortRule.INSTANCE,
+
+//        DrillMergeProjectRule.getInstance(true, RelFactories.DEFAULT_PROJECT_FACTORY, context.getFunctionRegistry()),
+        AggregateExpandDistinctAggregatesRule.INSTANCE, //RemoveDistinctAggregateRule.INSTANCE, //  Logical
+
+        /*
+        Projection push-down related rules
+        */
+//        DrillPushProjectPastFilterRule.INSTANCE,  // Preserve ITEM   Logical
+//        DrillPushProjectPastJoinRule.INSTANCE,    // Preserve ITEM   Logical
+//        DrillPushProjIntoScan.INSTANCE,           // Logical
+//
+//        PruneScanRule.getFilterOnProject(context),
+//        PruneScanRule.getFilterOnScan(context),
+//
+        DrillReduceAggregatesRule.INSTANCE,       // Logical
+
+        ////////////////////////////////
+        ExpandConversionRule.INSTANCE,
+
+        DrillScanRule.INSTANCE,
+        DrillFilterRule.INSTANCE,
+        DrillProjectRule.INSTANCE,
+        DrillWindowRule.INSTANCE,
+        DrillAggregateRule.INSTANCE,
+
+        DrillLimitRule.INSTANCE,
+        DrillSortRule.INSTANCE,
+        DrillJoinRule.INSTANCE,
+        DrillUnionRule.INSTANCE,
+        DrillValuesRule.INSTANCE
+    )
+        .build());
   }
 
   public static final RuleSet DRILL_PHYSICAL_DISK = new DrillRuleSet(ImmutableSet.of( //
