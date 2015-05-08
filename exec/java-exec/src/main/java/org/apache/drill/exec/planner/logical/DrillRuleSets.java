@@ -241,7 +241,7 @@ public class DrillRuleSets {
 //        JoinPushThroughJoinRule.LEFT,
         // End support for WHERE style joins.
 
-//        FilterMergeRule.INSTANCE,
+        FilterMergeRule.INSTANCE,
         AggregateRemoveRule.INSTANCE,   // RemoveDistinctRule    Logical
         ProjectRemoveRule.NAME_CALC_INSTANCE,     // RemoveTrivialProjectRule
         SortRemoveRule.INSTANCE,      //RemoveSortRule.INSTANCE,
@@ -256,8 +256,8 @@ public class DrillRuleSets {
         DrillPushProjectPastJoinRule.INSTANCE,    // Preserve ITEM   Logical
         DrillPushProjIntoScan.INSTANCE,           // Logical
 //
-//        PruneScanRule.getFilterOnProject(context),
-//        PruneScanRule.getFilterOnScan(context),
+        PruneScanRule.getFilterOnProject(context),
+        PruneScanRule.getFilterOnScan(context),
 //
         DrillReduceAggregatesRule.INSTANCE,       // Logical
 

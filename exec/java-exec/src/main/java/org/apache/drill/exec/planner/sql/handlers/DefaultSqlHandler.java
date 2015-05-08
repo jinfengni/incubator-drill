@@ -498,10 +498,10 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
    * @throws SqlUnsupportedException
    */
   private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
-    RelNode preJoinOrderNode = hepRuleTransform(relNode, new DefaultRelMetadataProvider());
-    log("hepTransform", preJoinOrderNode);
+//    RelNode preJoinOrderNode = hepRuleTransform(relNode, new DefaultRelMetadataProvider());
+//    log("hepTransform", preJoinOrderNode);
 
-    final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_CONVERT_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), preJoinOrderNode);
+    final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_CONVERT_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
 //
     log("VolCalciteRel", convertedRelNode);
 
@@ -517,10 +517,10 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
     log("HepCalciteRel", loptNode);
 
-    final RelNode optNode = planner.transform(DrillSqlWorker.LOGICAL_HEP_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), loptNode);
+    //final RelNode optNode = planner.transform(DrillSqlWorker.LOGICAL_HEP_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), loptNode);
 
-    log("LogHepRel", optNode);
-    return optNode;
+    //log("LogHepRel", optNode);
+    return loptNode;
   }
 
   /**
