@@ -65,6 +65,14 @@ public abstract class DrillJoinRelBase extends Join implements DrillRelNode {
           if (hasScalarSubqueryInput()) {
             return computeLogicalJoinCost(planner);
           } else {
+            /*
+             *  Why do we return non-infinite cost for CartsianJoin with non-scalar subquery, when LOPT planner is enabled?
+             *   - We do not want to turn on the two Join permutation rule : PushJoinPastThroughJoin.LEFT, RIGHT.
+             *   - As such, we may end up with filter on top of join, which will cause CanNotPlan in LogicalPlanning, if we
+             *   return infinite cost.
+             *   - Such filter on top of join might be pushed into JOIN, when LOPT planner is called.
+             *   - Return non-infinite cost will give LOPT planner a chance to try to push the filters.
+             */
             if (PrelUtil.getPlannerSettings(planner).isHepJoinOptEnabled()) {
              return computeCartesianJoinCost(planner);
             } else {
@@ -143,8 +151,9 @@ public abstract class DrillJoinRelBase extends Join implements DrillRelNode {
 
     DrillCostFactory costFactory = (DrillCostFactory) planner.getCostFactory();
 
-    return costFactory.makeCost(buildRowCount * probeRowCount, cpuCost, 0, 0, memCost);
+    final double mulFactor = 100000; // This is a magic number, just to make sure CartesianJoin is more expensive than Non-CartesianJoin.
 
+    return costFactory.makeCost(buildRowCount * probeRowCount, cpuCost * mulFactor, 0, 0, memCost * mulFactor);
   }
 
   protected RelOptCost computeLogicalJoinCost(RelOptPlanner planner) {

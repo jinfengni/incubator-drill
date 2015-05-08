@@ -49,7 +49,7 @@ public class DrillRelMdDistinctRowCount extends RelMdDistinctRowCount{
   }
 
   private Double getDistinctRowCount(DrillScanRel scan, ImmutableBitSet groupKey, RexNode predicate) {
-    return scan.getRows();
+    return scan.getRows() * 0.1;
   }
 
 }

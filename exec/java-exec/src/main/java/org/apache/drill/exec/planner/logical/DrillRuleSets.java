@@ -243,10 +243,10 @@ public class DrillRuleSets {
 
 //        FilterMergeRule.INSTANCE,
         AggregateRemoveRule.INSTANCE,   // RemoveDistinctRule    Logical
-//        ProjectRemoveRule.NAME_CALC_INSTANCE,     // RemoveTrivialProjectRule
-//        SortRemoveRule.INSTANCE,      //RemoveSortRule.INSTANCE,
+        ProjectRemoveRule.NAME_CALC_INSTANCE,     // RemoveTrivialProjectRule
+        SortRemoveRule.INSTANCE,      //RemoveSortRule.INSTANCE,
 
-//        DrillMergeProjectRule.getInstance(true, RelFactories.DEFAULT_PROJECT_FACTORY, context.getFunctionRegistry()),
+        DrillMergeProjectRule.getInstance(true, RelFactories.DEFAULT_PROJECT_FACTORY, context.getFunctionRegistry()),
         AggregateExpandDistinctAggregatesRule.INSTANCE, //RemoveDistinctAggregateRule.INSTANCE, //  Logical
 
         /*

@@ -77,6 +77,7 @@ import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.impl.join.JoinUtils;
 import org.apache.drill.exec.planner.cost.DrillDefaultRelMetadataProvider;
+import org.apache.drill.exec.planner.logical.DrillFilterJoinRules;
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRel;
@@ -497,6 +498,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
    */
   private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
     RelNode preJoinOrderNode = hepRuleTransform(relNode, new DefaultRelMetadataProvider());
+    log("hepTransform", preJoinOrderNode);
 
     final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_CONVERT_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), preJoinOrderNode);
 //
@@ -538,8 +540,8 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     rootRel = hepPlan(rootRel, true, mdProvider,
         DrillPushProjectPastFilterRule.INSTANCE, //FilterProjectTransposeRule.INSTANCE,
         FilterMergeRule.INSTANCE,
-        FilterJoinRule.JOIN,
-        FilterJoinRule.FILTER_ON_JOIN,
+        DrillFilterJoinRules.DRILL_JOIN, //FilterJoinRule.JOIN,
+        DrillFilterJoinRules.DRILL_FILTER_ON_JOIN, //FilterJoinRule.FILTER_ON_JOIN,
         FilterAggregateTransposeRule.INSTANCE
     );
 
@@ -581,9 +583,12 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     List<RelMetadataProvider> list = Lists.newArrayList();
     list.add(mdProvider);
     planner.registerMetadataProviders(list);
-    RelMetadataProvider chainedProvider = ChainedRelMetadataProvider.of(list);
-    basePlan.getCluster().setMetadataProvider(
-        new CachingRelMetadataProvider(chainedProvider, planner));
+    final RelMetadataProvider cachingMetaDataProvider = new CachingRelMetadataProvider(ChainedRelMetadataProvider.of(list), hepPlanner);
+//    basePlan.getCluster().setMetadataProvider(
+//        new CachingRelMetadataProvider(chainedProvider, planner));
+
+    // Modify RelMetaProvider for every RelNode in the SQL operator Rel tree.
+    basePlan.accept(new MetaDataProviderModifier(cachingMetaDataProvider));
 
     planner.setRoot(basePlan);
     optimizedRelNode = planner.findBestExp();
