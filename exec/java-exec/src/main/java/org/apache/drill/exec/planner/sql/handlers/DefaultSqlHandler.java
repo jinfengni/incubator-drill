@@ -81,6 +81,7 @@ import org.apache.drill.exec.planner.logical.DrillFilterJoinRules;
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRel;
+import org.apache.drill.exec.planner.logical.DrillPushFilterPastProjectRule;
 import org.apache.drill.exec.planner.logical.DrillPushProjectPastFilterRule;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillRelFactories;
@@ -538,8 +539,8 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
 
     // 2. Push down Filter
     rootRel = hepPlan(rootRel, true, mdProvider,
-        DrillPushProjectPastFilterRule.INSTANCE, //FilterProjectTransposeRule.INSTANCE,
         FilterMergeRule.INSTANCE,
+        DrillPushFilterPastProjectRule.INSTANCE, //FilterProjectTransposeRule.INSTANCE,
         DrillFilterJoinRules.DRILL_JOIN, //FilterJoinRule.JOIN,
         DrillFilterJoinRules.DRILL_FILTER_ON_JOIN, //FilterJoinRule.FILTER_ON_JOIN,
         FilterAggregateTransposeRule.INSTANCE
