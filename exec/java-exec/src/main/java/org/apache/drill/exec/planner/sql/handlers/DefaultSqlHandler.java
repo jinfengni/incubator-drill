@@ -469,7 +469,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     return node;
   }
 
-  private RelNode logicalPlanningVolcano(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
+  protected RelNode logicalPlanningVolcano(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
     return planner.transform(DrillSqlWorker.LOGICAL_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
   }
 
@@ -480,7 +480,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
    * @throws RelConversionException
    * @throws SqlUnsupportedException
    */
-  private RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
+  protected RelNode logicalPlanningVolcanoAndLopt(RelNode relNode) throws RelConversionException, SqlUnsupportedException {
 
     final RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_CONVERT_RULES, relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
     log("VolCalciteRel", convertedRelNode);

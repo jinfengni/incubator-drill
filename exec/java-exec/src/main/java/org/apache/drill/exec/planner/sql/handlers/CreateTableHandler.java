@@ -38,6 +38,7 @@ import org.apache.drill.exec.planner.sql.parser.SqlCreateTable;
 import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.util.Pointer;
 import org.apache.drill.exec.work.foreman.ForemanSetupException;
+import org.apache.drill.exec.work.foreman.SqlUnsupportedException;
 
 public class CreateTableHandler extends DefaultSqlHandler {
   public CreateTableHandler(SqlHandlerConfig config, Pointer<String> textPlan) {
@@ -76,9 +77,15 @@ public class CreateTableHandler extends DefaultSqlHandler {
     return plan;
   }
 
-  private DrillRel convertToDrel(RelNode relNode, AbstractSchema schema, String tableName) throws RelConversionException {
-    RelNode convertedRelNode = planner.transform(DrillSqlWorker.LOGICAL_RULES,
-        relNode.getTraitSet().plus(DrillRel.DRILL_LOGICAL), relNode);
+  private DrillRel convertToDrel(RelNode relNode, AbstractSchema schema, String tableName)
+      throws RelConversionException, SqlUnsupportedException {
+    RelNode convertedRelNode;
+
+    if (! context.getPlannerSettings().isHepJoinOptEnabled()) {
+      convertedRelNode = logicalPlanningVolcano(relNode);
+    } else {
+      convertedRelNode = logicalPlanningVolcanoAndLopt(relNode);
+    }
 
     if (convertedRelNode instanceof DrillStoreRel) {
       throw new UnsupportedOperationException();
