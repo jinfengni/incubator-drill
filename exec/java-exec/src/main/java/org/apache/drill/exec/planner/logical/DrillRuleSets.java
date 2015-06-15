@@ -74,7 +74,7 @@ public class DrillRuleSets {
    * @param queryContext - used to get the list of planner settings, other rules may
    *                     also in the future need to get other query state from this,
    *                     such as the available list of UDFs (as is used by the
-   *                     DrillMergeProjectRule created in getDrillBasicRules())
+   *                     DrillProjectMergeRule created in getDrillBasicRules())
    * @return - a list of rules that have been filtered to leave out
    *         rules that have been turned off by system or session settings
    */
@@ -102,7 +102,7 @@ public class DrillRuleSets {
    *
    * This would be a static member, rather than a method, but some of
    * the rules need a reference to state that isn't available at class
-   * load time. The current example is the DrillMergeProjectRule which
+   * load time. The current example is the DrillProjectMergeRule which
    * needs access to the registry of Drill UDFs, which is populated by
    * scanning the class path a Drillbit startup.
    *
@@ -133,7 +133,7 @@ public class DrillRuleSets {
       /*
        Filter push-down related rules
        */
-      DrillPushFilterPastProjectRule.INSTANCE,
+      DrillFilterProjectTransposeRule.INSTANCE,
       FilterSetOpTransposeRule.INSTANCE,
 
       FilterMergeRule.INSTANCE,
@@ -141,15 +141,15 @@ public class DrillRuleSets {
       ProjectRemoveRule.NAME_CALC_INSTANCE,
       SortRemoveRule.INSTANCE,
 
-      DrillMergeProjectRule.getInstance(true, RelFactories.DEFAULT_PROJECT_FACTORY, context.getFunctionRegistry()),
+      DrillProjectMergeRule.getInstance(true, RelFactories.DEFAULT_PROJECT_FACTORY, context.getFunctionRegistry()),
       AggregateExpandDistinctAggregatesRule.INSTANCE,
-      DrillReduceAggregatesRule.INSTANCE,
+      DrillAggregateReduceFunctionsRule.INSTANCE,
 
       /*
        Projection push-down related rules
        */
-      DrillPushProjectPastFilterRule.INSTANCE,
-      DrillPushProjectPastJoinRule.INSTANCE,
+      DrillProjectFilterTransposeRule.INSTANCE,
+      DrillProjectJoinTransposeRule.INSTANCE,
       DrillPushProjIntoScan.INSTANCE,
       DrillProjectSetOpTransposeRule.INSTANCE,
 

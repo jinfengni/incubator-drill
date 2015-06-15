@@ -26,19 +26,19 @@ import org.apache.calcite.rel.core.RelFactories.ProjectFactory;
 import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexNode;
 
-public class DrillMergeProjectRule extends ProjectMergeRule {
+public class DrillProjectMergeRule extends ProjectMergeRule {
 
   private FunctionImplementationRegistry functionRegistry;
-  private static DrillMergeProjectRule INSTANCE = null;
+  private static DrillProjectMergeRule INSTANCE = null;
 
-  public static DrillMergeProjectRule getInstance(boolean force, ProjectFactory pFactory, FunctionImplementationRegistry functionRegistry) {
+  public static DrillProjectMergeRule getInstance(boolean force, ProjectFactory pFactory, FunctionImplementationRegistry functionRegistry) {
     if (INSTANCE == null) {
-      INSTANCE = new DrillMergeProjectRule(force, pFactory, functionRegistry);
+      INSTANCE = new DrillProjectMergeRule(force, pFactory, functionRegistry);
     }
     return INSTANCE;
   }
 
-  private DrillMergeProjectRule(boolean force, ProjectFactory pFactory, FunctionImplementationRegistry functionRegistry) {
+  private DrillProjectMergeRule(boolean force, ProjectFactory pFactory, FunctionImplementationRegistry functionRegistry) {
     super(force, pFactory);
    this.functionRegistry = functionRegistry;
   }

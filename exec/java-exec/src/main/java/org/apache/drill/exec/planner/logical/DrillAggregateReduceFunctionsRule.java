@@ -48,7 +48,6 @@ import org.apache.calcite.sql.fun.SqlAvgAggFunction;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.fun.SqlSumAggFunction;
 import org.apache.calcite.sql.fun.SqlSumEmptyIsZeroAggFunction;
-import org.apache.calcite.sql.type.SqlTypeUtil;
 import org.apache.calcite.util.CompositeList;
 import org.apache.calcite.util.ImmutableIntList;
 import org.apache.calcite.util.Util;
@@ -59,20 +58,20 @@ import com.google.common.collect.ImmutableList;
  * Rule to reduce aggregates to simpler forms. Currently only AVG(x) to
  * SUM(x)/COUNT(x), but eventually will handle others such as STDDEV.
  */
-public class DrillReduceAggregatesRule extends RelOptRule {
+public class DrillAggregateReduceFunctionsRule extends RelOptRule {
   //~ Static fields/initializers ---------------------------------------------
 
   /**
    * The singleton.
    */
-  public static final DrillReduceAggregatesRule INSTANCE =
-      new DrillReduceAggregatesRule(operand(LogicalAggregate.class, any()));
+  public static final DrillAggregateReduceFunctionsRule INSTANCE =
+      new DrillAggregateReduceFunctionsRule(operand(LogicalAggregate.class, any()));
 
   private static final DrillSqlOperator CastHighOp = new DrillSqlOperator("CastHigh", 1, false);
 
   //~ Constructors -----------------------------------------------------------
 
-  protected DrillReduceAggregatesRule(RelOptRuleOperand operand) {
+  protected DrillAggregateReduceFunctionsRule(RelOptRuleOperand operand) {
     super(operand);
   }
 

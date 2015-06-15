@@ -33,9 +33,9 @@ import org.apache.calcite.rex.RexVisitor;
 import org.apache.calcite.rex.RexVisitorImpl;
 import org.apache.calcite.util.Util;
 
-public class DrillPushFilterPastProjectRule extends RelOptRule {
+public class DrillFilterProjectTransposeRule extends RelOptRule {
 
-  public final static RelOptRule INSTANCE = new DrillPushFilterPastProjectRule();
+  public final static RelOptRule INSTANCE = new DrillFilterProjectTransposeRule();
 
   private RexCall findItemOperator(
       final RexNode node,
@@ -72,7 +72,7 @@ public class DrillPushFilterPastProjectRule extends RelOptRule {
     }
   }
 
-  protected DrillPushFilterPastProjectRule() {
+  protected DrillFilterProjectTransposeRule() {
     super(
         operand(
             LogicalFilter.class,

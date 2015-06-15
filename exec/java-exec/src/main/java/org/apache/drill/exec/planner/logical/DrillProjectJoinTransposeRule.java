@@ -21,11 +21,11 @@ import org.apache.calcite.rel.rules.ProjectJoinTransposeRule;
 import org.apache.calcite.rel.rules.PushProjector;
 import org.apache.calcite.plan.RelOptRule;
 
-public class DrillPushProjectPastJoinRule extends ProjectJoinTransposeRule {
+public class DrillProjectJoinTransposeRule extends ProjectJoinTransposeRule {
 
-  public static final RelOptRule INSTANCE = new DrillPushProjectPastJoinRule(DrillConditions.PRESERVE_ITEM);
+  public static final RelOptRule INSTANCE = new DrillProjectJoinTransposeRule(DrillConditions.PRESERVE_ITEM);
 
-  protected DrillPushProjectPastJoinRule(PushProjector.ExprCondition preserveExprCondition) {
+  protected DrillProjectJoinTransposeRule(PushProjector.ExprCondition preserveExprCondition) {
     super(preserveExprCondition);
   }
 

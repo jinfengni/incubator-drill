@@ -22,7 +22,6 @@ import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.rel.core.Filter;
 import org.apache.calcite.rel.core.RelFactories;
 import org.apache.calcite.rex.RexBuilder;
-import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexProgram;
 import org.apache.calcite.rex.RexProgramBuilder;
@@ -31,9 +30,9 @@ import org.apache.calcite.rex.RexUtil;
 /**
  * MergeFilterRule implements the rule for combining two {@link Filter}s
  */
-public class DrillMergeFilterRule extends RelOptRule {
-  public static final DrillMergeFilterRule INSTANCE =
-      new DrillMergeFilterRule(RelFactories.DEFAULT_FILTER_FACTORY);
+public class DrillFilterMergeRule extends RelOptRule {
+  public static final DrillFilterMergeRule INSTANCE =
+      new DrillFilterMergeRule(RelFactories.DEFAULT_FILTER_FACTORY);
 
   private final RelFactories.FilterFactory filterFactory;
 
@@ -43,7 +42,7 @@ public class DrillMergeFilterRule extends RelOptRule {
   /**
    * Creates a MergeFilterRule.
    */
-  private DrillMergeFilterRule(RelFactories.FilterFactory filterFactory) {
+  private DrillFilterMergeRule(RelFactories.FilterFactory filterFactory) {
     super(
         operand(Filter.class,
             operand(Filter.class, any())));

@@ -21,11 +21,11 @@ import org.apache.calcite.rel.rules.ProjectFilterTransposeRule;
 import org.apache.calcite.rel.rules.PushProjector;
 import org.apache.calcite.plan.RelOptRule;
 
-public class DrillPushProjectPastFilterRule extends ProjectFilterTransposeRule {
+public class DrillProjectFilterTransposeRule extends ProjectFilterTransposeRule {
 
-  public final static RelOptRule INSTANCE = new DrillPushProjectPastFilterRule(DrillConditions.PRESERVE_ITEM);
+  public final static RelOptRule INSTANCE = new DrillProjectFilterTransposeRule(DrillConditions.PRESERVE_ITEM);
 
-  protected DrillPushProjectPastFilterRule(PushProjector.ExprCondition preserveExprCondition) {
+  protected DrillProjectFilterTransposeRule(PushProjector.ExprCondition preserveExprCondition) {
     super(preserveExprCondition);
   }
 
