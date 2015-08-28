@@ -18,7 +18,9 @@
 package org.apache.drill.exec.expr;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.drill.common.expression.BooleanOperator;
@@ -92,7 +94,7 @@ public class EvaluationVisitor {
     } else {
       constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(e);
     }
-    return e.accept(new ConstantFilter(constantBoundaries), generator);
+    return e.accept(new CommonReaderExprFilter(constantBoundaries), generator);
   }
 
   private class EvalVisitor extends AbstractExprVisitor<HoldingContainer, ClassGenerator<?>, RuntimeException> {
@@ -1053,6 +1055,40 @@ public class EvaluationVisitor {
       generator.getMappingSet().exitConstant();
       return new HoldingContainer(input.getMajorType(), fieldValue, fieldValue.ref("value"), fieldValue.ref("isSet"))
           .setConstant(true);
+    }
+  }
+
+
+  private class CommonReaderExprFilter extends ConstantFilter {
+    private Map<ValueVectorReadExpression, Map<JBlock, HoldingContainer>> readerExprMap;
+
+    public CommonReaderExprFilter(Set<LogicalExpression> constantBoundaries) {
+      super(constantBoundaries);
+      readerExprMap = new HashMap<ValueVectorReadExpression, Map<JBlock, HoldingContainer>>();
+    }
+
+    @Override
+    public HoldingContainer visitUnknown(LogicalExpression e, ClassGenerator<?> generator) throws RuntimeException {
+      if (e instanceof ValueVectorReadExpression) {
+        JBlock evalBlock = generator.getEvalBlock();
+
+        if (readerExprMap.containsKey(e)) {
+          Map<JBlock, HoldingContainer> holdingContainerMap = readerExprMap.get(e);
+          if (holdingContainerMap.containsKey(evalBlock)) {
+            return holdingContainerMap.get(evalBlock);
+          }
+        }
+
+        HoldingContainer hc = super.visitUnknown( e, generator);
+
+        if (! readerExprMap.containsKey(e)) {
+          readerExprMap.put((ValueVectorReadExpression)e, new HashMap<JBlock, HoldingContainer>());
+        }
+        readerExprMap.get(e).put(evalBlock, hc);
+        return hc;
+      } else {
+        return super.visitUnknown(e, generator);
+      }
     }
   }
 

@@ -134,6 +134,12 @@ public class ClassGenerator<T>{
     return blk;
   }
 
+  public JBlock getTopBlock(String methodName) {
+    JBlock blk = this.blocks[sig.get(methodName)].getFirst();
+    Preconditions.checkNotNull(blk, "Requested method name of %s was not available for signature %s.",  methodName, this.sig);
+    return blk;
+  }
+
   public JBlock getBlock(BlockType type) {
     return getBlock(getCurrentMapping().getMethodName(type));
   }
@@ -149,6 +155,10 @@ public class ClassGenerator<T>{
   }
   public JBlock getCleanupBlock() {
     return getBlock(getCurrentMapping().getMethodName(BlockType.CLEANUP));
+  }
+
+  public JBlock getTopEvalBlock() {
+    return getTopBlock(getCurrentMapping().getMethodName(BlockType.EVAL));
   }
 
   public void nestEvalBlock(JBlock block) {
@@ -304,6 +314,10 @@ public class ClassGenerator<T>{
     return declare(t, true);
   }
 
+//  public HoldingContainer declareAndInitClassField(MajorType t) {
+//    return declareAndInitClassField(t, true);
+//  }
+
   public HoldingContainer declare(MajorType t, boolean includeNewInstance) {
     JType holderType = getHolderType(t);
     JVar var;
@@ -319,6 +333,23 @@ public class ClassGenerator<T>{
     index++;
     return new HoldingContainer(t, var, var.ref("value"), outputSet);
   }
+
+//  private HoldingContainer declareAndInitClassField(MajorType t, boolean includeNewInstance) {
+//    JType holderType = getHolderType(t);
+//    JVar var;
+//    if (includeNewInstance) {
+//      var = declareClassField(t.getMinorType().name(), holderType);
+//      getSetupBlock().assign(var, JExpr._new(holderType));
+//    } else {
+//      var = declareClassField(t.getMinorType().name(), holderType);
+//    }
+//    JFieldRef outputSet = null;
+//    if (t.getMode() == DataMode.OPTIONAL) {
+//      outputSet = var.ref("isSet");
+//    }
+//    index++;
+//    return new HoldingContainer(t, var, var.ref("value"), outputSet);
+//  }
 
   public List<TypedFieldId> getWorkspaceTypes() {
     return this.workspaceTypes;
