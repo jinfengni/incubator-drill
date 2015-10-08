@@ -183,6 +183,9 @@ public abstract class DrillJoinRelBase extends Join implements DrillRelNode {
     long fieldWidth = PrelUtil.getPlannerSettings(planner).getOptions()
         .getOption(ExecConstants.AVERAGE_FIELD_WIDTH_KEY).num_val;
 
+    long leftColumnCnt = this.getLeft().getRowType().getFieldCount();
+    long rightColumnCnt = this.getRight().getRowType().getFieldCount();
+
     // table + hashValues + links
     double memCost =
         (
@@ -194,9 +197,12 @@ public abstract class DrillJoinRelBase extends Join implements DrillRelNode {
     double cpuCost = joinConditionCost * (probeRowCount) // probe size determine the join condition comparison cost
         + cpuCostBuild + cpuCostProbe ;
 
+    double memOutputCost = fieldWidth * (leftColumnCnt + rightColumnCnt) * this.getRows();
+    double cpuOutputCost = (leftColumnCnt + rightColumnCnt) * this.getRows() * DrillCostBase.PROJECT_CPU_COST;
+
     DrillCostFactory costFactory = (DrillCostFactory) planner.getCostFactory();
 
-    return costFactory.makeCost(buildRowCount + probeRowCount, cpuCost, 0, 0, memCost);
+    return costFactory.makeCost(buildRowCount + probeRowCount, cpuCost + cpuOutputCost, 0, 0, memCost + memOutputCost);
   }
 
   private boolean hasScalarSubqueryInput() {
