@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.planner.physical;
 
+import org.apache.calcite.plan.volcano.AbstractConverter;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.plan.ConventionTraitDef;
 import org.apache.calcite.plan.RelOptRule;
@@ -72,6 +73,10 @@ public abstract class SubsetTransformer<T extends RelNode, E extends Exception> 
 
   private boolean isDefaultDist(RelNode n) {
     return n.getTraitSet().getTrait(DrillDistributionTraitDef.INSTANCE).equals(DrillDistributionTrait.DEFAULT);
+  }
+
+  private boolean isAbstractConverter(RelNode n) {
+    return n instanceof AbstractConverter;
   }
 
 }

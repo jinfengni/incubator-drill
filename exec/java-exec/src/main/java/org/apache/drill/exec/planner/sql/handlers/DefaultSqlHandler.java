@@ -21,8 +21,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.calcite.plan.RelOptPlanner;
+import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.plan.hep.HepMatchOrder;
@@ -43,6 +46,8 @@ import org.apache.calcite.rel.metadata.RelMetadataProvider;
 import org.apache.calcite.rel.rules.JoinToMultiJoinRule;
 import org.apache.calcite.rel.rules.LoptOptimizeJoinRule;
 import org.apache.calcite.rel.rules.ProjectRemoveRule;
+import org.apache.calcite.rel.rules.ProjectWindowTransposeRule;
+import org.apache.calcite.rel.rules.ReduceExpressionsRule;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexNode;
@@ -69,6 +74,10 @@ import org.apache.drill.exec.planner.common.DrillRelOptUtil;
 import org.apache.drill.exec.planner.cost.DrillDefaultRelMetadataProvider;
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillProjectRel;
+import org.apache.drill.exec.planner.logical.DrillPushProjIntoScan;
+import org.apache.drill.exec.planner.logical.DrillPushProjectPastFilterRule;
+import org.apache.drill.exec.planner.logical.DrillPushProjectPastJoinRule;
+import org.apache.drill.exec.planner.logical.DrillReduceExpressionsRule;
 import org.apache.drill.exec.planner.logical.DrillRel;
 import org.apache.drill.exec.planner.logical.DrillRelFactories;
 import org.apache.drill.exec.planner.logical.DrillScreenRel;
@@ -206,6 +215,18 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   protected DrillRel convertToDrel(RelNode relNode) throws SqlUnsupportedException, RelConversionException {
     try {
       final DrillRel convertedRelNode;
+
+      ImmutableSet<RelOptRule> rules1 = ImmutableSet.<RelOptRule>builder().add(
+          ProjectWindowTransposeRule.INSTANCE).build();
+
+      relNode = doHepPlan(relNode, rules1);
+
+      ImmutableSet<RelOptRule> rules2 = ImmutableSet.<RelOptRule>builder()
+          .add(DrillPushProjectPastFilterRule.INSTANCE
+              , DrillPushProjectPastJoinRule.INSTANCE
+          ).build();
+
+      relNode = doHepPlan(relNode, rules2);
 
       if (! context.getPlannerSettings().isHepJoinOptEnabled()) {
         convertedRelNode = (DrillRel) logicalPlanningVolcano(relNode);
@@ -557,6 +578,28 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     return loptNode;
   }
 
+  private RelNode doHepPlan(RelNode root, Set<RelOptRule> rules) {
+    final HepProgramBuilder hepPgmBldr = new HepProgramBuilder()
+        .addMatchOrder(HepMatchOrder.BOTTOM_UP)
+        .addRuleCollection(rules);
+
+    final HepProgram hepPgm = hepPgmBldr.build();
+    final HepPlanner hepPlanner = new HepPlanner(hepPgm);
+
+    final List<RelMetadataProvider> list = Lists.newArrayList();
+    list.add(DrillDefaultRelMetadataProvider.INSTANCE);
+    hepPlanner.registerMetadataProviders(list);
+    final RelMetadataProvider cachingMetaDataProvider = new CachingRelMetadataProvider(ChainedRelMetadataProvider.of(list), hepPlanner);
+
+    // Modify RelMetaProvider for every RelNode in the SQL operator Rel tree.
+    root.accept(new MetaDataProviderModifier(cachingMetaDataProvider));
+
+    hepPlanner.setRoot(root);
+
+    RelNode calciteOptimizedPlan = hepPlanner.findBestExp();
+
+    return calciteOptimizedPlan;
+  }
 
   /**
    * Appy Join Order Optimizations using Hep Planner.
