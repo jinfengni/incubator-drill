@@ -207,7 +207,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     try {
       final DrillRel convertedRelNode;
 
-      boolean limitZero = FindLimit0Visitor.containsLimit0(relNode);
+      final boolean limitZero = context.getPlannerSettings().isLimitZeroOptEnabled() && FindLimit0Visitor.containsLimit0(relNode);
 
       if (! context.getPlannerSettings().isHepJoinOptEnabled()) {
         convertedRelNode = (DrillRel) logicalPlanningVolcano(relNode, limitZero);
