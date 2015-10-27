@@ -131,12 +131,12 @@ public class DrillRuleSets {
       /*
        Projection push-down related rules
        */
-      DrillPushProjectPastFilterRule.INSTANCE,
-      DrillPushProjectPastJoinRule.INSTANCE,
-      DrillPushProjIntoScan.INSTANCE,
-      // Due to infinite loop in planning (DRILL-3257), temporarily disable this rule
-      //DrillProjectSetOpTransposeRule.INSTANCE,
-      ProjectWindowTransposeRule.INSTANCE,
+//      DrillPushProjectPastFilterRule.INSTANCE,
+//      DrillPushProjectPastJoinRule.INSTANCE,
+//      DrillPushProjIntoScan.INSTANCE,
+//      // Due to infinite loop in planning (DRILL-3257), temporarily disable this rule
+//      //DrillProjectSetOpTransposeRule.INSTANCE,
+//      ProjectWindowTransposeRule.INSTANCE,
 
       /*
        Convert from Calcite Logical to Drill Logical Rules.
@@ -201,6 +201,15 @@ public class DrillRuleSets {
         JoinPushThroughJoinRule.RIGHT,
         JoinPushThroughJoinRule.LEFT
         ).build());
+  }
+
+  public static RuleSet getProjectPushDownRules() {
+    return new DrillRuleSet(ImmutableSet.<RelOptRule> builder().add(
+        DrillPushProjectPastFilterRule.INSTANCE,
+        DrillPushProjectPastJoinRule.INSTANCE,
+        DrillPushProjIntoScan.INSTANCE,
+        ProjectWindowTransposeRule.INSTANCE
+          ).build());
   }
 
   public static final RuleSet DRILL_PHYSICAL_DISK = new DrillRuleSet(ImmutableSet.of(
