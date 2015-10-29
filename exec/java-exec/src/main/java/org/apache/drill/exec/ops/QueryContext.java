@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
-import org.apache.calcite.jdbc.SimpleCalciteSchema;
+import com.google.common.collect.Lists;
+import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.schema.SchemaPlus;
+
 import org.apache.drill.common.AutoCloseables;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.config.LogicalPlanPersistence;
@@ -50,7 +52,6 @@ import org.apache.drill.exec.testing.ExecutionControls;
 import org.apache.drill.exec.util.ImpersonationUtil;
 import org.apache.drill.exec.util.Utilities;
 
-import com.google.common.collect.Lists;
 
 // TODO except for a couple of tests, this is only created by Foreman
 // TODO the many methods that just return drillbitContext.getXxx() should be replaced with getDrillbitContext()
@@ -162,7 +163,7 @@ public class QueryContext implements AutoCloseable, OptimizerRulesContext {
    */
   public SchemaPlus getRootSchema(SchemaConfig schemaConfig) {
     try {
-      final SchemaPlus rootSchema = SimpleCalciteSchema.createRootSchema(false);
+      final SchemaPlus rootSchema = CalciteSchema.createRootSchema(false, false).plus();
       drillbitContext.getSchemaFactory().registerSchemas(schemaConfig, rootSchema);
       schemaTreesToClose.add(rootSchema);
       return rootSchema;

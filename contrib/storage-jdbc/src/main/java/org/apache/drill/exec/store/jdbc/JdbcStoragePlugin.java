@@ -325,7 +325,7 @@ public class JdbcStoragePlugin extends AbstractStoragePlugin {
 
         if (!schemasAdded) {
           // there were no schemas, just create a default one (the jdbc system doesn't support catalogs/schemas).
-          schemaMap.put("default", new CapitalizingJdbcSchema(ImmutableList.<String> of(), name, source, dialect,
+          schemaMap.put("default", new CapitalizingJdbcSchema(ImmutableList.<String> of(name), "default", source, dialect,
               convention, null, null));
         }
       } else {
