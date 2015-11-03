@@ -177,29 +177,18 @@ public class EvaluationVisitor {
     @Override
     public HoldingContainer visitBooleanOperator(BooleanOperator op,
         ClassGenerator<?> generator) throws RuntimeException {
-      HoldingContainer hc = getPrevious(op, generator.getMappingSet());
-      if (hc != null) {
-        return hc;
-      }
       if (op.getName().equals("booleanAnd")) {
-        hc = visitBooleanAnd(op, generator);
+        return visitBooleanAnd(op, generator);
       } else if(op.getName().equals("booleanOr")) {
-        hc = visitBooleanOr(op, generator);
+        return visitBooleanOr(op, generator);
       } else {
         throw new UnsupportedOperationException("BooleanOperator can only be booleanAnd, booleanOr. You are using " + op.getName());
       }
-      put(op, hc, generator.getMappingSet());
-      return hc;
     }
 
     @Override
     public HoldingContainer visitFunctionHolderExpression(FunctionHolderExpression holderExpr,
         ClassGenerator<?> generator) throws RuntimeException {
-
-      HoldingContainer hc = getPrevious(holderExpr, generator.getMappingSet());
-      if (hc != null) {
-        return hc;
-      }
 
       AbstractFuncHolder holder = (AbstractFuncHolder) holderExpr.getHolder();
 
@@ -220,21 +209,14 @@ public class EvaluationVisitor {
         generator.getMappingSet().exitChild();
       }
 
-      HoldingContainer out = holder.renderEnd(generator, args, workspaceVars);
-      put(holderExpr, out, generator.getMappingSet());
-      return out;
+      return holder.renderEnd(generator, args, workspaceVars);
     }
 
     @Override
     public HoldingContainer visitIfExpression(IfExpression ifExpr, ClassGenerator<?> generator) throws RuntimeException {
       JBlock local = generator.getEvalBlock();
 
-      HoldingContainer output = getPrevious(ifExpr, generator.getMappingSet());
-      if (output != null) {
-        return output;
-      }
-
-      output = generator.declare(ifExpr.getMajorType());
+      HoldingContainer output = generator.declare(ifExpr.getMajorType());
 
       JConditional jc = null;
       JBlock conditionalBlock = new JBlock(false, false);
@@ -285,7 +267,6 @@ public class EvaluationVisitor {
         jc._else().assign(output.getHolder(), elseExpr.getHolder());
       }
       local.add(conditionalBlock);
-      put(ifExpr, output, generator.getMappingSet());
       return output;
     }
 
@@ -425,11 +406,6 @@ public class EvaluationVisitor {
     private HoldingContainer visitValueVectorReadExpression(ValueVectorReadExpression e, ClassGenerator<?> generator)
         throws RuntimeException {
       // declare value vector
-      HoldingContainer hc = getPrevious(e, generator.getMappingSet());
-      if (hc != null) {
-        return hc;
-      }
-
       JExpression vv1 = generator.declareVectorValueSetupAndMember(generator.getMappingSet().getIncoming(),
           e.getFieldId());
       JExpression indexVariable = generator.getMappingSet().getValueReadIndex();
@@ -542,8 +518,7 @@ public class EvaluationVisitor {
             eval.assign(complexReader, expr);
           }
 
-          hc = new HoldingContainer(e.getMajorType(), complexReader, null, null, false, true);
-          put(e, hc, generator.getMappingSet());
+          HoldingContainer hc = new HoldingContainer(e.getMajorType(), complexReader, null, null, false, true);
           return hc;
         } else {
           if (seg != null) {
@@ -555,7 +530,6 @@ public class EvaluationVisitor {
 
       }
 
-      put(e, out, generator.getMappingSet());
       return out;
     }
 
@@ -721,11 +695,7 @@ public class EvaluationVisitor {
       //    null    false    false
       //    null    null     null
       for (int i = 0; i < op.args.size(); i++) {
-        arg = getPrevious(op.args.get(i), generator.getMappingSet());
-        if (arg == null) {
-          arg = op.args.get(i).accept(this, generator);
-          put(op.args.get(i), arg, generator.getMappingSet());
-        }
+        arg = op.args.get(i).accept(this, generator);
 
         JBlock earlyExit = null;
         if (arg.isOptional()) {
@@ -788,11 +758,7 @@ public class EvaluationVisitor {
       //    null    null     null
 
       for (int i = 0; i < op.args.size(); i++) {
-        arg = getPrevious(op.args.get(i), generator.getMappingSet());
-        if (arg == null) {
-          arg = op.args.get(i).accept(this, generator);
-          put(op.args.get(i), arg, generator.getMappingSet());
-        }
+        arg = op.args.get(i).accept(this, generator);
 
         JBlock earlyExit = null;
         if (arg.isOptional()) {
@@ -835,7 +801,21 @@ public class EvaluationVisitor {
 
   }
 
-  private class ConstantFilter extends EvalVisitor {
+  private class CSEFilter extends EvalVisitor {
+    @Override
+    public HoldingContainer visitUnknown(LogicalExpression e, ClassGenerator<?> generator) throws RuntimeException {
+      HoldingContainer hc = getPrevious(e, generator.getMappingSet());
+      if (hc != null) {
+        return hc;
+      }
+
+      hc = super.visitUnknown(e, generator);
+      put(e, hc, generator.getMappingSet());
+      return hc;
+    }
+  }
+
+  private class ConstantFilter extends CSEFilter {
 
     private Set<LogicalExpression> constantBoundaries;
 
