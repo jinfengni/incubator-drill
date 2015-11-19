@@ -127,8 +127,8 @@ public class HiveSchemaFactory implements SchemaFactory {
           logger.debug("Database '{}' doesn't exists in Hive storage '{}'", name, schemaName);
           return null;
         }
-        tables = mClient.getTableNames(name);
-        HiveDatabaseSchema schema = new HiveDatabaseSchema(tables, this, name);
+//        tables = mClient.getTableNames(name);
+        HiveDatabaseSchema schema = new HiveDatabaseSchema(this, name);
         if (name.equals("default")) {
           this.defaultSchema = schema;
         }
@@ -220,6 +220,15 @@ public class HiveSchemaFactory implements SchemaFactory {
     public void close() throws Exception {
       if (mClient != null) {
         mClient.close();
+      }
+    }
+
+    public List<String> getTableNamesFromMetaStore(String dbName) {
+      try {
+        return mClient.getTableNames(dbName);
+      } catch (final TException e) {
+        logger.warn("Failure while attempting to access HiveDatabase '{}'.", dbName, e.getCause());
+        return null;
       }
     }
   }

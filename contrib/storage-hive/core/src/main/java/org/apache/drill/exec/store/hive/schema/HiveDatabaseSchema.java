@@ -23,24 +23,25 @@ import java.util.Set;
 import org.apache.calcite.schema.Table;
 
 import org.apache.drill.exec.store.AbstractSchema;
+import org.apache.drill.exec.store.hive.DrillHiveMetaStoreClient;
 import org.apache.drill.exec.store.hive.HiveStoragePluginConfig;
 import org.apache.drill.exec.store.hive.schema.HiveSchemaFactory.HiveSchema;
 
 import com.google.common.collect.Sets;
+import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
 
 public class HiveDatabaseSchema extends AbstractSchema{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HiveDatabaseSchema.class);
 
   private final HiveSchema hiveSchema;
-  private final Set<String> tables;
-
+//  private final Set<String> tables;
   public HiveDatabaseSchema( //
-      List<String> tableList, //
+//      List<String> tableList, //
       HiveSchema hiveSchema, //
       String name) {
     super(hiveSchema.getSchemaPath(), name);
     this.hiveSchema = hiveSchema;
-    this.tables = Sets.newHashSet(tableList);
+//    this.tables = Sets.newHashSet(tableList);
   }
 
   @Override
@@ -50,7 +51,7 @@ public class HiveDatabaseSchema extends AbstractSchema{
 
   @Override
   public Set<String> getTableNames() {
-    return tables;
+    return Sets.newHashSet(hiveSchema.getTableNamesFromMetaStore(this.name));
   }
 
   @Override
