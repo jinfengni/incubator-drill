@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Stopwatch;
 import org.apache.calcite.schema.SchemaPlus;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -120,6 +122,9 @@ public class HiveSchemaFactory implements SchemaFactory {
 
     @Override
     public AbstractSchema getSubSchema(String name) {
+      Stopwatch watch = new Stopwatch();
+      watch.start();
+
       List<String> tables;
       try {
         List<String> dbs = mClient.getDatabases();
@@ -132,6 +137,7 @@ public class HiveSchemaFactory implements SchemaFactory {
         if (name.equals("default")) {
           this.defaultSchema = schema;
         }
+        logger.debug("Took {} ms to getSubSchema for '{}'  in Hive storage '{}'",  watch.elapsed(TimeUnit.MILLISECONDS), name, schemaName);
         return schema;
       } catch (final TException e) {
         logger.warn("Failure while attempting to access HiveDatabase '{}'.", name, e.getCause());
