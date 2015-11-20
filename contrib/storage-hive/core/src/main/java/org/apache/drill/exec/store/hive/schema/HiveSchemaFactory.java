@@ -170,6 +170,10 @@ public class HiveSchemaFactory implements SchemaFactory {
 
     @Override
     public AbstractSchema getSubSchema(String name) {
+      Stopwatch watch = new Stopwatch();
+      watch.start();
+
+      List<String> tables;
       try {
         List<String> dbs = databaseNamesCache.get("databases");
         if (!dbs.contains(name)) {
@@ -180,6 +184,7 @@ public class HiveSchemaFactory implements SchemaFactory {
         if (name.equals("default")) {
           this.defaultSchema = schema;
         }
+        logger.debug("Took {} ms to getSubSchema for '{}'  in Hive storage '{}'",  watch.elapsed(TimeUnit.MILLISECONDS), name, schemaName);
         return schema;
       } catch (final Exception e) {
         logger.warn("Failure while attempting to access HiveDatabase '{}'.", name, e.getCause());

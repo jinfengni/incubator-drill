@@ -24,13 +24,21 @@ import static org.apache.drill.exec.store.ischema.InfoSchemaConstants.SHRD_COL_T
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeField;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.schema.Schema.TableType;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.Table;
+import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
+
+import static org.apache.drill.exec.store.ischema.InfoSchemaConstants.*;
+
+import org.apache.drill.exec.physical.impl.ImplCreator;
 import org.apache.drill.exec.planner.logical.DrillViewInfoProvider;
 import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.store.RecordReader;
@@ -46,6 +54,8 @@ import com.google.common.collect.Lists;
  * Generates records for POJO RecordReader by scanning the given schema.
  */
 public abstract class RecordGenerator {
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RecordGenerator.class);
+
   protected InfoSchemaFilter filter;
 
   public void setInfoSchemaFilter(InfoSchemaFilter filter) {
@@ -114,7 +124,6 @@ public abstract class RecordGenerator {
    * @param  schema  the given schema
    */
   private void scanSchema(String schemaPath, SchemaPlus schema) {
-
     // Recursively scan any subschema.
     for (String name: schema.getSubSchemaNames()) {
       scanSchema(schemaPath +
@@ -122,11 +131,25 @@ public abstract class RecordGenerator {
           name, schema.getSubSchema(name));
     }
 
+    Stopwatch watch = new Stopwatch();
+    watch.start();
+
+    int tableNum = 0, fieldNum = 0;
     // Visit this schema and if requested ...
     if (shouldVisitSchema(schemaPath, schema) && visitSchema(schemaPath, schema)) {
       // ... do for each of the schema's tables.
       for (String tableName: schema.getTableNames()) {
+        // Check if table should be visited.
+        if (! shouldVisitTable(schemaPath, tableName)) {
+          continue;
+        }
+
+        Stopwatch watch2 = new Stopwatch();
+        watch2.start();
+
         Table table = schema.getTable(tableName);
+
+        logger.debug("Took {} ms to get table '{}' from schema '{}'", watch2.elapsed(TimeUnit.MILLISECONDS), tableName, schema.getName());
 
         if (table == null) {
           // Schema may return NULL for table if the query user doesn't have permissions to load the table. Ignore such
@@ -134,16 +157,20 @@ public abstract class RecordGenerator {
           continue;
         }
 
+        tableNum ++;
         // Visit the table, and if requested ...
-        if (shouldVisitTable(schemaPath, tableName) && visitTable(schemaPath,  tableName, table)) {
+        if (visitTable(schemaPath,  tableName, table)) {
           // ... do for each of the table's fields.
           RelDataType tableRow = table.getRowType(new JavaTypeFactoryImpl());
           for (RelDataTypeField field: tableRow.getFieldList()) {
             visitField(schemaPath,  tableName, field);
+            fieldNum ++;
           }
         }
       }
     }
+
+    logger.debug("Took {} ms to scanSchema for schemaPath: '{}' SchemaName:' {}'. Get # {} tables, # {} fields", watch.elapsed(TimeUnit.MILLISECONDS), schemaPath, schema.getName(), tableNum, fieldNum);
   }
 
   public static class Catalogs extends RecordGenerator {

@@ -204,4 +204,15 @@ public class TestInfoSchemaOnHiveStorage extends HiveTestBase {
         .baselineValues("2", " key_2")
         .go();
   }
+
+  @Test
+  public void testHiveQueryISTable() throws Exception {
+    test("select TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE from \n"
+        + "INFORMATION_SCHEMA.`TABLES` WHERE TABLE_CATALOG LIKE 'DRILL' ESCAPE '\\'ORDER BY TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME;");
+
+    test("select TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE from \n"
+        + "INFORMATION_SCHEMA.`TABLES` WHERE TABLE_CATALOG LIKE 'DRILL' ESCAPE '\\'ORDER BY TABLE_TYPE, TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME;");
+
+//    test("show schemas");
+  }
 }

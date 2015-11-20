@@ -163,6 +163,7 @@ public abstract class DrillHiveMetaStoreClient extends HiveMetaStoreClient {
   /** Helper method which gets database. Retries once if the first call to fetch the metadata fails */
   protected static List<String> getDatabasesHelper(final IMetaStoreClient mClient) throws TException {
     try {
+      logger.debug("get_all_databases called!");
       return mClient.getAllDatabases();
     } catch (TException e) {
       logger.warn("Failure while attempting to get hive databases", e);
@@ -175,6 +176,7 @@ public abstract class DrillHiveMetaStoreClient extends HiveMetaStoreClient {
   protected static List<String> getTableNamesHelper(final IMetaStoreClient mClient, final String dbName)
       throws TException {
     try {
+      logger.debug("get_all_tables called for databse '{}'", dbName);
       return mClient.getAllTables(dbName);
     } catch (TException e) {
       logger.warn("Failure while attempting to get hive tables", e);
@@ -188,6 +190,7 @@ public abstract class DrillHiveMetaStoreClient extends HiveMetaStoreClient {
       final String tableName, final Map<String, String> hiveConfigOverride) throws TException {
     Table t = null;
     try {
+      logger.debug("get_table from client '{}' is called for '{}':'{}'!", mClient.toString(), dbName, tableName);
       t = mClient.getTable(dbName, tableName);
     } catch (TException e) {
       mClient.reconnect();
@@ -343,7 +346,17 @@ public abstract class DrillHiveMetaStoreClient extends HiveMetaStoreClient {
     @Override
     public HiveReadEntry getHiveReadEntry(final String dbName, final String tableName) throws TException {
       try {
-        return tableLoaders.get(dbName).get(tableName);
+        logger.debug("getHiveReadEntry for '{}':'{}'", dbName, tableName);
+        logger.debug("before check cache:  tableLoader.size : {}", tableLoaders.size());
+        logger.debug("before check cache:  tableLoader.size for 'db1' : {}", tableLoaders.get("db1").size());
+        logger.debug("before check cache:  tableLoader.size for 'default' : {}", tableLoaders.get("default").size());
+
+        HiveReadEntry entry = tableLoaders.get(dbName).get(tableName);
+        logger.debug("after check cache:  tableLoader.size : {}", tableLoaders.size());
+        logger.debug("after check cache:  tableLoader.size for 'db1' : {}", tableLoaders.get("db1").size());
+        logger.debug("after check cache:  tableLoader.size for 'default' : {}", tableLoaders.get("default").size());
+
+        return entry;
       } catch (final ExecutionException e) {
         throw new TException(e);
       }
