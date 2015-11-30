@@ -20,11 +20,21 @@ package org.apache.drill.exec.store.hive.schema;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Optional;
+import com.google.common.base.Stopwatch;
+import com.google.common.base.Throwables;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import org.apache.calcite.schema.SchemaPlus;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.planner.logical.DrillTable;
 import org.apache.drill.exec.store.AbstractSchema;
@@ -111,17 +121,57 @@ public class HiveSchemaFactory implements SchemaFactory {
     private final DrillHiveMetaStoreClient mClient;
     private HiveDatabaseSchema defaultSchema;
 
+    private final LoadingCache<String, List<String>> databaseNamesCache;
+    private final LoadingCache<String, List<String>> tableNamesCache;
+    private final LoadingCache<TableName, Optional<DrillTable>> tableCache;
+
     public HiveSchema(final SchemaConfig schemaConfig, final DrillHiveMetaStoreClient mClient, final String name) {
       super(ImmutableList.<String>of(), name);
       this.schemaConfig = schemaConfig;
       this.mClient = mClient;
+
+      databaseNamesCache = CacheBuilder.newBuilder()
+          .expireAfterAccess(1, TimeUnit.MINUTES)
+          .build(new CacheLoader<String, List<String>>() {
+            @Override
+            public List<String> load(String key) throws Exception {
+              if (!"databases".equals(key)) {
+                throw new UnsupportedOperationException();
+              }
+              synchronized (HiveSchema.this) {
+                return mClient.getDatabases();
+              }
+            }
+          });
+
+      tableNamesCache = CacheBuilder.newBuilder()
+          .expireAfterAccess(1, TimeUnit.MINUTES)
+          .build(new CacheLoader<String, List<String>>() {
+            @Override
+            public List<String> load(String dbName) throws Exception {
+              synchronized (HiveSchema.this) {
+                return mClient.getTableNames(dbName);
+              }
+            }
+          });
+
+      tableCache = CacheBuilder.newBuilder()
+          .expireAfterAccess(1, TimeUnit.MINUTES)
+          .build(new CacheLoader<TableName, Optional<DrillTable>>() {
+            @Override
+            public Optional<DrillTable> load(TableName key) throws Exception {
+              DrillTable table = getDrillTableHelper(key.databaseName, key.tableName);
+              return Optional.fromNullable(table);
+            }
+          });
+
       getSubSchema("default");
     }
 
     @Override
     public AbstractSchema getSubSchema(String name) {
       try {
-        List<String> dbs = mClient.getDatabases();
+        List<String> dbs = databaseNamesCache.get("databases");
         if (!dbs.contains(name)) {
           logger.debug("Database '{}' doesn't exists in Hive storage '{}'", name, schemaName);
           return null;
@@ -131,7 +181,7 @@ public class HiveSchemaFactory implements SchemaFactory {
           this.defaultSchema = schema;
         }
         return schema;
-      } catch (final TException e) {
+      } catch (final Exception e) {
         logger.warn("Failure while attempting to access HiveDatabase '{}'.", name, e.getCause());
         return null;
       }
@@ -161,9 +211,9 @@ public class HiveSchemaFactory implements SchemaFactory {
     @Override
     public Set<String> getSubSchemaNames() {
       try {
-        List<String> dbs = mClient.getDatabases();
+        List<String> dbs = databaseNamesCache.get("databases");
         return Sets.newHashSet(dbs);
-      } catch (final TException e) {
+      } catch (final Exception e) {
         logger.warn("Failure while getting Hive database list.", e);
       }
       return super.getSubSchemaNames();
@@ -185,7 +235,21 @@ public class HiveSchemaFactory implements SchemaFactory {
       return defaultSchema.getTableNames();
     }
 
-    DrillTable getDrillTable(String dbName, String t) {
+    DrillTable getDrillTable(String dbName, String tableName) {
+      try {
+        Optional<DrillTable> table = tableCache.get(TableName.table(dbName, tableName));
+        if (table.isPresent()) {
+          return table.get();
+        }
+      } catch (final Exception e) {
+        Throwable throwable = e.getCause();
+        Throwables.propagateIfInstanceOf(throwable, UserException.class);
+        logger.warn("Failure while getting Hive table {}:{}. Exception:{}. ", dbName, tableName, e);
+      }
+      return null;
+    }
+
+    DrillTable getDrillTableHelper(String dbName, String t) {
       HiveReadEntry entry = getSelectionBaseOnName(dbName, t);
       if (entry == null) {
         return null;
@@ -208,7 +272,7 @@ public class HiveSchemaFactory implements SchemaFactory {
       try{
         return mClient.getHiveReadEntry(dbName, t);
       }catch(final TException e) {
-        logger.warn("Exception occurred while trying to read table. {}.{}", dbName, t, e.getCause());
+        logger.warn("Exception occurred while trying to read table. {}.{}. Exception:{}", dbName, t, e);
         return null;
       }
     }
@@ -232,11 +296,57 @@ public class HiveSchemaFactory implements SchemaFactory {
 
     public List<String> getTableNamesFromMetaStore(String dbName) {
       try {
-        return mClient.getTableNames(dbName);
-      } catch (final TException e) {
+        return tableNamesCache.get(dbName);
+      } catch (final ExecutionException e) {
         logger.warn("Failure while attempting to access HiveDatabase '{}'.", dbName, e.getCause());
         return null;
       }
+    }
+  }
+
+  public static class TableName {
+    private final String databaseName;
+    private final String tableName;
+
+    private TableName(String databaseName, String tableName) {
+      this.databaseName = databaseName;
+      this.tableName = tableName;
+    }
+
+    public static TableName table(String databaseName, String tableName) {
+      return new TableName(databaseName, tableName);
+    }
+
+    public String getDatabaseName() {
+      return databaseName;
+    }
+
+    public String getTableName() {
+      return tableName;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("databaseName:%s, tableName:%s", databaseName, tableName).toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+
+      TableName other = (TableName) o;
+      return Objects.equals(databaseName, other.databaseName) &&
+          Objects.equals(tableName, other.tableName);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(databaseName, tableName);
     }
   }
 
