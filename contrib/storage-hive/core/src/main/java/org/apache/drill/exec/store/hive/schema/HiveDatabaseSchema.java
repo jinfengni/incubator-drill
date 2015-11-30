@@ -34,14 +34,11 @@ public class HiveDatabaseSchema extends AbstractSchema{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HiveDatabaseSchema.class);
 
   private final HiveSchema hiveSchema;
-//  private final Set<String> tables;
   public HiveDatabaseSchema( //
-//      List<String> tableList, //
       HiveSchema hiveSchema, //
       String name) {
     super(hiveSchema.getSchemaPath(), name);
     this.hiveSchema = hiveSchema;
-//    this.tables = Sets.newHashSet(tableList);
   }
 
   @Override

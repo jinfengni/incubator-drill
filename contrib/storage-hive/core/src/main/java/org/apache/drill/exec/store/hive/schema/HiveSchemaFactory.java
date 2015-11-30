@@ -122,33 +122,36 @@ public class HiveSchemaFactory implements SchemaFactory {
 
     @Override
     public AbstractSchema getSubSchema(String name) {
-      Stopwatch watch = new Stopwatch();
-      watch.start();
-
-      List<String> tables;
       try {
         List<String> dbs = mClient.getDatabases();
         if (!dbs.contains(name)) {
           logger.debug("Database '{}' doesn't exists in Hive storage '{}'", name, schemaName);
           return null;
         }
-//        tables = mClient.getTableNames(name);
-        HiveDatabaseSchema schema = new HiveDatabaseSchema(this, name);
+        HiveDatabaseSchema schema = getSubSchemaKnownExists(name);
         if (name.equals("default")) {
           this.defaultSchema = schema;
         }
-        logger.debug("Took {} ms to getSubSchema for '{}'  in Hive storage '{}'",  watch.elapsed(TimeUnit.MILLISECONDS), name, schemaName);
         return schema;
       } catch (final TException e) {
         logger.warn("Failure while attempting to access HiveDatabase '{}'.", name, e.getCause());
         return null;
       }
+    }
 
+    /** Help method to get subschema when we know it exists (already checks the existence) */
+    private HiveDatabaseSchema getSubSchemaKnownExists(String name) {
+      Stopwatch watch = new Stopwatch();
+      watch.start();
+
+      HiveDatabaseSchema schema = new HiveDatabaseSchema(this, name);
+      logger.debug("Took {} ms to getSubSchema for '{}'  in Hive storage '{}'",  watch.elapsed(TimeUnit.MILLISECONDS), name, schemaName);
+      return schema;
     }
 
     void setHolder(SchemaPlus plusOfThis) {
       for (String s : getSubSchemaNames()) {
-        plusOfThis.add(s, getSubSchema(s));
+        plusOfThis.add(s, getSubSchemaKnownExists(s));
       }
     }
 
