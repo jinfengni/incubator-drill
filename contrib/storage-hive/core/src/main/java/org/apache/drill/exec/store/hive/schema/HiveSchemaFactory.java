@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
+import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -34,6 +35,7 @@ import org.apache.calcite.schema.SchemaPlus;
 
 import org.apache.calcite.schema.Table;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.planner.logical.DrillTable;
 import org.apache.drill.exec.store.AbstractSchema;
@@ -236,14 +238,17 @@ public class HiveSchemaFactory implements SchemaFactory {
       return defaultSchema.getTableNames();
     }
 
-    DrillTable getDrillTable(String dbName, String t) {
+    DrillTable getDrillTable(String dbName, String tableName) {
       try {
-        Optional<DrillTable> table = tableCache.get(HiveTableName.table(dbName, t));
+        Optional<DrillTable> table = tableCache.get(HiveTableName.table(dbName, tableName));
         if (table.isPresent()) {
           return table.get();
         }
       } catch (final Exception e) {
-        logger.warn("Failure while getting Hive table.", dbName, t);
+        Throwable throwable = e.getCause();
+        Throwables.propagateIfInstanceOf(throwable, UserException.class);
+        //throw Throwables.propagate(throwable);
+        logger.warn("Failure while getting Hive table {}:{}. Exception:{}. ", dbName, tableName, e);
       }
       return null;
     }
