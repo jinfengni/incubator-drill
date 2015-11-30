@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -121,7 +122,7 @@ public class HiveSchemaFactory implements SchemaFactory {
 
     private final LoadingCache<String, List<String>> databaseNamesCache;
     private final LoadingCache<String, List<String>> tableNamesCache;
-    private final LoadingCache<HiveTableName, DrillTable> tableCache;
+    private final LoadingCache<HiveTableName, Optional<DrillTable>> tableCache;
 
     public HiveSchema(final SchemaConfig schemaConfig, final DrillHiveMetaStoreClient mClient, final String name) {
       super(ImmutableList.<String>of(), name);
@@ -155,10 +156,11 @@ public class HiveSchemaFactory implements SchemaFactory {
 
       tableCache = CacheBuilder.newBuilder()
           .expireAfterAccess(1, TimeUnit.MINUTES)
-          .build(new CacheLoader<HiveTableName, DrillTable>() {
+          .build(new CacheLoader<HiveTableName, Optional<DrillTable>>() {
             @Override
-            public DrillTable load(HiveTableName key) throws Exception {
-              return getDrillTableHelper(key.databaseName, key.tableName);
+            public Optional<DrillTable> load(HiveTableName key) throws Exception {
+              DrillTable table = getDrillTableHelper(key.databaseName, key.tableName);
+              return Optional.fromNullable(table);
             }
           });
 
@@ -179,7 +181,7 @@ public class HiveSchemaFactory implements SchemaFactory {
           this.defaultSchema = schema;
         }
         return schema;
-      } catch (final ExecutionException e) {
+      } catch (final Exception e) {
         logger.warn("Failure while attempting to access HiveDatabase '{}'.", name, e.getCause());
         return null;
       }
@@ -212,7 +214,7 @@ public class HiveSchemaFactory implements SchemaFactory {
         // List<String> dbs = mClient.getDatabases();
         List<String> dbs = databaseNamesCache.get("databases");
         return Sets.newHashSet(dbs);
-      } catch (final ExecutionException e) {
+      } catch (final Exception e) {
         logger.warn("Failure while getting Hive database list.", e);
       }
       return super.getSubSchemaNames();
@@ -236,8 +238,11 @@ public class HiveSchemaFactory implements SchemaFactory {
 
     DrillTable getDrillTable(String dbName, String t) {
       try {
-        return tableCache.get(HiveTableName.table(dbName, t));
-      } catch (final ExecutionException e) {
+        Optional<DrillTable> table = tableCache.get(HiveTableName.table(dbName, t));
+        if (table.isPresent()) {
+          return table.get();
+        }
+      } catch (final Exception e) {
         logger.warn("Failure while getting Hive table.", dbName, t);
       }
       return null;
