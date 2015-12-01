@@ -201,18 +201,18 @@ public abstract class DrillHiveMetaStoreClient extends HiveMetaStoreClient {
       throw new UnknownTableException(String.format("Unable to find table '%s'.", tableName));
     }
 
-    List<Partition> partitions;
-    try {
-      partitions = mClient.listPartitions(dbName, tableName, (short) -1);
-    } catch (TException e) {
-      mClient.reconnect();
-      partitions = mClient.listPartitions(dbName, tableName, (short) -1);
-    }
+//    List<Partition> partitions;
+//    try {
+//      partitions = mClient.listPartitions(dbName, tableName, (short) -1);
+//    } catch (TException e) {
+//      mClient.reconnect();
+//      partitions = mClient.listPartitions(dbName, tableName, (short) -1);
+//    }
 
     List<HiveTable.HivePartition> hivePartitions = Lists.newArrayList();
-    for (Partition part : partitions) {
-      hivePartitions.add(new HiveTable.HivePartition(part));
-    }
+//    for (Partition part : partitions) {
+//      hivePartitions.add(new HiveTable.HivePartition(part));
+//    }
 
     if (hivePartitions.size() == 0) {
       hivePartitions = null;
