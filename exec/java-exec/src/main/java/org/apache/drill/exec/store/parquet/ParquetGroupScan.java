@@ -355,6 +355,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
   }
 
   @Override
+  @JsonIgnore
   public FileSelection getFileSelection() {
     return fileSelection;
   }
