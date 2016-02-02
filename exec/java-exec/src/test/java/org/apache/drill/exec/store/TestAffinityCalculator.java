@@ -72,7 +72,7 @@ public class TestAffinityCalculator extends ExecTest {
     rowGroups.clear();
 
     for (int i = 0; i < numberOfRowGroups; i++) {
-      rowGroups.add(new ParquetGroupScan.RowGroupInfo(path, (long)i*rowGroupSize, (long)rowGroupSize, i));
+      rowGroups.add(new ParquetGroupScan.RowGroupInfo(path, (long)i*rowGroupSize, (long)rowGroupSize, i, -1));
     }
   }
 

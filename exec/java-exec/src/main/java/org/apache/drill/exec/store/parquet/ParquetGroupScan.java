@@ -30,6 +30,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import org.apache.calcite.util.Pair;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
@@ -485,12 +486,14 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     private EndpointByteMap byteMap;
     private int rowGroupIndex;
     private String root;
+    private long rowCount;
 
     @JsonCreator
     public RowGroupInfo(@JsonProperty("path") String path, @JsonProperty("start") long start,
-        @JsonProperty("length") long length, @JsonProperty("rowGroupIndex") int rowGroupIndex) {
+        @JsonProperty("length") long length, @JsonProperty("rowGroupIndex") int rowGroupIndex, long rowCount) {
       super(path, start, length);
       this.rowGroupIndex = rowGroupIndex;
+      this.rowCount = rowCount;
     }
 
     public RowGroupReadEntry getRowGroupReadEntry() {
@@ -519,6 +522,11 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     public void setEndpointByteMap(EndpointByteMap byteMap) {
       this.byteMap = byteMap;
     }
+
+    public long getRowCount() {
+      return rowCount;
+    }
+
   }
 
   private void init() throws IOException {
@@ -582,7 +590,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
       int rgIndex = 0;
       for (RowGroupMetadata rg : file.getRowGroups()) {
         RowGroupInfo rowGroupInfo =
-            new RowGroupInfo(file.getPath(), rg.getStart(), rg.getLength(), rgIndex);
+            new RowGroupInfo(file.getPath(), rg.getStart(), rg.getLength(), rgIndex, rg.getRowCount());
         EndpointByteMap endpointByteMap = new EndpointByteMapImpl();
         for (String host : rg.getHostAffinity().keySet()) {
           if (hostEndpointMap.containsKey(host)) {
@@ -788,6 +796,38 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     newScan.modifyFileSelection(selection);
     newScan.init();
     return newScan;
+  }
+
+  public static Pair<GroupScan, Boolean> filterParquetScanByLimit(ParquetGroupScan parquetGroupScan,  long rowCountRequested) throws IOException{
+    Preconditions.checkArgument(parquetGroupScan.rowGroupInfos.size() >= 0);
+
+    rowCountRequested = Math.max(rowCountRequested, 1); // Make sure it request at least 1 row -> 1 rowGroup.
+    long count = 0;
+    int index = 0;
+    for (RowGroupInfo rowGroupInfo : parquetGroupScan.rowGroupInfos) {
+      if (count < rowCountRequested) {
+        count += rowGroupInfo.getRowCount();
+        index ++;
+      } else {
+        break;
+      }
+    }
+
+    Set<String> fileNames = Sets.newHashSet(); // HashSet keeps a fileName unique.
+    for (RowGroupInfo rowGroupInfo : parquetGroupScan.rowGroupInfos.subList(0, index)) {
+      fileNames.add(rowGroupInfo.getPath());
+    }
+
+    if (fileNames.size() == parquetGroupScan.fileSet.size() ) {
+      // There is no reduction of rowGroups. Return the original groupScan.
+      logger.warn("filterParquetScanByLimit does not apply!");
+      return Pair.of((GroupScan)parquetGroupScan, false);
+    } {
+
+      FileSelection newSelection = new FileSelection(null, Lists.newArrayList(fileNames), parquetGroupScan.getSelectionRoot());
+      logger.warn("filterParquetScanByLimit apply! Reduce parquet file # from {} to {}", parquetGroupScan.fileSet.size(), fileNames.size());
+      return Pair.of((GroupScan) parquetGroupScan.clone(newSelection), true);
+    }
   }
 
   @Override

@@ -207,7 +207,8 @@ public class DrillRuleSets {
             PruneScanRule.getDirFilterOnProject(optimizerRulesContext),
             PruneScanRule.getDirFilterOnScan(optimizerRulesContext),
             ParquetPruneScanRule.getFilterOnProjectParquet(optimizerRulesContext),
-            ParquetPruneScanRule.getFilterOnScanParquet(optimizerRulesContext)
+            ParquetPruneScanRule.getFilterOnScanParquet(optimizerRulesContext),
+            DrillPushLimitToScanRule.INSTANCE
         )
         .build();
 
