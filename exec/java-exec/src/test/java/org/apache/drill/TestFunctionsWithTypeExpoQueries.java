@@ -548,4 +548,164 @@ public class TestFunctionsWithTypeExpoQueries extends BaseTestQuery {
         .build()
         .run();
   }
+
+  @Test
+  public void testWindowRanking() throws Exception {
+    final String queryCUME_DIST = "select CUME_DIST() over(order by n_nationkey) as col \n" +
+        "from cp.`tpch/nation.parquet` \n" +
+        "limit 0";
+
+    final String queryDENSE_RANK = "select DENSE_RANK() over(order by n_nationkey) as col \n" +
+        "from cp.`tpch/nation.parquet` \n" +
+        "limit 0";
+
+    final String queryPERCENT_RANK = "select PERCENT_RANK() over(order by n_nationkey) as col \n" +
+        "from cp.`tpch/nation.parquet` \n" +
+        "limit 0";
+
+    final String queryRANK = "select RANK() over(order by n_nationkey) as col \n" +
+        "from cp.`tpch/nation.parquet` \n" +
+        "limit 0";
+
+    final String queryROW_NUMBER = "select ROW_NUMBER() over(order by n_nationkey) as col \n" +
+        "from cp.`tpch/nation.parquet` \n" +
+        "limit 0";
+
+    final TypeProtos.MajorType majorTypeDouble = TypeProtos.MajorType.newBuilder()
+        .setMinorType(TypeProtos.MinorType.FLOAT8)
+        .setMode(TypeProtos.DataMode.REQUIRED)
+        .build();
+
+    final TypeProtos.MajorType majorTypeBigInt = TypeProtos.MajorType.newBuilder()
+        .setMinorType(TypeProtos.MinorType.BIGINT)
+        .setMode(TypeProtos.DataMode.REQUIRED)
+        .build();
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchemaCUME_DIST = Lists.newArrayList();
+    expectedSchemaCUME_DIST.add(Pair.of(SchemaPath.getSimplePath("col"), majorTypeDouble));
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchemaDENSE_RANK = Lists.newArrayList();
+    expectedSchemaDENSE_RANK.add(Pair.of(SchemaPath.getSimplePath("col"), majorTypeBigInt));
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchemaPERCENT_RANK = Lists.newArrayList();
+    expectedSchemaPERCENT_RANK.add(Pair.of(SchemaPath.getSimplePath("col"), majorTypeDouble));
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchemaRANK = Lists.newArrayList();
+    expectedSchemaRANK.add(Pair.of(SchemaPath.getSimplePath("col"), majorTypeBigInt));
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchemaROW_NUMBER = Lists.newArrayList();
+    expectedSchemaROW_NUMBER.add(Pair.of(SchemaPath.getSimplePath("col"), majorTypeBigInt));
+
+    testBuilder()
+        .sqlQuery(queryCUME_DIST)
+        .schemaBaseLine(expectedSchemaCUME_DIST)
+        .build()
+        .run();
+
+    testBuilder()
+        .sqlQuery(queryDENSE_RANK)
+        .schemaBaseLine(expectedSchemaDENSE_RANK)
+        .build()
+        .run();
+
+    testBuilder()
+        .sqlQuery(queryPERCENT_RANK)
+        .schemaBaseLine(expectedSchemaPERCENT_RANK)
+        .build()
+        .run();
+
+    testBuilder()
+        .sqlQuery(queryRANK)
+        .schemaBaseLine(expectedSchemaRANK)
+        .build()
+        .run();
+
+    testBuilder()
+        .sqlQuery(queryROW_NUMBER)
+        .schemaBaseLine(expectedSchemaROW_NUMBER)
+        .build()
+        .run();
+  }
+
+  @Test
+  public void testWindowNTILE() throws Exception {
+    final String query = "select ntile(1) over(order by position_id) as col \n" +
+        "from cp.`employee.json` \n" +
+        "limit 0";
+
+    final TypeProtos.MajorType majorType = TypeProtos.MajorType.newBuilder()
+        .setMinorType(TypeProtos.MinorType.INT)
+        .setMode(TypeProtos.DataMode.REQUIRED)
+        .build();
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList();
+    expectedSchema.add(Pair.of(SchemaPath.getSimplePath("col"), majorType));
+
+    testBuilder()
+        .sqlQuery(query)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+  }
+
+  @Test
+  public void testLeadLag() throws Exception {
+    final String queryLEAD = "select lead(cast(n_nationkey as BigInt)) over(order by n_nationkey) as col \n" +
+        "from cp.`tpch/nation.parquet` \n" +
+        "limit 0";
+    final String queryLAG = "select lag(cast(n_nationkey as BigInt)) over(order by n_nationkey) as col \n" +
+        "from cp.`tpch/nation.parquet` \n" +
+        "limit 0";
+
+    final TypeProtos.MajorType majorType = TypeProtos.MajorType.newBuilder()
+        .setMinorType(TypeProtos.MinorType.BIGINT)
+        .setMode(TypeProtos.DataMode.OPTIONAL)
+        .build();
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList();
+    expectedSchema.add(Pair.of(SchemaPath.getSimplePath("col"), majorType));
+
+    testBuilder()
+        .sqlQuery(queryLEAD)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+
+    testBuilder()
+        .sqlQuery(queryLAG)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+  }
+
+  @Test
+  public void testFirst_Last_Value() throws Exception {
+    final String queryFirst = "select first_value(cast(position_id as integer)) over(order by position_id) as col \n" +
+        "from cp.`employee.json` \n" +
+        "limit 0";
+
+    final String queryLast = "select first_value(cast(position_id as integer)) over(order by position_id) as col \n" +
+        "from cp.`employee.json` \n" +
+        "limit 0";
+
+    final TypeProtos.MajorType majorType = TypeProtos.MajorType.newBuilder()
+        .setMinorType(TypeProtos.MinorType.INT)
+        .setMode(TypeProtos.DataMode.OPTIONAL)
+        .build();
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList();
+    expectedSchema.add(Pair.of(SchemaPath.getSimplePath("col"), majorType));
+
+    testBuilder()
+        .sqlQuery(queryFirst)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+
+    testBuilder()
+        .sqlQuery(queryLast)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+  }
 }
