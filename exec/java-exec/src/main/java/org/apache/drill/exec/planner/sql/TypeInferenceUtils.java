@@ -58,7 +58,8 @@ public class TypeInferenceUtils {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TypeInferenceUtils.class);
 
   public static final TypeProtos.MajorType UNKNOWN_TYPE = TypeProtos.MajorType.getDefaultInstance();
-  private static final ImmutableMap<TypeProtos.MinorType, SqlTypeName> DRILL_TO_CALCITE_TYPE_MAPPING = ImmutableMap.<TypeProtos.MinorType, SqlTypeName> builder()
+  private static final ImmutableMap<TypeProtos.MinorType, SqlTypeName> DRILL_TO_CALCITE_TYPE_MAPPING
+      = ImmutableMap.<TypeProtos.MinorType, SqlTypeName> builder()
       .put(TypeProtos.MinorType.INT, SqlTypeName.INTEGER)
       .put(TypeProtos.MinorType.BIGINT, SqlTypeName.BIGINT)
       .put(TypeProtos.MinorType.FLOAT4, SqlTypeName.FLOAT)
@@ -86,7 +87,8 @@ public class TypeInferenceUtils {
       //      - CHAR, SYMBOL, MULTISET, DISTINCT, STRUCTURED, ROW, OTHER, CURSOR, COLUMN_LIST
       .build();
 
-  private static final ImmutableMap<SqlTypeName, TypeProtos.MinorType> CALCITE_TO_DRILL_MAPPING = ImmutableMap.<SqlTypeName, TypeProtos.MinorType> builder()
+  private static final ImmutableMap<SqlTypeName, TypeProtos.MinorType> CALCITE_TO_DRILL_MAPPING
+      = ImmutableMap.<SqlTypeName, TypeProtos.MinorType> builder()
       .put(SqlTypeName.INTEGER, TypeProtos.MinorType.INT)
       .put(SqlTypeName.BIGINT, TypeProtos.MinorType.BIGINT)
       .put(SqlTypeName.FLOAT, TypeProtos.MinorType.FLOAT4)
