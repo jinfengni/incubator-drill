@@ -28,6 +28,7 @@ import org.apache.calcite.rel.rules.AggregateExpandDistinctAggregatesRule;
 import org.apache.calcite.rel.rules.AggregateRemoveRule;
 import org.apache.calcite.rel.rules.FilterAggregateTransposeRule;
 import org.apache.calcite.rel.rules.FilterMergeRule;
+import org.apache.calcite.rel.rules.FilterSetOpTransposeRule;
 import org.apache.calcite.rel.rules.JoinPushExpressionsRule;
 import org.apache.calcite.rel.rules.JoinPushThroughJoinRule;
 import org.apache.calcite.rel.rules.JoinToMultiJoinRule;
@@ -44,11 +45,13 @@ import org.apache.drill.exec.ops.OptimizerRulesContext;
 import org.apache.drill.exec.planner.logical.DrillAggregateRule;
 import org.apache.drill.exec.planner.logical.DrillFilterJoinRules;
 import org.apache.drill.exec.planner.logical.DrillFilterRule;
+import org.apache.drill.exec.planner.logical.DrillFilterSetOpTransposeRule;
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
 import org.apache.drill.exec.planner.logical.DrillJoinRule;
 import org.apache.drill.exec.planner.logical.DrillLimitRule;
 import org.apache.drill.exec.planner.logical.DrillMergeProjectRule;
 import org.apache.drill.exec.planner.logical.DrillProjectRule;
+import org.apache.drill.exec.planner.logical.DrillProjectSetOpTransposeRule;
 import org.apache.drill.exec.planner.logical.DrillPushFilterPastProjectRule;
 import org.apache.drill.exec.planner.logical.DrillPushLimitToScanRule;
 import org.apache.drill.exec.planner.logical.DrillPushProjIntoScan;
@@ -252,7 +255,7 @@ public enum PlannerPhase {
        */
       DrillPushFilterPastProjectRule.INSTANCE,
       // Due to infinite loop in planning (DRILL-3257), temporarily disable this rule
-      //FilterSetOpTransposeRule.INSTANCE,
+      DrillFilterSetOpTransposeRule.INSTANCE,
       FilterAggregateTransposeRule.INSTANCE,
 
       FilterMergeRule.INSTANCE,
@@ -269,7 +272,7 @@ public enum PlannerPhase {
       DrillPushProjectPastFilterRule.INSTANCE,
       DrillPushProjectPastJoinRule.INSTANCE,
       // Due to infinite loop in planning (DRILL-3257), temporarily disable this rule
-      //DrillProjectSetOpTransposeRule.INSTANCE,
+      DrillProjectSetOpTransposeRule.INSTANCE,
       ProjectWindowTransposeRule.INSTANCE,
       DrillPushProjIntoScan.INSTANCE,
 
