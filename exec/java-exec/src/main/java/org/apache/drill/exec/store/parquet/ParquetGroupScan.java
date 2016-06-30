@@ -28,7 +28,9 @@ import java.util.Set;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
+import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.types.TypeProtos.MajorType;
@@ -113,6 +115,13 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
   private List<SchemaPath> columns;
   private ListMultimap<Integer, RowGroupInfo> mappings;
   private List<RowGroupInfo> rowGroupInfos;
+  private LogicalExpression filter;
+
+  /**
+   * The parquet table metadata may have already been read
+   * from a metadata cache file earlier; we can re-use during
+   * the ParquetGroupScan and avoid extra loading time.
+   */
   private Metadata.ParquetTableMetadataBase parquetTableMetadata = null;
   private String cacheFileRoot = null;
 
@@ -134,7 +143,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
       @JacksonInject StoragePluginRegistry engineRegistry, //
       @JsonProperty("columns") List<SchemaPath> columns, //
       @JsonProperty("selectionRoot") String selectionRoot, //
-      @JsonProperty("cacheFileRoot") String cacheFileRoot //
+      @JsonProperty("cacheFileRoot") String cacheFileRoot, //
+      @JsonProperty("filter") LogicalExpression filter
   ) throws IOException, ExecutionSetupException {
     super(ImpersonationUtil.resolveUserName(userName));
     this.columns = columns;
@@ -150,6 +160,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     this.entries = entries;
     this.selectionRoot = selectionRoot;
     this.cacheFileRoot = cacheFileRoot;
+    this.filter = filter;
 
     init(null);
   }
@@ -160,7 +171,18 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
       ParquetFormatPlugin formatPlugin, //
       String selectionRoot,
       String cacheFileRoot,
-      List<SchemaPath> columns) //
+      List<SchemaPath> columns) throws IOException{
+    this(userName, selection, formatPlugin, selectionRoot, cacheFileRoot, columns, ValueExpressions.BooleanExpression.TRUE);
+  }
+
+  public ParquetGroupScan( //
+      String userName,
+      FileSelection selection, //
+      ParquetFormatPlugin formatPlugin, //
+      String selectionRoot,
+      String cacheFileRoot,
+      List<SchemaPath> columns,
+      LogicalExpression filter) //
       throws IOException {
     super(userName);
     this.formatPlugin = formatPlugin;
@@ -188,6 +210,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
       }
     }
 
+    this.filter = filter;
+
     init(fileSelection.getMetaContext());
   }
 
@@ -212,7 +236,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     this.fileSet = that.fileSet == null ? null : new HashSet<>(that.fileSet);
     this.usedMetadataCache = that.usedMetadataCache;
     this.parquetTableMetadata = that.parquetTableMetadata;
-    this.cacheFileRoot = that.cacheFileRoot;
+    this.filter = that.filter;
   }
 
   /**
@@ -259,6 +283,14 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
   public Set<String> getFileSet() {
     return fileSet;
+  }
+
+  public LogicalExpression getFilter() {
+    return this.filter;
+  }
+
+  public void setFilter(LogicalExpression filter) {
+    this.filter = filter;
   }
 
   @Override
@@ -825,7 +857,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
         String.format("MinorFragmentId %d has no read entries assigned", minorFragmentId));
 
     return new ParquetRowGroupScan(
-        getUserName(), formatPlugin, convertToReadEntries(rowGroupsForMinor), columns, selectionRoot);
+        getUserName(), formatPlugin, convertToReadEntries(rowGroupsForMinor), columns, selectionRoot, filter);
   }
 
   private List<RowGroupReadEntry> convertToReadEntries(List<RowGroupInfo> rowGroups) {
@@ -879,8 +911,9 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
         + ", selectionRoot=" + selectionRoot
         + ", numFiles=" + getEntries().size()
         + ", usedMetadataFile=" + usedMetadataCache
+        + ", columns=" + columns + "]"
         + cacheFileString
-        + ", columns=" + columns + "]";
+        + ", filter=" + this.filter;
   }
 
   @Override

@@ -1176,23 +1176,25 @@ public class TestExampleQueries extends BaseTestQuery {
 
   @Test // DRILL-2190
   public void testDateImplicitCasting() throws Exception {
-    String query = "SELECT birth_date \n" +
-        "FROM cp.`employee.json` \n" +
-        "WHERE birth_date BETWEEN '1920-01-01' AND cast('1931-01-01' AS DATE) \n" +
-        "order by birth_date";
-
-    testBuilder()
-        .sqlQuery(query)
-        .unOrdered()
-        .baselineColumns("birth_date")
-        .baselineValues("1920-04-17")
-        .baselineValues("1921-12-04")
-        .baselineValues("1922-08-10")
-        .baselineValues("1926-10-27")
-        .baselineValues("1928-03-20")
-        .baselineValues("1930-01-08")
-        .build()
-        .run();
+//    String query = "SELECT birth_date \n" +
+//        "FROM cp.`employee.json` \n" +
+//        "WHERE birth_date BETWEEN '1920-01-01' AND cast('1931-01-01' AS DATE) \n" +
+//        "order by birth_date";
+//
+//    testBuilder()
+//        .sqlQuery(query)
+//        .unOrdered()
+//        .baselineColumns("birth_date")
+//        .baselineValues("1920-04-17")
+//        .baselineValues("1921-12-04")
+//        .baselineValues("1922-08-10")
+//        .baselineValues("1926-10-27")
+//        .baselineValues("1928-03-20")
+//        .baselineValues("1930-01-08")
+//        .build()
+//        .run();
+    test("select * from dfs.`/drill/testdata/pf/orders_tpch` where o_orderkey = 0 ");
   }
+
 
 }

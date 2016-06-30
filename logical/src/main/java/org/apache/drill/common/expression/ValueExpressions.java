@@ -140,6 +140,8 @@ public class ValueExpressions {
 
   public static class BooleanExpression extends ValueExpression<Boolean> {
 
+    public static final BooleanExpression TRUE = new BooleanExpression("true", ExpressionPosition.UNKNOWN);
+    public static final BooleanExpression FALSE = new BooleanExpression("false", ExpressionPosition.UNKNOWN);
 
     public BooleanExpression(String value, ExpressionPosition pos) {
       super(value, pos);
