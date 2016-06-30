@@ -49,6 +49,8 @@ import org.apache.parquet.schema.Type;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
+import static org.bouncycastle.asn1.x500.style.RFC4519Style.l;
+
 
 public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan>{
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetScanBatchCreator.class);
@@ -67,7 +69,8 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
 
     if (!columnExplorer.isStarQuery()) {
       rowGroupScan = new ParquetRowGroupScan(rowGroupScan.getUserName(), rowGroupScan.getStorageEngine(),
-          rowGroupScan.getRowGroupReadEntries(), columnExplorer.getTableColumns(), rowGroupScan.getSelectionRoot());
+          rowGroupScan.getRowGroupReadEntries(), columnExplorer.getTableColumns(), rowGroupScan.getSelectionRoot(),
+          rowGroupScan.getFilter());
       rowGroupScan.setOperatorId(rowGroupScan.getOperatorId());
     }
 
@@ -87,6 +90,9 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
     List<RecordReader> readers = Lists.newArrayList();
     List<Map<String, String>> implicitColumns = Lists.newArrayList();
     Map<String, String> mapWithMaxColumns = Maps.newLinkedHashMap();
+    RecordReader firstReader = null;
+    int rgFiltered = 0;
+
     for(RowGroupReadEntry e : rowGroupScan.getRowGroupReadEntries()){
       /*
       Here we could store a map from file names to footers, to prevent re-reading the footer for each row group in a file
@@ -104,17 +110,29 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           logger.trace("ParquetTrace,Read Footer,{},{},{},{},{},{},{}", "", e.getPath(), "", 0, 0, 0, timeToRead);
           footers.put(e.getPath(), footer );
         }
+
         if (!context.getOptions().getOption(ExecConstants.PARQUET_NEW_RECORD_READER).bool_val && !isComplex(footers.get(e.getPath()))) {
-          readers.add(
-              new ParquetRecordReader(
-                  context, e.getPath(), e.getRowGroupIndex(), fs,
-                  CodecFactory.createDirectCodecFactory(
+          ParquetRecordReader reader =  new ParquetRecordReader(
+              context, e.getPath(), e.getRowGroupIndex(), fs,
+              CodecFactory.createDirectCodecFactory(
                   fs.getConf(),
                   new ParquetDirectByteBufferAllocator(oContext.getAllocator()), 0),
-                  footers.get(e.getPath()),
-                  rowGroupScan.getColumns()
-              )
+              footers.get(e.getPath()),
+              rowGroupScan.getColumns()
           );
+
+          if (firstReader == null) {
+            firstReader = reader;
+          }
+
+          if (rowGroupScan.getFilter() != null) {
+            if (ParquetFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
+              rgFiltered ++;
+              continue;
+            }
+          }
+
+          readers.add(reader);
         } else {
           ParquetMetadata footer = footers.get(e.getPath());
           readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs));
@@ -137,6 +155,13 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
       map.putAll(Maps.difference(map, diff).entriesOnlyOnRight());
     }
 
+    if (rgFiltered > 0) {
+      logger.debug("Filter out # of rowGroup out of total # {}", rgFiltered, rowGroupScan.getRowGroupReadEntries().size());
+    }
+
+    if (readers.isEmpty() && firstReader != null) {
+      readers.add(firstReader);
+    }
     return new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), implicitColumns);
   }
 
