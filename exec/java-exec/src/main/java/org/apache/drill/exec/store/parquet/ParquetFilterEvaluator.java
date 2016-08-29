@@ -20,12 +20,14 @@ package org.apache.drill.exec.store.parquet;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
+import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 
 import java.util.List;
+import java.util.Map;
 
 public class ParquetFilterEvaluator {
-  public static boolean evalFilter(LogicalExpression expr, List<ColumnChunkMetaData> columnChunkMetaDatas) {
+  public static boolean evalFilter(LogicalExpression expr, Map<String, SchemaElement> schemaElementMap,  List<ColumnChunkMetaData> columnChunkMetaDatas) {
     FilterPredicate predicate = ParquetFilterBuilder.buildParquetFilterPredicate(expr);
     if (predicate != null) {
       return StatisticsFilter.canDrop(predicate, columnChunkMetaDatas);
