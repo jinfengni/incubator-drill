@@ -22,6 +22,7 @@ import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.LogicalExpressionBase;
 import org.apache.drill.common.expression.visitors.ExprVisitor;
+import org.apache.drill.common.types.TypeProtos;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 
@@ -30,23 +31,23 @@ import java.util.Iterator;
 
 public class StatExpressions {
 
-  public abstract class StatExpression<V> extends LogicalExpressionBase {
+  public static abstract class StatExpression<V> extends LogicalExpressionBase {
     public final V min;
     public final V max;
-    public long numNulls;
-    public long numNonNulls;
-    public long numValues;
+    public final long numNulls;
+    public final long numNonNulls;
+    public final long numValues;
+    public final TypeProtos.MajorType type;
 
-    protected StatExpression(V min, V max, long numNulls, long numNonNulls, long numValues) {
+    protected StatExpression(V min, V max, long numNulls, long numNonNulls, long numValues, TypeProtos.MajorType type) {
       super(ExpressionPosition.UNKNOWN);
       this.min = min;
       this.max = max;
       this.numNulls = numNulls;
       this.numNonNulls = numNonNulls;
       this.numValues = numValues;
+      this.type = type;
     }
-
-    //  protected abstract V parseValue(String s);
 
     @Override
     public Iterator<LogicalExpression> iterator() {
@@ -59,15 +60,16 @@ public class StatExpressions {
     }
   }
 
-  public class IntStatExpression extends StatExpression<Integer> {
-    public IntStatExpression(IntStatistics intStatistics, long numValues) {
-      super(intStatistics.getMin(), intStatistics.getMax(), intStatistics.getNumNulls(), numValues - intStatistics.getNumNulls(), numValues);
+  public static class IntStatExpression extends StatExpression<Integer> {
+    public IntStatExpression(IntStatistics intStatistics, long numValues, TypeProtos.MajorType type) {
+      super(intStatistics.getMin(), intStatistics.getMax(), intStatistics.getNumNulls(), numValues - intStatistics.getNumNulls(), numValues, type);
     }
   }
 
-  public class LongStatExpression extends StatExpression<Long> {
-    public LongStatExpression(LongStatistics longStatistics, long numValues) {
-      super(longStatistics.getMin(), longStatistics.getMax(), longStatistics.getNumNulls(), numValues - longStatistics.getNumNulls(), numValues);
+  public static class LongStatExpression extends StatExpression<Long> {
+    public LongStatExpression(LongStatistics longStatistics, long numValues, TypeProtos.MajorType type) {
+      super(longStatistics.getMin(), longStatistics.getMax(), longStatistics.getNumNulls(), numValues - longStatistics.getNumNulls(), numValues, type);
     }
   }
+
 }
