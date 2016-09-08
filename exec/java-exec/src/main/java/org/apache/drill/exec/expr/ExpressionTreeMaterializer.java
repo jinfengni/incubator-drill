@@ -24,6 +24,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
@@ -78,6 +79,7 @@ import org.apache.drill.exec.expr.fn.DrillComplexWriterFuncHolder;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.ExceptionFunction;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
+import org.apache.drill.exec.expr.stat.TypedFieldExpr;
 import org.apache.drill.exec.record.MaterializeVisitor;
 import org.apache.drill.exec.record.TypedFieldId;
 import org.apache.drill.exec.record.VectorAccessible;
@@ -115,6 +117,21 @@ public class ExpressionTreeMaterializer {
   public static LogicalExpression materialize(LogicalExpression expr, VectorAccessible batch, ErrorCollector errorCollector, FunctionLookupContext functionLookupContext,
                                               boolean allowComplexWriterExpr) {
     return materialize(expr, batch, errorCollector, functionLookupContext, allowComplexWriterExpr, false);
+  }
+
+  public static LogicalExpression materializeFilterExpr(LogicalExpression expr, Map<String, MajorType> fieldTypes, ErrorCollector errorCollector, FunctionLookupContext functionLookupContext) {
+    LogicalExpression out =  expr.accept(new FilterMaterializeVisitor(fieldTypes, errorCollector), functionLookupContext);
+
+    return out;
+//    if (!errorCollector.hasErrors()) {
+//      out = out.accept(ConditionalExprOptimizer.INSTANCE, null);
+//    }
+//
+//    if (out instanceof NullExpression) {
+//      return new TypedNullConstant(Types.optional(MinorType.INT));
+//    } else {
+//      return out;
+//    }
   }
 
   public static LogicalExpression materialize(LogicalExpression expr, VectorAccessible batch, ErrorCollector errorCollector, FunctionLookupContext functionLookupContext,
@@ -233,6 +250,27 @@ public class ExpressionTreeMaterializer {
       } else {
         ValueVectorReadExpression e = new ValueVectorReadExpression(tfId);
         return e;
+      }
+    }
+  }
+
+  private static class FilterMaterializeVisitor extends AbstractMaterializeVisitor {
+    private final Map<String, MajorType> types;
+
+    public FilterMaterializeVisitor(Map<String, MajorType> types, ErrorCollector errorCollector) {
+      super(errorCollector, false, false);
+      this.types = types;
+    }
+
+    @Override
+    public LogicalExpression visitSchemaPath(SchemaPath path, FunctionLookupContext functionLookupContext) {
+      MajorType type = types.get(path.getRootSegment().getPath());
+
+      if (type != null) {
+        return new TypedFieldExpr(path, type);
+      } else {
+        logger.warn("Unable to find value vector of path {}, returning null instance.", path);
+        return NullExpression.INSTANCE;
       }
     }
   }

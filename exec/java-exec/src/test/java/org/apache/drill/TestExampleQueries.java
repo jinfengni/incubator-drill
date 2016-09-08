@@ -1193,7 +1193,7 @@ public class TestExampleQueries extends BaseTestQuery {
 //        .baselineValues("1930-01-08")
 //        .build()
 //        .run();
-    test("select * from dfs.`/drill/testdata/pf/orders_tpch` where o_orderkey = 0 ");
+    test("select * from dfs.`/drill/testdata/PF/orders` where o_orderkey = 100 ");
   }
 
 

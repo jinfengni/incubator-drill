@@ -18,24 +18,26 @@
 package org.apache.drill.exec.store.parquet;
 
 import com.google.common.collect.Sets;
+import org.apache.drill.common.expression.ErrorCollector;
+import org.apache.drill.common.expression.ErrorCollectorImpl;
+import org.apache.drill.common.expression.ExpressionStringBuilder;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.map.CaseInsensitiveMap;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
+import org.apache.drill.exec.expr.fn.FunctionLookupContext;
 import org.apache.drill.exec.expr.stat.StatExpressions;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetToDrillTypeConverter;
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.statistics.IntStatistics;
-import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
-import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 
@@ -44,6 +46,7 @@ import java.util.List;
 import java.util.Set;
 
 public class ParquetFilterEvaluator {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetFilterEvaluator.class);
 
   public static boolean evalFilter(LogicalExpression expr, List<ColumnChunkMetaData> columnChunkMetaDatas) {
     FilterPredicate predicate = ParquetFilterBuilder.buildParquetFilterPredicate(expr);
@@ -53,7 +56,7 @@ public class ParquetFilterEvaluator {
     return false;
   }
 
-  public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options) {
+  public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FunctionLookupContext functionLookupContext) {
     // figure out the set of columns referenced in expression.
     final Collection<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
     final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();
@@ -80,6 +83,9 @@ public class ParquetFilterEvaluator {
       columnStatMap.put(colMetaData.getPath().toDotString(), colMetaData);
     }
 
+    // map from column name to MajorType
+    final CaseInsensitiveMap<TypeProtos.MajorType> columnTypeMap = CaseInsensitiveMap.newHashMap();
+
     // map from column name to column stat expression.
     CaseInsensitiveMap<StatExpressions.StatExpression> statExprMap = CaseInsensitiveMap.newHashMap();
 
@@ -89,23 +95,46 @@ public class ParquetFilterEvaluator {
         SchemaElement se = schemaElementMap.get(path);
         ColumnChunkMetaData metaData = columnStatMap.get(path);
 
-        TypeProtos.MajorType mt = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
+        TypeProtos.MajorType type = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
             getDataMode(columnDesc), se, options);
-
-        StatExpressions.StatExpression statExpr = null;
-
-        switch (mt.getMinorType()) {
-          case INT:
-            statExpr = new StatExpressions.IntStatExpression((IntStatistics) metaData.getStatistics(), metaData.getValueCount(), mt);
-            break;
-          case BIGINT:
-            statExpr = new StatExpressions.LongStatExpression((LongStatistics) metaData.getStatistics(), metaData.getValueCount(), mt);
-          default:
-        }
-
-        statExprMap.put(path, statExpr);
+        columnTypeMap.put(path, type);
       }
     }
+
+    ErrorCollector errorCollector = new ErrorCollectorImpl();
+
+    LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(expr, columnTypeMap, errorCollector, functionLookupContext);
+
+    if (errorCollector.hasErrors()) {
+      logger.error("{} error(s) encountered when materialize filter expression : {}", errorCollector.getErrorCount(), errorCollector.toErrorString());
+      return false;
+    }
+
+    logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
+
+//    for (final String path : columnInExprMap.keySet()) {
+//      if (columnDescMap.containsKey(path) && schemaElementMap.containsKey(path) && columnDescMap.containsKey(path)) {
+//        ColumnDescriptor columnDesc =  columnDescMap.get(path);
+//        SchemaElement se = schemaElementMap.get(path);
+//        ColumnChunkMetaData metaData = columnStatMap.get(path);
+//
+//        TypeProtos.MajorType mt = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
+//            getDataMode(columnDesc), se, options);
+//
+//        StatExpressions.StatExpression statExpr = null;
+//
+//        switch (mt.getMinorType()) {
+//          case INT:
+//            statExpr = new StatExpressions.IntStatExpression((IntStatistics) metaData.getStatistics(), metaData.getValueCount(), mt);
+//            break;
+//          case BIGINT:
+//            statExpr = new StatExpressions.LongStatExpression((LongStatistics) metaData.getStatistics(), metaData.getValueCount(), mt);
+//          default:
+//        }
+//
+//        statExprMap.put(path, statExpr);
+//      }
+//    }
 
 
     return false;
