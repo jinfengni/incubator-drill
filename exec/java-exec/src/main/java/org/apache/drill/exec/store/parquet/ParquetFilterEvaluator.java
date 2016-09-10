@@ -28,10 +28,13 @@ import org.apache.drill.common.map.CaseInsensitiveMap;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
+import org.apache.drill.exec.expr.stat.ParquetCompPredicates;
+import org.apache.drill.exec.expr.stat.RangeExprEvaluator;
 import org.apache.drill.exec.expr.stat.StatExpressions;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetToDrillTypeConverter;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.format.FileMetaData;
@@ -45,11 +48,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.zookeeper.server.ServerCnxn.me;
+
 public class ParquetFilterEvaluator {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetFilterEvaluator.class);
 
   public static boolean evalFilter(LogicalExpression expr, List<ColumnChunkMetaData> columnChunkMetaDatas) {
-    FilterPredicate predicate = ParquetFilterBuilder.buildParquetFilterPredicate(expr);
+    FilterPredicate predicate = ParquetFilterBuilderAG.buildParquetFilterPredicate(expr);
     if (predicate != null) {
       return StatisticsFilter.canDrop(predicate, columnChunkMetaDatas);
     }
@@ -87,7 +92,7 @@ public class ParquetFilterEvaluator {
     final CaseInsensitiveMap<TypeProtos.MajorType> columnTypeMap = CaseInsensitiveMap.newHashMap();
 
     // map from column name to column stat expression.
-    CaseInsensitiveMap<StatExpressions.StatExpression> statExprMap = CaseInsensitiveMap.newHashMap();
+    CaseInsensitiveMap<Statistics> statMap = CaseInsensitiveMap.newHashMap();
 
     for (final String path : columnInExprMap.keySet()) {
       if (columnDescMap.containsKey(path) && schemaElementMap.containsKey(path) && columnDescMap.containsKey(path)) {
@@ -98,6 +103,10 @@ public class ParquetFilterEvaluator {
         TypeProtos.MajorType type = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
             getDataMode(columnDesc), se, options);
         columnTypeMap.put(path, type);
+
+        if (metaData != null) {
+          statMap.put(path, metaData.getStatistics());
+        }
       }
     }
 
@@ -112,30 +121,14 @@ public class ParquetFilterEvaluator {
 
     logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
 
-//    for (final String path : columnInExprMap.keySet()) {
-//      if (columnDescMap.containsKey(path) && schemaElementMap.containsKey(path) && columnDescMap.containsKey(path)) {
-//        ColumnDescriptor columnDesc =  columnDescMap.get(path);
-//        SchemaElement se = schemaElementMap.get(path);
-//        ColumnChunkMetaData metaData = columnStatMap.get(path);
-//
-//        TypeProtos.MajorType mt = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
-//            getDataMode(columnDesc), se, options);
-//
-//        StatExpressions.StatExpression statExpr = null;
-//
-//        switch (mt.getMinorType()) {
-//          case INT:
-//            statExpr = new StatExpressions.IntStatExpression((IntStatistics) metaData.getStatistics(), metaData.getValueCount(), mt);
-//            break;
-//          case BIGINT:
-//            statExpr = new StatExpressions.LongStatExpression((LongStatistics) metaData.getStatistics(), metaData.getValueCount(), mt);
-//          default:
-//        }
-//
-//        statExprMap.put(path, statExpr);
-//      }
-//    }
+    ParquetCompPredicates.ParquetCompPredicate parquetPredicate = (ParquetCompPredicates.ParquetCompPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter);
 
+    logger.debug("parquet predicate : {}", ExpressionStringBuilder.toString(parquetPredicate));
+
+    RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap);
+
+    boolean canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
+    logger.debug(" canDrop {} ", canDrop);
 
     return false;
   }

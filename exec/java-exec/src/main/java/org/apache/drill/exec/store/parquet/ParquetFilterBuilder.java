@@ -15,233 +15,124 @@
  */
 package org.apache.drill.exec.store.parquet;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.apache.drill.common.expression.BooleanOperator;
-import org.apache.drill.common.expression.FunctionCall;
+import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
-import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
+import org.apache.drill.exec.expr.stat.ParquetCompPredicates;
+import org.apache.drill.exec.expr.stat.TypedFieldExpr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.parquet.filter2.predicate.FilterApi;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
 
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ParquetFilterBuilder extends
-    AbstractExprVisitor<FilterPredicate, Void, RuntimeException> {
-  static final Logger logger = LoggerFactory
-      .getLogger(ParquetFilterBuilder.class);
-  private boolean allExpressionsConverted = true;
+    AbstractExprVisitor<LogicalExpression, Void, RuntimeException> {
+  static final Logger logger = LoggerFactory.getLogger(ParquetFilterBuilder.class);
 
-  public static FilterPredicate buildParquetFilterPredicate(LogicalExpression expr) {
-    final ParquetFilterBuilder filterBuilder = new ParquetFilterBuilder();
-    final FilterPredicate predicate = expr.accept(filterBuilder, null);
+  static final ParquetFilterBuilder FILTER_BUILDER = new ParquetFilterBuilder();
+
+  public static LogicalExpression buildParquetFilterPredicate(LogicalExpression expr) {
+    final LogicalExpression predicate = expr.accept(FILTER_BUILDER, null);
     return predicate;
   }
 
   private ParquetFilterBuilder() {
   }
 
-  public boolean areAllExpressionsConverted() {
-    return allExpressionsConverted;
-  }
-
   @Override
-  public FilterPredicate visitUnknown(LogicalExpression e, Void value) throws RuntimeException {
-    allExpressionsConverted = false;
+  public LogicalExpression visitUnknown(LogicalExpression e, Void value) {
+    if (e instanceof TypedFieldExpr) {
+      return e;
+    }
+
     return null;
   }
 
   @Override
-  public FilterPredicate visitBooleanOperator(BooleanOperator op, Void value) {
-    List<LogicalExpression> args = op.args;
-    FilterPredicate nodePredicate = null;
+  public LogicalExpression visitIntConstant(ValueExpressions.IntExpression intExpr, Void value) throws RuntimeException {
+    return intExpr;
+  }
+
+  @Override
+  public LogicalExpression visitBooleanOperator(BooleanOperator op, Void value) {
+    List<LogicalExpression> childPredicates = new ArrayList<LogicalExpression>();
     String functionName = op.getName();
-    for (LogicalExpression arg : args) {
-      switch (functionName) {
-      case "booleanAnd":
-      case "booleanOr":
-        if (nodePredicate == null) {
-          nodePredicate = arg.accept(this, null);
-        } else {
-          FilterPredicate predicate = arg.accept(this, null);
-          if (predicate != null) {
-            nodePredicate = mergePredicates(functionName, nodePredicate, predicate);
-          } else {
-            // we can't include any part of the OR if any of the predicates cannot be converted
-            if (functionName == "booleanOr") {
-              nodePredicate = null;
-            }
-            allExpressionsConverted = false;
-          }
+
+    for (LogicalExpression arg : op.args) {
+      LogicalExpression childPredicate = arg.accept(this, null);
+      if (childPredicate == null) {
+        if (functionName.equals("booleanOr")) {
+          // we can't include any leg of the OR if any of the predicates cannot be converted
+          return null;
         }
-        break;
+      } else {
+        childPredicates.add(childPredicate);
       }
     }
-    return nodePredicate;
+
+    if (childPredicates.size() == 0) {
+      return null; // none leg is qualified, return null.
+    } else if (childPredicates.size() == 1) {
+      return childPredicates.get(0); // only one leg is qualified, remove boolean op.
+    } else {
+      return new BooleanOperator(op.getName(), childPredicates, op.getPosition());
+    }
   }
 
-  private FilterPredicate mergePredicates(String functionName,
-      FilterPredicate leftPredicate, FilterPredicate rightPredicate) {
-    if (leftPredicate != null && rightPredicate != null) {
-      if (functionName == "booleanAnd") {
-        return FilterApi.and(leftPredicate, rightPredicate);
-      } else {
-        return FilterApi.or(leftPredicate, rightPredicate);
-      }
-    } else {
-      allExpressionsConverted = false;
-      if ("booleanAnd".equals(functionName)) {
-        return leftPredicate == null ? rightPredicate : leftPredicate;
-      }
+  @Override
+  public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression funcHolderExpr, Void value) throws RuntimeException {
+    FuncHolder holder = funcHolderExpr.getHolder();
+
+    if (! (holder instanceof DrillSimpleFuncHolder)) {
+      return null;
+    }
+
+    if (isCompareFunction(((DrillSimpleFuncHolder) holder).getRegisteredNames()[0])) {
+      return handleCompareFunction(funcHolderExpr, value);
     }
 
     return null;
   }
 
-  @Override
-  public FilterPredicate visitFunctionCall(FunctionCall call, Void value) throws RuntimeException {
-    FilterPredicate predicate = null;
-    String functionName = call.getName();
-    ImmutableList<LogicalExpression> args = call.args;
-
-    if (ParquetCompareFunctionProcessor.isCompareFunction(functionName)) {
-      ParquetCompareFunctionProcessor processor = ParquetCompareFunctionProcessor
-          .process(call);
-      if (processor.isSuccess()) {
-        try {
-          predicate = createFilterPredicate(processor.getFunctionName(),
-              processor.getPath(), processor.getValue());
-        } catch (Exception e) {
-          logger.error("Failed to create Parquet filter", e);
-        }
-      }
-    } else {
-      switch (functionName) {
-      case "booleanAnd":
-      case "booleanOr":
-        FilterPredicate leftPredicate = args.get(0).accept(this, null);
-        FilterPredicate rightPredicate = args.get(1).accept(this, null);
-        predicate = mergePredicates(functionName, leftPredicate, rightPredicate);
-        break;
+  private LogicalExpression handleCompareFunction(FunctionHolderExpression functionHolderExpression, Void value) {
+    for (LogicalExpression arg : functionHolderExpression.args) {
+      LogicalExpression newArg = arg.accept(this, value);
+      if (newArg == null) {
+        return null;
       }
     }
 
-    if (predicate == null) {
-      allExpressionsConverted = false;
-    }
+    String funcName = ((DrillSimpleFuncHolder) functionHolderExpression.getHolder()).getRegisteredNames()[0];
 
-    return predicate;
+    switch (funcName) {
+    case "equal" :
+      return new ParquetCompPredicates.EqualPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+    default:
+      return null;
+    }
   }
 
-  private FilterPredicate createFilterPredicate(String functionName,
-      SchemaPath field, Object fieldValue) {
-    FilterPredicate filter = null;
-
-    // extract the field name
-    String fieldName = field.getAsUnescapedPath();
-    switch (functionName) {
-    case "equal":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.eq(FilterApi.longColumn(fieldName), (Long) fieldValue);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.eq(FilterApi.intColumn(fieldName), (Integer) fieldValue);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.eq(FilterApi.floatColumn(fieldName), (Float) fieldValue);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.eq(FilterApi.doubleColumn(fieldName), (Double) fieldValue);
-      } else if (fieldValue instanceof Boolean) {
-        filter = FilterApi.eq(FilterApi.booleanColumn(fieldName), (Boolean) fieldValue);
-      }
-      break;
-    case "not_equal":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.notEq(FilterApi.longColumn(fieldName), (Long) fieldValue);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.notEq(FilterApi.intColumn(fieldName), (Integer) fieldValue);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.notEq(FilterApi.floatColumn(fieldName), (Float) fieldValue);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.notEq(FilterApi.doubleColumn(fieldName), (Double) fieldValue);
-      } else if (fieldValue instanceof Boolean) {
-        filter = FilterApi.notEq(FilterApi.booleanColumn(fieldName), (Boolean) fieldValue);
-      }
-      break;
-    case "greater_than_or_equal_to":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.gtEq(FilterApi.longColumn(fieldName), (Long) fieldValue);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.gtEq(FilterApi.intColumn(fieldName), (Integer) fieldValue);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.gtEq(FilterApi.floatColumn(fieldName), (Float) fieldValue);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.gtEq(FilterApi.doubleColumn(fieldName), (Double) fieldValue);
-      }
-      break;
-    case "greater_than":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.gt(FilterApi.longColumn(fieldName), (Long) fieldValue);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.gt(FilterApi.intColumn(fieldName), (Integer) fieldValue);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.gt(FilterApi.floatColumn(fieldName), (Float) fieldValue);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.gt(FilterApi.doubleColumn(fieldName), (Double) fieldValue);
-      }
-      break;
-    case "less_than_or_equal_to":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.ltEq(FilterApi.longColumn(fieldName), (Long) fieldValue);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.ltEq(FilterApi.intColumn(fieldName), (Integer) fieldValue);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.ltEq(FilterApi.floatColumn(fieldName), (Float) fieldValue);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.ltEq(FilterApi.doubleColumn(fieldName), (Double) fieldValue);
-      }
-      break;
-    case "less_than":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.lt(FilterApi.longColumn(fieldName), (Long) fieldValue);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.lt(FilterApi.intColumn(fieldName), (Integer) fieldValue);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.lt(FilterApi.floatColumn(fieldName), (Float) fieldValue);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.lt(FilterApi.doubleColumn(fieldName), (Double) fieldValue);
-      }
-      break;
-    case "isnull":
-    case "isNull":
-    case "is null":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.eq(FilterApi.longColumn(fieldName), null);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.eq(FilterApi.intColumn(fieldName), null);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.eq(FilterApi.floatColumn(fieldName), null);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.eq(FilterApi.doubleColumn(fieldName), null);
-      }
-      break;
-    case "isnotnull":
-    case "isNotNull":
-    case "is not null":
-      if (fieldValue instanceof Long) {
-        filter = FilterApi.notEq(FilterApi.longColumn(fieldName), null);
-      } else if (fieldValue instanceof Integer) {
-        filter = FilterApi.notEq(FilterApi.intColumn(fieldName), null);
-      } else if (fieldValue instanceof Float) {
-        filter = FilterApi.notEq(FilterApi.floatColumn(fieldName), null);
-      } else if (fieldValue instanceof Double) {
-        filter = FilterApi.notEq(FilterApi.doubleColumn(fieldName), null);
-      }
-      break;
-    }
-
-    return filter;
+  private static boolean isCompareFunction(String funcName) {
+    return COMPARE_FUNCTIONS_SET.contains(funcName);
   }
+
+  private static final ImmutableSet<String> COMPARE_FUNCTIONS_SET;
+  static {
+    ImmutableSet.Builder<String> builder = ImmutableSet.builder();
+    COMPARE_FUNCTIONS_SET = builder
+        .add("equal")
+        .add("not_equal")
+        .add("greater_than")
+        .add("greater_than_or_equal_to")
+        .add("less_than")
+        .add("less_than_or_equal_to")
+        .build();
+  }
+
 }
