@@ -55,4 +55,9 @@ public class TypedFieldExpr extends LogicalExpressionBase {
   public String toString() {
     return this.path.getRootSegment().getPath() + "(" + type.getMinorType() + "_" + type.getMode() +")";
   }
+
+  public String getName() {
+    return this.path.getRootSegment().getPath();
+  }
+
 }
