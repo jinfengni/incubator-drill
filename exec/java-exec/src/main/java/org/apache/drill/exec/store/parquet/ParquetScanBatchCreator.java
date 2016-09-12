@@ -49,8 +49,6 @@ import org.apache.parquet.schema.Type;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import static org.bouncycastle.asn1.x500.style.RFC4519Style.l;
-
 
 public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan>{
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetScanBatchCreator.class);
@@ -126,8 +124,8 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           }
 
           if (rowGroupScan.getFilter() != null) {
-            if (ParquetFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()), e.getRowGroupIndex(), context.getOptions(), context.getFunctionRegistry())) {
-//            if (ParquetFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
+            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()), e.getRowGroupIndex(), context.getOptions(), context.getFunctionRegistry())) {
+//            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
               rgFiltered ++;
               continue;
             }

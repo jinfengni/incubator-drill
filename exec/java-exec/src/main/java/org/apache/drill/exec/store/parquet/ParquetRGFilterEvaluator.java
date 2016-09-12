@@ -28,9 +28,8 @@ import org.apache.drill.common.map.CaseInsensitiveMap;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
-import org.apache.drill.exec.expr.stat.ParquetCompPredicates;
+import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.RangeExprEvaluator;
-import org.apache.drill.exec.expr.stat.StatExpressions;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetToDrillTypeConverter;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -48,10 +47,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.zookeeper.server.ServerCnxn.me;
-
-public class ParquetFilterEvaluator {
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetFilterEvaluator.class);
+public class ParquetRGFilterEvaluator {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetRGFilterEvaluator.class);
 
   public static boolean evalFilter(LogicalExpression expr, List<ColumnChunkMetaData> columnChunkMetaDatas) {
     FilterPredicate predicate = ParquetFilterBuilderAG.buildParquetFilterPredicate(expr);
@@ -121,7 +118,7 @@ public class ParquetFilterEvaluator {
 
     logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
 
-    ParquetCompPredicates.ParquetCompPredicate parquetPredicate = (ParquetCompPredicates.ParquetCompPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter);
+    ParquetPredicates.ParquetCompPredicate parquetPredicate = (ParquetPredicates.ParquetCompPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter);
 
     logger.debug("parquet predicate : {}", ExpressionStringBuilder.toString(parquetPredicate));
 

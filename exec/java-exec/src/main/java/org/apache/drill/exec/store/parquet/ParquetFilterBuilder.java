@@ -23,7 +23,7 @@ import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
-import org.apache.drill.exec.expr.stat.ParquetCompPredicates;
+import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.TypedFieldExpr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +112,7 @@ public class ParquetFilterBuilder extends
 
     switch (funcName) {
     case "equal" :
-      return new ParquetCompPredicates.EqualPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+      return new ParquetPredicates.EqualPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
     default:
       return null;
     }
