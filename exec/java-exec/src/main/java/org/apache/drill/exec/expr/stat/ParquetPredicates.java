@@ -48,7 +48,7 @@ public abstract  class ParquetPredicates {
     }
   }
 
-  public class AndPredicate extends ParquetBooleanPredicate {
+  public static class AndPredicate extends ParquetBooleanPredicate {
     public AndPredicate(String name, List<LogicalExpression> args, ExpressionPosition pos) {
       super(name, args, pos);
     }
@@ -65,7 +65,7 @@ public abstract  class ParquetPredicates {
     }
   }
 
-  public class OrPredicate extends ParquetBooleanPredicate {
+  public static class OrPredicate extends ParquetBooleanPredicate {
     public OrPredicate(String name, List<LogicalExpression> args, ExpressionPosition pos) {
       super(name, args, pos);
     }
@@ -83,6 +83,9 @@ public abstract  class ParquetPredicates {
     }
   }
 
+  /**
+   * EQ (=) predicate
+   */
   public static class EqualPredicate extends ParquetCompPredicate {
     public EqualPredicate(LogicalExpression left, LogicalExpression right) {
       super(left, right);
@@ -100,6 +103,7 @@ public abstract  class ParquetPredicates {
         return false;
       }
 
+      // can drop when left's max < right's min, or right's max < left's min
       if ( ( leftStat.genericGetMax().compareTo(rightStat.genericGetMin()) < 0
             || rightStat.genericGetMax().compareTo(leftStat.genericGetMin()) < 0)) {
         return true;
@@ -111,6 +115,153 @@ public abstract  class ParquetPredicates {
     @Override
     public String toString() {
       return left.toString()  + " = " + right.toString();
+    }
+  }
+
+  /**
+   * GT (>) predicate.
+   */
+  public static class GTPredicate extends ParquetCompPredicate {
+    public GTPredicate(LogicalExpression left, LogicalExpression right) {
+      super(left, right);
+    }
+
+    @Override
+    public boolean canDrop(RangeExprEvaluator evaluator) {
+      Statistics leftStat = left.accept(evaluator, null);
+      Statistics rightStat = right.accept(evaluator, null);
+
+      if (leftStat == null ||
+          rightStat == null ||
+          leftStat.isEmpty() ||
+          rightStat.isEmpty()) {
+        return false;
+      }
+
+      // can drop when left's max <= right's min.
+      if ( leftStat.genericGetMax().compareTo(rightStat.genericGetMin()) <= 0 ) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * GE (>=) predicate.
+   */
+  public static class GEPredicate extends ParquetCompPredicate {
+    public GEPredicate(LogicalExpression left, LogicalExpression right) {
+      super(left, right);
+    }
+
+    @Override
+    public boolean canDrop(RangeExprEvaluator evaluator) {
+      Statistics leftStat = left.accept(evaluator, null);
+      Statistics rightStat = right.accept(evaluator, null);
+
+      if (leftStat == null ||
+          rightStat == null ||
+          leftStat.isEmpty() ||
+          rightStat.isEmpty()) {
+        return false;
+      }
+
+      // can drop when left's max < right's min.
+      if ( leftStat.genericGetMax().compareTo(rightStat.genericGetMin()) < 0 ) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * LT (<) predicate.
+   */
+  public static class LTPredicate extends ParquetCompPredicate {
+    public LTPredicate(LogicalExpression left, LogicalExpression right) {
+      super(left, right);
+    }
+
+    @Override
+    public boolean canDrop(RangeExprEvaluator evaluator) {
+      Statistics leftStat = left.accept(evaluator, null);
+      Statistics rightStat = right.accept(evaluator, null);
+
+      if (leftStat == null ||
+          rightStat == null ||
+          leftStat.isEmpty() ||
+          rightStat.isEmpty()) {
+        return false;
+      }
+
+      // can drop when right's max <= left's min.
+      if ( rightStat.genericGetMax().compareTo(leftStat.genericGetMin()) <= 0 ) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * LE (<=) predicate.
+   */
+  public static class LEPredicate extends ParquetCompPredicate {
+    public LEPredicate(LogicalExpression left, LogicalExpression right) {
+      super(left, right);
+    }
+
+    @Override
+    public boolean canDrop(RangeExprEvaluator evaluator) {
+      Statistics leftStat = left.accept(evaluator, null);
+      Statistics rightStat = right.accept(evaluator, null);
+
+      if (leftStat == null ||
+          rightStat == null ||
+          leftStat.isEmpty() ||
+          rightStat.isEmpty()) {
+        return false;
+      }
+
+      // can drop when right's max < left's min.
+      if ( rightStat.genericGetMax().compareTo(leftStat.genericGetMin()) < 0 ) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * NE (!=) predicate.
+   */
+  public static class NEPredicate extends ParquetCompPredicate {
+    public NEPredicate(LogicalExpression left, LogicalExpression right) {
+      super(left, right);
+    }
+
+    @Override
+    public boolean canDrop(RangeExprEvaluator evaluator) {
+      Statistics leftStat = left.accept(evaluator, null);
+      Statistics rightStat = right.accept(evaluator, null);
+
+      if (leftStat == null ||
+          rightStat == null ||
+          leftStat.isEmpty() ||
+          rightStat.isEmpty()) {
+        return false;
+      }
+
+      // can drop when there is only one unique value.
+      if ( leftStat.genericGetMin().compareTo(leftStat.genericGetMax()) == 0 &&
+           rightStat.genericGetMin().compareTo(rightStat.genericGetMax()) ==0 &&
+           leftStat.genericGetMax().compareTo(rightStat.genericGetMax()) == 0) {
+        return true;
+      } else {
+        return false;
+      }
     }
   }
 

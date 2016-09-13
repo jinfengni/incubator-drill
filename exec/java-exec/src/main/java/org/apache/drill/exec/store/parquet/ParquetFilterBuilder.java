@@ -23,6 +23,7 @@ import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
+import org.apache.drill.exec.expr.fn.FunctionGenerationHelper;
 import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.TypedFieldExpr;
 import org.slf4j.Logger;
@@ -61,7 +62,7 @@ public class ParquetFilterBuilder extends
 
   @Override
   public LogicalExpression visitBooleanOperator(BooleanOperator op, Void value) {
-    List<LogicalExpression> childPredicates = new ArrayList<LogicalExpression>();
+    List<LogicalExpression> childPredicates = new ArrayList<>();
     String functionName = op.getName();
 
     for (LogicalExpression arg : op.args) {
@@ -81,7 +82,11 @@ public class ParquetFilterBuilder extends
     } else if (childPredicates.size() == 1) {
       return childPredicates.get(0); // only one leg is qualified, remove boolean op.
     } else {
-      return new BooleanOperator(op.getName(), childPredicates, op.getPosition());
+      if (functionName.equals("booleanOr")) {
+        return new ParquetPredicates.OrPredicate(op.getName(), childPredicates, op.getPosition());
+      } else {
+        return new ParquetPredicates.AndPredicate(op.getName(), childPredicates, op.getPosition());
+      }
     }
   }
 
@@ -111,8 +116,18 @@ public class ParquetFilterBuilder extends
     String funcName = ((DrillSimpleFuncHolder) functionHolderExpression.getHolder()).getRegisteredNames()[0];
 
     switch (funcName) {
-    case "equal" :
+    case FunctionGenerationHelper.EQ :
       return new ParquetPredicates.EqualPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+    case FunctionGenerationHelper.GT :
+      return new ParquetPredicates.GTPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+    case FunctionGenerationHelper.GE :
+      return new ParquetPredicates.GEPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+    case FunctionGenerationHelper.LT :
+      return new ParquetPredicates.LTPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+    case FunctionGenerationHelper.LE :
+      return new ParquetPredicates.LEPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+    case FunctionGenerationHelper.NE :
+      return new ParquetPredicates.NEPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
     default:
       return null;
     }
@@ -126,12 +141,12 @@ public class ParquetFilterBuilder extends
   static {
     ImmutableSet.Builder<String> builder = ImmutableSet.builder();
     COMPARE_FUNCTIONS_SET = builder
-        .add("equal")
-        .add("not_equal")
-        .add("greater_than")
-        .add("greater_than_or_equal_to")
-        .add("less_than")
-        .add("less_than_or_equal_to")
+        .add(FunctionGenerationHelper.EQ)
+        .add(FunctionGenerationHelper.GT)
+        .add(FunctionGenerationHelper.GE)
+        .add(FunctionGenerationHelper.LT)
+        .add(FunctionGenerationHelper.LE)
+        .add(FunctionGenerationHelper.NE)
         .build();
   }
 
