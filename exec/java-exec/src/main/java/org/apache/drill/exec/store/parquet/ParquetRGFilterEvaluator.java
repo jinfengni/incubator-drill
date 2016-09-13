@@ -28,6 +28,7 @@ import org.apache.drill.common.map.CaseInsensitiveMap;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
+import org.apache.drill.exec.expr.stat.ParquetFilterPredicate;
 import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.RangeExprEvaluator;
 import org.apache.drill.exec.server.options.OptionManager;
@@ -118,16 +119,20 @@ public class ParquetRGFilterEvaluator {
 
     logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
 
-    ParquetPredicates.ParquetCompPredicate parquetPredicate = (ParquetPredicates.ParquetCompPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter);
+    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter);
 
-    logger.debug("parquet predicate : {}", ExpressionStringBuilder.toString(parquetPredicate));
+//    logger.debug("parquet predicate : {}", ExpressionStringBuilder.toString(parquetPredicate));
 
     RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap);
 
-    boolean canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
+    boolean canDrop = false;
+    if (parquetPredicate != null) {
+      canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
+    }
+
     logger.debug(" canDrop {} ", canDrop);
 
-    return false;
+    return canDrop;
   }
 
   private static TypeProtos.DataMode getDataMode(ColumnDescriptor column) {
