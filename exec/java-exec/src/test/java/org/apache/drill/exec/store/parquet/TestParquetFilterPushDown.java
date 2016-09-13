@@ -26,5 +26,6 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
   public void testIntEqualPredicate() throws Exception {
     //    test("select * from dfs.`/drill/testdata/PF/orders` where o_orderkey = -1 or o_orderkey = -2");
     // test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_custkey < 2");
+//    test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_totalprice < 1.0 ");
   }
 }

@@ -32,8 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ParquetFilterBuilder extends
-    AbstractExprVisitor<LogicalExpression, Void, RuntimeException> {
+public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression, Void, RuntimeException> {
   static final Logger logger = LoggerFactory.getLogger(ParquetFilterBuilder.class);
 
   static final ParquetFilterBuilder FILTER_BUILDER = new ParquetFilterBuilder();
@@ -56,7 +55,26 @@ public class ParquetFilterBuilder extends
   }
 
   @Override
-  public LogicalExpression visitIntConstant(ValueExpressions.IntExpression intExpr, Void value) throws RuntimeException {
+  public LogicalExpression visitIntConstant(ValueExpressions.IntExpression intExpr, Void value)
+      throws RuntimeException {
+    return intExpr;
+  }
+
+  @Override
+  public LogicalExpression visitDoubleConstant(ValueExpressions.DoubleExpression dExpr, Void value)
+      throws RuntimeException {
+    return dExpr;
+  }
+
+  @Override
+  public LogicalExpression visitFloatConstant(ValueExpressions.FloatExpression fExpr, Void value)
+      throws RuntimeException {
+    return fExpr;
+  }
+
+  @Override
+  public LogicalExpression visitLongConstant(ValueExpressions.LongExpression intExpr, Void value)
+      throws RuntimeException {
     return intExpr;
   }
 
@@ -91,7 +109,8 @@ public class ParquetFilterBuilder extends
   }
 
   @Override
-  public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression funcHolderExpr, Void value) throws RuntimeException {
+  public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression funcHolderExpr, Void value)
+      throws RuntimeException {
     FuncHolder holder = funcHolderExpr.getHolder();
 
     if (! (holder instanceof DrillSimpleFuncHolder)) {
@@ -138,6 +157,7 @@ public class ParquetFilterBuilder extends
   }
 
   private static final ImmutableSet<String> COMPARE_FUNCTIONS_SET;
+
   static {
     ImmutableSet.Builder<String> builder = ImmutableSet.builder();
     COMPARE_FUNCTIONS_SET = builder
