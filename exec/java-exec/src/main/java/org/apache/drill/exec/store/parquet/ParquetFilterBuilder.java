@@ -79,6 +79,11 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
   }
 
   @Override
+  public LogicalExpression visitDateConstant(ValueExpressions.DateExpression dateExpr, Void value) throws RuntimeException {
+    return dateExpr;
+  }
+
+  @Override
   public LogicalExpression visitBooleanOperator(BooleanOperator op, Void value) {
     List<LogicalExpression> childPredicates = new ArrayList<>();
     String functionName = op.getName();

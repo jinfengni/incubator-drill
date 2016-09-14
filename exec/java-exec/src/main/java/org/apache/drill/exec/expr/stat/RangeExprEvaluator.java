@@ -25,8 +25,11 @@ import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.joda.time.DateTimeUtils;
 
 import java.util.Map;
+
+import static org.apache.drill.exec.store.ParquetOutputRecordWriter.JULIAN_DAY_EPOC;
 
 public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, RuntimeException> {
   private final Map<String, Statistics> columnStatMap;
@@ -72,4 +75,15 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
     return doubleStatistics;
   }
 
+  @Override
+  public Statistics visitDateConstant(ValueExpressions.DateExpression expr, Void value) throws RuntimeException {
+    final IntStatistics intStatistics = new IntStatistics();
+    long dateInMillis = expr.getDate();
+
+    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
+    // Apply the same shit as what in ParquetOutputRecordWriter.java for data value.
+    int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
+    intStatistics.setMinMax(intValue, intValue);
+    return intStatistics;
+  }
 }
