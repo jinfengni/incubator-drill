@@ -237,6 +237,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     this.usedMetadataCache = that.usedMetadataCache;
     this.parquetTableMetadata = that.parquetTableMetadata;
     this.filter = that.filter;
+    this.cacheFileRoot = that.cacheFileRoot;
   }
 
   /**
