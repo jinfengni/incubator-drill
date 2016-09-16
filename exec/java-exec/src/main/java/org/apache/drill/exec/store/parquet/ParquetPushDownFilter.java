@@ -107,6 +107,10 @@ public abstract class ParquetPushDownFilter extends StoragePluginOptimizerRule {
       condition = RelOptUtil.pushFilterPastProject(filter.getCondition(), project);
     }
 
+    if (condition == null || condition.equals(ValueExpressions.BooleanExpression.TRUE)) {
+      return;
+    }
+
     LogicalExpression conditionExp = DrillOptiq.toDrill(
         new DrillParseContext(PrelUtil.getPlannerSettings(call.getPlanner())), scan, condition);
 

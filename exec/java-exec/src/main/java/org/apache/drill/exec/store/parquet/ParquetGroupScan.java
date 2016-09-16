@@ -28,6 +28,7 @@ import java.util.Set;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
+import org.apache.drill.common.expression.ExpressionStringBuilder;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
@@ -908,13 +909,16 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
             Path.getPathWithoutSchemeAndAuthority(new Path(cacheFileRoot)).toString();
       cacheFileString = ", cacheFileRoot=" + str;
     }
+    final String filterStr = filter == null || filter.equals(ValueExpressions.BooleanExpression.TRUE) ? "" : ", filter=" + ExpressionStringBuilder.toString(this.filter);
+
     return "ParquetGroupScan [entries=" + entries
         + ", selectionRoot=" + selectionRoot
         + ", numFiles=" + getEntries().size()
         + ", usedMetadataFile=" + usedMetadataCache
-        + ", columns=" + columns + "]"
-        + cacheFileString
-        + ", filter=" + this.filter;
+        + filterStr
+        + ", columns=" + columns
+        + "]"
+        + cacheFileString;
   }
 
   @Override
