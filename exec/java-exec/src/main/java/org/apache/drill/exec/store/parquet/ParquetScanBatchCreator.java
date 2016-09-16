@@ -26,6 +26,8 @@ import com.google.common.base.Functions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.common.expression.LogicalExpression;
+import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
@@ -123,8 +125,10 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
             firstReader = reader;
           }
 
-          if (rowGroupScan.getFilter() != null) {
-            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()), e.getRowGroupIndex(), context.getOptions(), context.getFunctionRegistry())) {
+          final LogicalExpression filterExpr = rowGroupScan.getFilter();
+
+          if (filterExpr != null && ! filterExpr.equals(ValueExpressions.BooleanExpression.TRUE)) {
+            if (ParquetRGFilterEvaluator.evalFilter(filterExpr, footers.get(e.getPath()), e.getRowGroupIndex(), context.getOptions(), context.getFunctionRegistry())) {
 //            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
               rgFiltered ++;
               continue;
