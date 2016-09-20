@@ -37,6 +37,7 @@ import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.ImplicitColumnExplorer;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
+import org.apache.drill.exec.store.parquet.columnreaders.ParquetFirstNRecordReader;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetRecordReader;
 import org.apache.drill.exec.store.parquet2.DrillParquetReader;
 import org.apache.hadoop.conf.Configuration;
@@ -112,30 +113,43 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
         }
 
         if (!context.getOptions().getOption(ExecConstants.PARQUET_NEW_RECORD_READER).bool_val && !isComplex(footers.get(e.getPath()))) {
-          ParquetRecordReader reader =  new ParquetRecordReader(
-              context, e.getPath(), e.getRowGroupIndex(), fs,
-              CodecFactory.createDirectCodecFactory(
-                  fs.getConf(),
-                  new ParquetDirectByteBufferAllocator(oContext.getAllocator()), 0),
-              footers.get(e.getPath()),
-              rowGroupScan.getColumns()
-          );
+          ParquetRecordReader reader =  null;
 
+          // Construct ParquetFirstNRecordReader for the 1st rowGroup with N = 1. This reader will be used when all RGs are filtered out.
           if (firstReader == null) {
-            firstReader = reader;
+            firstReader = new ParquetFirstNRecordReader(
+                context, e.getPath(), e.getRowGroupIndex(), fs,
+                CodecFactory.createDirectCodecFactory(
+                    fs.getConf(),
+                    new ParquetDirectByteBufferAllocator(oContext.getAllocator()), 0),
+                footers.get(e.getPath()),
+                rowGroupScan.getColumns(),
+                1
+            );
           }
 
           final LogicalExpression filterExpr = rowGroupScan.getFilter();
 
-          if (filterExpr != null && ! filterExpr.equals(ValueExpressions.BooleanExpression.TRUE)) {
-            if (ParquetRGFilterEvaluator.evalFilter(filterExpr, footers.get(e.getPath()), e.getRowGroupIndex(), context.getOptions(), context.getFunctionRegistry())) {
+          if (filterExpr != null
+              && ! filterExpr.equals(ValueExpressions.BooleanExpression.TRUE)
+              && ParquetRGFilterEvaluator.evalFilter(filterExpr, footers.get(e.getPath()),
+                e.getRowGroupIndex(), context.getOptions(), context.getFunctionRegistry())) {
 //            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
               rgFiltered ++;
               continue;
-            }
+          } else {
+            // Could not filter out this row group. Construct parquet reader.
+            reader = new ParquetRecordReader(
+                context, e.getPath(), e.getRowGroupIndex(), fs,
+                CodecFactory.createDirectCodecFactory(
+                    fs.getConf(),
+                    new ParquetDirectByteBufferAllocator(oContext.getAllocator()), 0),
+                footers.get(e.getPath()),
+                rowGroupScan.getColumns()
+            );
+            readers.add(reader);
           }
 
-          readers.add(reader);
         } else {
           ParquetMetadata footer = footers.get(e.getPath());
           readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs));
@@ -158,9 +172,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
       map.putAll(Maps.difference(map, diff).entriesOnlyOnRight());
     }
 
-    if (rgFiltered > 0) {
-      logger.debug("Filter out # of rowGroup out of total # {}", rgFiltered, rowGroupScan.getRowGroupReadEntries().size());
-    }
+    logger.debug("Filter out {} rowGroups out of total {}", rgFiltered, rowGroupScan.getRowGroupReadEntries().size());
 
     if (readers.isEmpty() && firstReader != null) {
       readers.add(firstReader);
