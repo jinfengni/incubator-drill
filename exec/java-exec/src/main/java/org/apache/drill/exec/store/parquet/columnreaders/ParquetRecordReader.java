@@ -107,7 +107,11 @@ public class ParquetRecordReader extends AbstractRecordReader {
 
   private final CodecFactory codecFactory;
   int rowGroupIndex;
-  long totalRecordsRead;
+
+  long totalRecordsRead; // total # of records read so far
+
+  long totalRecordsReadToRead; // total # of records to read. Default to be rowCount in RG.
+
   private final FragmentContext fragmentContext;
 
   public ParquetReaderStats parquetReaderStats = new ParquetReaderStats();
@@ -139,6 +143,7 @@ public class ParquetRecordReader extends AbstractRecordReader {
     this.batchSize = batchSize;
     this.footer = footer;
     this.fragmentContext = fragmentContext;
+    this.totalRecordsReadToRead = footer.getBlocks().get(rowGroupIndex).getRowCount();
     setColumns(columns);
   }
 
@@ -416,7 +421,7 @@ public class ParquetRecordReader extends AbstractRecordReader {
         if (mockRecordsRead == footer.getBlocks().get(rowGroupIndex).getRowCount()) {
           return 0;
         }
-        recordsToRead = Math.min(DEFAULT_RECORDS_TO_READ_IF_NOT_FIXED_WIDTH, footer.getBlocks().get(rowGroupIndex).getRowCount() - mockRecordsRead);
+        recordsToRead = Math.min(DEFAULT_RECORDS_TO_READ_IF_NOT_FIXED_WIDTH, totalRecordsReadToRead - mockRecordsRead);
         for (final ValueVector vv : nullFilledVectors ) {
           vv.getMutator().setValueCount( (int) recordsToRead);
         }
@@ -426,10 +431,9 @@ public class ParquetRecordReader extends AbstractRecordReader {
       }
 
       if (allFieldsFixedLength) {
-        recordsToRead = Math.min(recordsPerBatch, firstColumnStatus.columnChunkMetaData.getValueCount() - firstColumnStatus.totalValuesRead);
+        recordsToRead = Math.min(recordsPerBatch, totalRecordsReadToRead - firstColumnStatus.totalValuesRead);
       } else {
-        recordsToRead = DEFAULT_RECORDS_TO_READ_IF_NOT_FIXED_WIDTH;
-
+        recordsToRead = Math.min(DEFAULT_RECORDS_TO_READ_IF_NOT_FIXED_WIDTH, totalRecordsReadToRead);
       }
 
       if (allFieldsFixedLength) {
