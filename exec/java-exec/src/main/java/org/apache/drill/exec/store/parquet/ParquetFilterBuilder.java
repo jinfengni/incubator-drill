@@ -20,6 +20,7 @@ import org.apache.drill.common.expression.BooleanOperator;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
@@ -122,7 +123,13 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
       return null;
     }
 
-    if (isCompareFunction(((DrillSimpleFuncHolder) holder).getRegisteredNames()[0])) {
+    final String funcName = ((DrillSimpleFuncHolder) holder).getRegisteredNames()[0];
+
+    if (isCompareFunction(funcName)) {
+      return handleCompareFunction(funcHolderExpr, value);
+    }
+
+    if (CastFunctions.isCastFunction(funcName)) {
       return handleCompareFunction(funcHolderExpr, value);
     }
 
@@ -155,6 +162,19 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
     default:
       return null;
     }
+  }
+
+  private LogicalExpression handleCastFunction(FunctionHolderExpression functionHolderExpression, Void value) {
+    for (LogicalExpression arg : functionHolderExpression.args) {
+      LogicalExpression newArg = arg.accept(this, value);
+      if (newArg == null) {
+        return null;
+      }
+    }
+
+    String funcName = ((DrillSimpleFuncHolder) functionHolderExpression.getHolder()).getRegisteredNames()[0];
+
+    return null;
   }
 
   private static boolean isCompareFunction(String funcName) {
