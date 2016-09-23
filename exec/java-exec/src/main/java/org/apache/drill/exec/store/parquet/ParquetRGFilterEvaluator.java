@@ -26,11 +26,14 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.map.CaseInsensitiveMap;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.exec.compile.sig.ConstantExpressionIdentifier;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
 import org.apache.drill.exec.expr.stat.ParquetFilterPredicate;
 import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.RangeExprEvaluator;
+import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetToDrillTypeConverter;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -59,7 +62,7 @@ public class ParquetRGFilterEvaluator {
     return false;
   }
 
-  public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FunctionLookupContext functionLookupContext) {
+  public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext) {
     // figure out the set of columns referenced in expression.
     final Collection<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
     final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();
@@ -110,7 +113,7 @@ public class ParquetRGFilterEvaluator {
 
     ErrorCollector errorCollector = new ErrorCollectorImpl();
 
-    LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(expr, columnTypeMap, errorCollector, functionLookupContext);
+    LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(expr, columnTypeMap, errorCollector, fragmentContext.getFunctionRegistry());
 
     if (errorCollector.hasErrors()) {
       logger.error("{} error(s) encountered when materialize filter expression : {}", errorCollector.getErrorCount(), errorCollector.toErrorString());
@@ -123,7 +126,9 @@ public class ParquetRGFilterEvaluator {
 
 //    logger.debug("parquet predicate : {}", ExpressionStringBuilder.toString(parquetPredicate));
 
-    RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap);
+    Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
+
+    RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, constantBoundaries, fragmentContext);
 
     boolean canDrop = false;
     if (parquetPredicate != null) {

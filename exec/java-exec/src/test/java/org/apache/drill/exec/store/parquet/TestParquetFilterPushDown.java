@@ -28,8 +28,8 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
     // test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_custkey < 2");
 //    test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_totalprice < 1.0 ");
 //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate > date '2998-08-01'");
-//      test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  L_SHIPDATE > date '2998-08-01'");
-    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate = cast(123456 as date)");
+      test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  L_SHIPDATE > date '2998-08-01'");
+//    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate = cast(123456 as date)");
   }
 
 }
