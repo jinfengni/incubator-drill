@@ -129,11 +129,11 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
       return handleCompareFunction(funcHolderExpr, value);
     }
 
-    if (CastFunctions.isCastFunction(funcName)) {
-      return handleCompareFunction(funcHolderExpr, value);
-    }
+//    if (CastFunctions.isCastFunction(funcName)) {
+//      return handleCastFunction(funcHolderExpr, value);
+//    }
 
-    return null;
+    return funcHolderExpr;
   }
 
   private LogicalExpression handleCompareFunction(FunctionHolderExpression functionHolderExpression, Void value) {

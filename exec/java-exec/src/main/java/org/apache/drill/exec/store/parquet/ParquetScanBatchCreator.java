@@ -133,7 +133,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           if (filterExpr != null
               && ! filterExpr.equals(ValueExpressions.BooleanExpression.TRUE)
               && ParquetRGFilterEvaluator.evalFilter(filterExpr, footers.get(e.getPath()),
-                e.getRowGroupIndex(), context.getOptions(), context.getFunctionRegistry())) {
+                e.getRowGroupIndex(), context.getOptions(), context)) {
 //            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
               rgFiltered ++;
               continue;
