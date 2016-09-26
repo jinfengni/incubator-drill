@@ -172,7 +172,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
       map.putAll(Maps.difference(map, diff).entriesOnlyOnRight());
     }
 
-    logger.debug("Filter out {} rowGroups out of total {}", rgFiltered, rowGroupScan.getRowGroupReadEntries().size());
+    logger.info("Filter out {} rowGroups out of total {}", rgFiltered, rowGroupScan.getRowGroupReadEntries().size());
 
     if (readers.isEmpty() && firstReader != null) {
       readers.add(firstReader);
