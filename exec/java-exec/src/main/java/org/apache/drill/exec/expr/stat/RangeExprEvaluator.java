@@ -112,7 +112,7 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
 
       switch (holder.getMajorType().getMinorType()) {
       case INT :
-        return getStatistics(((IntHolder) result).value));
+        return getStatistics(((IntHolder) result).value);
       case DATE:
         int intValue = convertDrillDateValue(((DateHolder) result).value);
         return getStatistics(intValue);
@@ -123,25 +123,20 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
       case FLOAT8:
         return getStatistics(((Float8Holder)result).value);
       default:
+        // defautl return null to indicate filter containing that constant expression is not good for filter pushdown.
         return null;
       }
     } else {
       FuncHolder funcHold = holder.getHolder();
 
       if (! (funcHold instanceof DrillSimpleFuncHolder)) {
+        // Only Drill function is allowed.
         return null;
       }
       final String funcName = ((DrillSimpleFuncHolder) funcHold).getRegisteredNames()[0];
 
     }
     return null;
-  }
-
-  private int convertDrillDateValue(long dateInMillis) {
-    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
-    // Apply the same shit as what in ParquetOutputRecordWriter.java for data value.
-    final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
-    return intValue;
   }
 
   private IntStatistics getStatistics(int value) {
@@ -166,6 +161,13 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
     final FloatStatistics floatStatistics = new FloatStatistics();
     floatStatistics.setMinMax(value, value);
     return floatStatistics;
+  }
+
+  private int convertDrillDateValue(long dateInMillis) {
+    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
+    // Apply the same shit as what in ParquetOutputRecordWriter.java for data value.
+    final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
+    return intValue;
   }
 
 }
