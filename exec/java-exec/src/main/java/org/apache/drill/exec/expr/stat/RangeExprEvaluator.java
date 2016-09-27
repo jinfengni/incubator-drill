@@ -17,11 +17,17 @@
  */
 package org.apache.drill.exec.expr.stat;
 
+import com.sun.java.util.jar.pack.Instruction;
+import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
+import org.apache.drill.exec.expr.DrillSimpleFunc;
+import org.apache.drill.exec.expr.annotations.Output;
+import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
 import org.apache.drill.exec.expr.fn.interpreter.InterpreterEvaluator;
 import org.apache.drill.exec.expr.holders.BigIntHolder;
@@ -37,11 +43,12 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.joda.time.DateTimeUtils;
-import sun.security.util.BigInt;
 
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Set;
 
+import static com.sun.tools.javac.jvm.ByteCodes.ret;
 import static org.apache.drill.exec.store.ParquetOutputRecordWriter.JULIAN_DAY_EPOC;
 
 public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, RuntimeException> {
@@ -98,19 +105,17 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
 
   @Override
   public Statistics visitDateConstant(ValueExpressions.DateExpression expr, Void value) throws RuntimeException {
-    final IntStatistics intStatistics = new IntStatistics();
     long dateInMillis = expr.getDate();
-
     int intValue = convertDrillDateValue(dateInMillis);
     return getStatistics(intValue);
   }
 
   @Override
-  public Statistics visitFunctionHolderExpression(FunctionHolderExpression holder, Void value) throws RuntimeException {
-    if (constantBoundaries.contains(holder)) {
-      ValueHolder result = InterpreterEvaluator.evaluateConstantExpr(udfUtilities, holder);
+  public Statistics visitFunctionHolderExpression(FunctionHolderExpression holderExpr, Void value) throws RuntimeException {
+    if (constantBoundaries.contains(holderExpr)) {
+      ValueHolder result = InterpreterEvaluator.evaluateConstantExpr(udfUtilities, holderExpr);
 
-      switch (holder.getMajorType().getMinorType()) {
+      switch (holderExpr.getMajorType().getMinorType()) {
       case INT :
         return getStatistics(((IntHolder) result).value);
       case DATE:
@@ -127,47 +132,86 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
         return null;
       }
     } else {
-      FuncHolder funcHold = holder.getHolder();
+      FuncHolder funcHolder = holderExpr.getHolder();
 
-      if (! (funcHold instanceof DrillSimpleFuncHolder)) {
+      if (! (funcHolder instanceof DrillSimpleFuncHolder)) {
         // Only Drill function is allowed.
         return null;
       }
-      final String funcName = ((DrillSimpleFuncHolder) funcHold).getRegisteredNames()[0];
+      final String funcName = ((DrillSimpleFuncHolder) funcHolder).getRegisteredNames()[0];
 
+      if (CastFunctions.isCastFunction(funcName)) {
+        Statistics stat = holderExpr.args.get(0).accept(this, null);
+        if (stat != null && ! stat.isEmpty()) {
+          return null; // TODO
+        }
+      }
     }
     return null;
   }
 
   private IntStatistics getStatistics(int value) {
+    return getStatistics(value, value);
+  }
+
+  private IntStatistics getStatistics(int min, int max) {
     final IntStatistics intStatistics = new IntStatistics();
-    intStatistics.setMinMax(value, value);
+    intStatistics.setMinMax(min, max);
     return intStatistics;
   }
 
   private LongStatistics getStatistics(long value) {
+    return getStatistics(value, value);
+  }
+
+  private LongStatistics getStatistics(long min, long max) {
     final LongStatistics longStatistics = new LongStatistics();
-    longStatistics.setMinMax(value, value);
+    longStatistics.setMinMax(min, max);
     return longStatistics;
   }
 
   private DoubleStatistics getStatistics(double value) {
+    return getStatistics(value, value);
+  }
+
+  private DoubleStatistics getStatistics(double min, double max) {
     final DoubleStatistics doubleStatistics = new DoubleStatistics();
-    doubleStatistics.setMinMax(value, value);
+    doubleStatistics.setMinMax(min, max);
     return doubleStatistics;
   }
 
   private FloatStatistics getStatistics(float value) {
+    return getStatistics(value, value);
+  }
+
+  private FloatStatistics getStatistics(float min, float max) {
     final FloatStatistics floatStatistics = new FloatStatistics();
-    floatStatistics.setMinMax(value, value);
+    floatStatistics.setMinMax(min, max);
     return floatStatistics;
   }
 
   private int convertDrillDateValue(long dateInMillis) {
     // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
-    // Apply the same shit as what in ParquetOutputRecordWriter.java for data value.
+    // Apply the same shift as in ParquetOutputRecordWriter.java for data value.
     final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
     return intValue;
+  }
+
+  private Statistics evalCastFunc(FunctionHolderExpression holderExpr, Statistics input) {
+    try {
+      DrillSimpleFuncHolder funcHolder = (DrillSimpleFuncHolder) holderExpr.getHolder();
+
+      DrillSimpleFunc interpreter = funcHolder.createInterpreter();
+
+      switch (holderExpr.args)
+
+      ValueHolder out = InterpreterEvaluator.evaluateFunction(interpreter, args, holderExpr.getName());
+
+      return out;
+
+    } catch (Exception e) {
+      throw new DrillRuntimeException("Error in evaluating function of " + holder.getRegisteredNames() );
+    }
   }
 
 }
