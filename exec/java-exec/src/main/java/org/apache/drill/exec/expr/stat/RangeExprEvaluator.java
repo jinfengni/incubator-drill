@@ -17,7 +17,6 @@
  */
 package org.apache.drill.exec.expr.stat;
 
-import com.sun.java.util.jar.pack.Instruction;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
@@ -25,9 +24,8 @@ import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
+import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.expr.DrillSimpleFunc;
-import org.apache.drill.exec.expr.annotations.Output;
-import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
 import org.apache.drill.exec.expr.fn.interpreter.InterpreterEvaluator;
 import org.apache.drill.exec.expr.holders.BigIntHolder;
@@ -37,19 +35,16 @@ import org.apache.drill.exec.expr.holders.Float8Holder;
 import org.apache.drill.exec.expr.holders.IntHolder;
 import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.ops.UdfUtilities;
+import org.apache.drill.exec.vector.ValueHolderHelper;
 import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.joda.time.DateTimeUtils;
 
-import java.lang.reflect.Field;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import static com.sun.tools.javac.jvm.ByteCodes.ret;
-import static org.apache.drill.exec.store.ParquetOutputRecordWriter.JULIAN_DAY_EPOC;
 
 public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, RuntimeException> {
   private final Map<String, Statistics> columnStatMap;
@@ -106,8 +101,10 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
   @Override
   public Statistics visitDateConstant(ValueExpressions.DateExpression expr, Void value) throws RuntimeException {
     long dateInMillis = expr.getDate();
-    int intValue = convertDrillDateValue(dateInMillis);
-    return getStatistics(intValue);
+    return getStatistics(dateInMillis);
+
+//    int intValue = convertDrillDateValue(dateInMillis);
+//    return getStatistics(intValue);
   }
 
   @Override
@@ -119,8 +116,7 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
       case INT :
         return getStatistics(((IntHolder) result).value);
       case DATE:
-        int intValue = convertDrillDateValue(((DateHolder) result).value);
-        return getStatistics(intValue);
+        return getStatistics(((DateHolder) result).value);
       case BIGINT:
         return getStatistics(((BigIntHolder) result).value);
       case FLOAT4:
@@ -143,7 +139,7 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
       if (CastFunctions.isCastFunction(funcName)) {
         Statistics stat = holderExpr.args.get(0).accept(this, null);
         if (stat != null && ! stat.isEmpty()) {
-          return null; // TODO
+          return evalCastFunc(holderExpr, stat);
         }
       }
     }
@@ -190,12 +186,12 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
     return floatStatistics;
   }
 
-  private int convertDrillDateValue(long dateInMillis) {
-    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
-    // Apply the same shift as in ParquetOutputRecordWriter.java for data value.
-    final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
-    return intValue;
-  }
+//  private int convertDrillDateValue(long dateInMillis) {
+//    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
+//    // Apply the same shift as in ParquetOutputRecordWriter.java for data value.
+//    final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
+//    return intValue;
+//  }
 
   private Statistics evalCastFunc(FunctionHolderExpression holderExpr, Statistics input) {
     try {
@@ -203,15 +199,88 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
 
       DrillSimpleFunc interpreter = funcHolder.createInterpreter();
 
-      switch (holderExpr.args)
+      final ValueHolder minHolder, maxHolder;
 
-      ValueHolder out = InterpreterEvaluator.evaluateFunction(interpreter, args, holderExpr.getName());
+      TypeProtos.MinorType srcType = holderExpr.args.get(0).getMajorType().getMinorType();
+      TypeProtos.MinorType destType = holderExpr.getMajorType().getMinorType();
 
-      return out;
+      if (srcType.equals(destType)) {
+        // same type cast ==> NoOp.
+        return input;
+      } else if (!CAST_FUNC.containsKey(srcType) || !CAST_FUNC.get(srcType).contains(destType)) {
+        return null; // cast func between srcType and destType is NOT allowed.
+      }
 
+      switch (srcType) {
+      case INT :
+        minHolder = ValueHolderHelper.getIntHolder(((IntStatistics)input).getMin());
+        maxHolder = ValueHolderHelper.getIntHolder(((IntStatistics)input).getMax());
+        break;
+      case BIGINT:
+        minHolder = ValueHolderHelper.getBigIntHolder(((LongStatistics)input).getMin());
+        maxHolder = ValueHolderHelper.getBigIntHolder(((LongStatistics)input).getMax());
+        break;
+      case FLOAT4:
+        minHolder = ValueHolderHelper.getFloat4Holder(((FloatStatistics)input).getMin());
+        maxHolder = ValueHolderHelper.getFloat4Holder(((FloatStatistics)input).getMax());
+        break;
+      case FLOAT8:
+        minHolder = ValueHolderHelper.getFloat8Holder(((DoubleStatistics)input).getMin());
+        maxHolder = ValueHolderHelper.getFloat8Holder(((DoubleStatistics)input).getMax());
+        break;
+      default:
+        return null;
+      }
+
+      final ValueHolder[] args1 = {minHolder};
+      final ValueHolder[] args2 = {maxHolder};
+
+      final ValueHolder minFuncHolder = InterpreterEvaluator.evaluateFunction(interpreter, args1, holderExpr.getName());
+      final ValueHolder maxFuncHolder = InterpreterEvaluator.evaluateFunction(interpreter, args2, holderExpr.getName());
+
+      switch (destType) {
+      //TODO : need handle # of nulls.
+      case INT:
+        return getStatistics( ((IntHolder)minFuncHolder).value, ((IntHolder)maxFuncHolder).value);
+      case BIGINT:
+        return getStatistics( ((BigIntHolder)minFuncHolder).value, ((BigIntHolder)maxFuncHolder).value);
+      case FLOAT4:
+        return getStatistics( ((Float4Holder)minFuncHolder).value, ((Float4Holder)maxFuncHolder).value);
+      case FLOAT8:
+        return getStatistics( ((Float8Holder)minFuncHolder).value, ((Float8Holder)maxFuncHolder).value);
+      default:
+        return null;
+      }
     } catch (Exception e) {
-      throw new DrillRuntimeException("Error in evaluating function of " + holder.getRegisteredNames() );
+      throw new DrillRuntimeException("Error in evaluating function of " + holderExpr.getName() );
     }
+  }
+
+  static Map<TypeProtos.MinorType, Set<TypeProtos.MinorType>> CAST_FUNC;
+  static {
+    // float -> double , int, bigint
+    CAST_FUNC.put(TypeProtos.MinorType.FLOAT4, new HashSet<TypeProtos.MinorType>());
+    CAST_FUNC.get(TypeProtos.MinorType.FLOAT4).add(TypeProtos.MinorType.FLOAT8);
+    CAST_FUNC.get(TypeProtos.MinorType.FLOAT4).add(TypeProtos.MinorType.INT);
+    CAST_FUNC.get(TypeProtos.MinorType.FLOAT4).add(TypeProtos.MinorType.BIGINT);
+
+    // double -> float, int, bigint
+    CAST_FUNC.put(TypeProtos.MinorType.FLOAT8, new HashSet<TypeProtos.MinorType>());
+    CAST_FUNC.get(TypeProtos.MinorType.FLOAT8).add(TypeProtos.MinorType.FLOAT4);
+    CAST_FUNC.get(TypeProtos.MinorType.FLOAT8).add(TypeProtos.MinorType.INT);
+    CAST_FUNC.get(TypeProtos.MinorType.FLOAT8).add(TypeProtos.MinorType.BIGINT);
+
+    // int -> float, double, bigint
+    CAST_FUNC.put(TypeProtos.MinorType.INT, new HashSet<TypeProtos.MinorType>());
+    CAST_FUNC.get(TypeProtos.MinorType.INT).add(TypeProtos.MinorType.FLOAT4);
+    CAST_FUNC.get(TypeProtos.MinorType.INT).add(TypeProtos.MinorType.FLOAT8);
+    CAST_FUNC.get(TypeProtos.MinorType.INT).add(TypeProtos.MinorType.BIGINT);
+
+    // bigint -> int, float, double
+    CAST_FUNC.put(TypeProtos.MinorType.BIGINT, new HashSet<TypeProtos.MinorType>());
+    CAST_FUNC.get(TypeProtos.MinorType.BIGINT).add(TypeProtos.MinorType.INT);
+    CAST_FUNC.get(TypeProtos.MinorType.BIGINT).add(TypeProtos.MinorType.FLOAT4);
+    CAST_FUNC.get(TypeProtos.MinorType.BIGINT).add(TypeProtos.MinorType.FLOAT8);
   }
 
 }
