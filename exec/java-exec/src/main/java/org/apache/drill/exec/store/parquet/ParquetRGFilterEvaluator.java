@@ -35,8 +35,11 @@ import org.apache.drill.exec.expr.stat.RangeExprEvaluator;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.server.options.OptionManager;
+import org.apache.drill.exec.store.ParquetOutputRecordWriter;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetToDrillTypeConverter;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
@@ -46,10 +49,13 @@ import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.joda.time.DateTimeUtils;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.drill.exec.store.ParquetOutputRecordWriter.JULIAN_DAY_EPOC;
 
 public class ParquetRGFilterEvaluator {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetRGFilterEvaluator.class);
@@ -106,7 +112,8 @@ public class ParquetRGFilterEvaluator {
         columnTypeMap.put(path, type);
 
         if (metaData != null) {
-          statMap.put(path, metaData.getStatistics());
+          Statistics stat = convertStatIfNecessary(metaData.getStatistics(), type.getMinorType());
+          statMap.put(path, stat);
         }
       }
     }
@@ -148,6 +155,28 @@ public class ParquetRGFilterEvaluator {
     } else {
       return TypeProtos.DataMode.OPTIONAL;
     }
+  }
+
+  private static Statistics convertStatIfNecessary(Statistics stat, TypeProtos.MinorType type) {
+    if (type != TypeProtos.MinorType.DATE) {
+      return stat;
+    } else {
+      IntStatistics dateStat = (IntStatistics) stat;
+      LongStatistics dateMLS = new LongStatistics();
+      dateMLS.setMinMax(convertToDrillDateValue(dateStat.getMin()), convertToDrillDateValue(dateStat.getMax()));
+      dateMLS.setNumNulls(dateStat.getNumNulls());
+      return dateMLS;
+    }
+  }
+
+  private static long convertToDrillDateValue(int dateValue) {
+    long  dateInMillis = DateTimeUtils.fromJulianDay(dateValue - ParquetOutputRecordWriter.JULIAN_DAY_EPOC - 0.5);
+//    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
+//    // Apply the same shift as in ParquetOutputRecordWriter.java for data value.
+//    final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
+//    return intValue;
+    return dateInMillis;
+
   }
 
   /**
