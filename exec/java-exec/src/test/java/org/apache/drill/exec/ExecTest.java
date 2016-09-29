@@ -19,7 +19,13 @@ package org.apache.drill.exec;
 
 import com.codahale.metrics.MetricRegistry;
 import mockit.NonStrictExpectations;
+import org.antlr.runtime.ANTLRStringStream;
+import org.antlr.runtime.CommonTokenStream;
+import org.antlr.runtime.RecognitionException;
 import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.common.expression.LogicalExpression;
+import org.apache.drill.common.expression.parser.ExprLexer;
+import org.apache.drill.common.expression.parser.ExprParser;
 import org.apache.drill.common.scanner.ClassPathScanner;
 import org.apache.drill.exec.compile.CodeCompilerTestFactory;
 import org.apache.drill.exec.memory.RootAllocatorFactory;
@@ -64,6 +70,14 @@ public class ExecTest extends DrillTest {
       bitContext.getOptionManager(); result = optionManager;
       bitContext.getCompiler(); result = CodeCompilerTestFactory.getTestCompiler(c);
     }};
+  }
+
+  protected LogicalExpression parseExpr(String expr) throws RecognitionException {
+    final ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+    final CommonTokenStream tokens = new CommonTokenStream(lexer);
+    final ExprParser parser = new ExprParser(tokens);
+    final ExprParser.parse_return ret = parser.parse();
+    return ret.e;
   }
 
 }
