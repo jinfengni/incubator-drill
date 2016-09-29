@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.store.parquet;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import org.antlr.runtime.ANTLRStringStream;
 import org.antlr.runtime.CommonTokenStream;
@@ -33,6 +34,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -51,7 +53,8 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
 
   @BeforeClass
   public static void init() throws Exception {
-    fragContext = new FragmentContext(bits[0].getContext(), BitControl.PlanFragment.getDefaultInstance(), null, bits[0].getContext().getFunctionImplementationRegistry());
+    fragContext = new FragmentContext(bits[0].getContext(),
+        BitControl.PlanFragment.getDefaultInstance(), null, bits[0].getContext().getFunctionImplementationRegistry());
   }
 
   @AfterClass
@@ -66,39 +69,77 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
 //    test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_totalprice < 1.0 ");
 //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate > date '2998-08-01'");
 //      test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  L_SHIPDATE > date '2998-08-01'");
-    test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  cast(l_partkey as int) < -1");
+//    test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  cast(l_partkey as int) < -1");
     //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate = cast(123456 as date)");
   }
 
   @Test
-  public void testPF() throws Exception {
-
-
+  public void testIntPredicate() throws Exception {
+    // intTalbe has only one int column
+    //    intCol : [0, 100].
     final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
-
     ParquetMetadata footer = getParquetMetaData(filePath);
 
-    final String exprStr = " intCol =  100";
+    testParquetRowGroupFilterEval(footer, "intCol = 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol = 0", false);
+    testParquetRowGroupFilterEval(footer, "intCol = 50", false);
 
-    final LogicalExpression filterExpr = parseExpr(exprStr);
+    testParquetRowGroupFilterEval(footer, "intCol = -1", true);
+    testParquetRowGroupFilterEval(footer, "intCol = 101", true);
 
-    final Stopwatch watch = Stopwatch.createStarted();
+    testParquetRowGroupFilterEval(footer, "intCol > 100", true);
+    testParquetRowGroupFilterEval(footer, "intCol > 99", false);
 
-    boolean canDrop = ParquetRGFilterEvaluator.evalFilter(filterExpr, footer,
-        0, fragContext.getOptions(), fragContext);
+    testParquetRowGroupFilterEval(footer, "intCol >= 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol >= 101", true);
 
-    logger.debug("Took {} ms to evaluate the filter", watch.elapsed(TimeUnit.MILLISECONDS));
+    testParquetRowGroupFilterEval(footer, "intCol < 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol < 1", false);
+    testParquetRowGroupFilterEval(footer, "intCol < 0", true);
 
-    System.out.print(footer.toString());
-    System.out.print("canDrop = " + canDrop);
+    testParquetRowGroupFilterEval(footer, "intCol <= 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol <= 1", false);
+    testParquetRowGroupFilterEval(footer, "intCol <= 0", false);
+    testParquetRowGroupFilterEval(footer, "intCol <= -1", true);
+
+    // "and"
+    testParquetRowGroupFilterEval(footer, "intCol > 100 and intCol  < 200", true);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and intCol <200", false);
+
+    // "or"
+    testParquetRowGroupFilterEval(footer, "intCol = 150 or intCol = 160", true);
+    testParquetRowGroupFilterEval(footer, "intCol = 50 or intCol = 160", false);
+
+    //"nonExistCol" does not exist in the table.
+    testParquetRowGroupFilterEval(footer, "intCol > 100 and nonExistCol = 100", true);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol < 200", false);
+    testParquetRowGroupFilterEval(footer, "intCol > 100 or nonExistCol = 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 or nonExistCol < 200", false);
+
+    //  Cast function
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 100", false);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 0", false);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 50", false);
+
+    testParquetRowGroupFilterEval(footer, "intCol = cast(100 as bigint)", false);
+    testParquetRowGroupFilterEval(footer, "intCol = cast(0 as bigint)", false);
+    testParquetRowGroupFilterEval(footer, "intCol = cast(50 as bigint)", false);
   }
 
-  private LogicalExpression parseExpr(String expr) throws RecognitionException {
-    final ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
-    final CommonTokenStream tokens = new CommonTokenStream(lexer);
-    final ExprParser parser = new ExprParser(tokens);
-    final ExprParser.parse_return ret = parser.parse();
-    return ret.e;
+
+  private void testParquetRowGroupFilterEval(final ParquetMetadata footer, final String exprStr,
+      boolean canDropExpected) throws Exception{
+    final LogicalExpression filterExpr = parseExpr(exprStr);
+    testParquetRowGroupFilterEval(footer, 0, filterExpr, canDropExpected);
+  }
+
+  private void testParquetRowGroupFilterEval(final ParquetMetadata footer, final int rowGroupIndex,
+      final LogicalExpression filterExpr, boolean canDropExpected) throws Exception {
+    final Stopwatch watch = Stopwatch.createStarted();
+    boolean canDrop = ParquetRGFilterEvaluator.evalFilter(filterExpr, footer, rowGroupIndex,
+        fragContext.getOptions(), fragContext);
+    logger.debug("Took {} ms to evaluate the filter", watch.elapsed(TimeUnit.MILLISECONDS));
+    Assert.assertEquals(canDrop, canDropExpected);
   }
 
   private ParquetMetadata getParquetMetaData(String filePathStr) throws IOException{
