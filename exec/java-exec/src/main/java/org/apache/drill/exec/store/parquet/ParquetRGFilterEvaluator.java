@@ -131,8 +131,6 @@ public class ParquetRGFilterEvaluator {
 
     ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter);
 
-//    logger.debug("parquet predicate : {}", ExpressionStringBuilder.toString(parquetPredicate));
-
     Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
 
     RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, constantBoundaries, fragmentContext);

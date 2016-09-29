@@ -42,6 +42,7 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -256,7 +257,7 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
     }
   }
 
-  static Map<TypeProtos.MinorType, Set<TypeProtos.MinorType>> CAST_FUNC;
+  static Map<TypeProtos.MinorType, Set<TypeProtos.MinorType>> CAST_FUNC = new HashMap<>();
   static {
     // float -> double , int, bigint
     CAST_FUNC.put(TypeProtos.MinorType.FLOAT4, new HashSet<TypeProtos.MinorType>());
