@@ -268,9 +268,12 @@ public class ExpressionTreeMaterializer {
 
       if (type != null) {
         return new TypedFieldExpr(path, type);
+      } else if (path.getRootSegment().getPath().matches("dir[0-9]")) {
+        return new TypedFieldExpr(path, Types.required(MinorType.VARCHAR));
       } else {
-        logger.warn("Unable to find value vector of path {}, returning null instance.", path);
-        return NullExpression.INSTANCE;
+        logger.warn("Unable to find value vector of path {}, returning null-int instance.", path);
+        return new TypedFieldExpr(path, Types.optional(MinorType.INT));
+        // return NullExpression.INSTANCE;
       }
     }
   }
