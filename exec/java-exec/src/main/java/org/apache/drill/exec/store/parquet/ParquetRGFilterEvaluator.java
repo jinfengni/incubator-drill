@@ -129,14 +129,14 @@ public class ParquetRGFilterEvaluator {
 
     logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
 
-    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter);
-
     Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
 
-    RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, constantBoundaries, fragmentContext);
+    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter, constantBoundaries);
 
     boolean canDrop = false;
     if (parquetPredicate != null) {
+      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, constantBoundaries, fragmentContext);
+
       canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
     }
 

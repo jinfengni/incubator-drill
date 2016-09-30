@@ -32,14 +32,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
-public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression, Void, RuntimeException> {
+public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression, Set<LogicalExpression>, RuntimeException> {
   static final Logger logger = LoggerFactory.getLogger(ParquetFilterBuilder.class);
 
   static final ParquetFilterBuilder FILTER_BUILDER = new ParquetFilterBuilder();
 
-  public static LogicalExpression buildParquetFilterPredicate(LogicalExpression expr) {
-    final LogicalExpression predicate = expr.accept(FILTER_BUILDER, null);
+  public static LogicalExpression buildParquetFilterPredicate(LogicalExpression expr, final Set<LogicalExpression> constantBoundaries) {
+    final LogicalExpression predicate = expr.accept(FILTER_BUILDER, constantBoundaries);
     return predicate;
   }
 
@@ -47,7 +48,7 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
   }
 
   @Override
-  public LogicalExpression visitUnknown(LogicalExpression e, Void value) {
+  public LogicalExpression visitUnknown(LogicalExpression e, Set<LogicalExpression> value) {
     if (e instanceof TypedFieldExpr) {
       return e;
     }
@@ -56,41 +57,41 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
   }
 
   @Override
-  public LogicalExpression visitIntConstant(ValueExpressions.IntExpression intExpr, Void value)
+  public LogicalExpression visitIntConstant(ValueExpressions.IntExpression intExpr, Set<LogicalExpression> value)
       throws RuntimeException {
     return intExpr;
   }
 
   @Override
-  public LogicalExpression visitDoubleConstant(ValueExpressions.DoubleExpression dExpr, Void value)
+  public LogicalExpression visitDoubleConstant(ValueExpressions.DoubleExpression dExpr, Set<LogicalExpression> value)
       throws RuntimeException {
     return dExpr;
   }
 
   @Override
-  public LogicalExpression visitFloatConstant(ValueExpressions.FloatExpression fExpr, Void value)
+  public LogicalExpression visitFloatConstant(ValueExpressions.FloatExpression fExpr, Set<LogicalExpression> value)
       throws RuntimeException {
     return fExpr;
   }
 
   @Override
-  public LogicalExpression visitLongConstant(ValueExpressions.LongExpression intExpr, Void value)
+  public LogicalExpression visitLongConstant(ValueExpressions.LongExpression intExpr, Set<LogicalExpression> value)
       throws RuntimeException {
     return intExpr;
   }
 
   @Override
-  public LogicalExpression visitDateConstant(ValueExpressions.DateExpression dateExpr, Void value) throws RuntimeException {
+  public LogicalExpression visitDateConstant(ValueExpressions.DateExpression dateExpr, Set<LogicalExpression> value) throws RuntimeException {
     return dateExpr;
   }
 
   @Override
-  public LogicalExpression visitBooleanOperator(BooleanOperator op, Void value) {
+  public LogicalExpression visitBooleanOperator(BooleanOperator op, Set<LogicalExpression> value) {
     List<LogicalExpression> childPredicates = new ArrayList<>();
     String functionName = op.getName();
 
     for (LogicalExpression arg : op.args) {
-      LogicalExpression childPredicate = arg.accept(this, null);
+      LogicalExpression childPredicate = arg.accept(this, value);
       if (childPredicate == null) {
         if (functionName.equals("booleanOr")) {
           // we can't include any leg of the OR if any of the predicates cannot be converted
@@ -115,12 +116,16 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
   }
 
   @Override
-  public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression funcHolderExpr, Void value)
+  public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression funcHolderExpr, Set<LogicalExpression> value)
       throws RuntimeException {
     FuncHolder holder = funcHolderExpr.getHolder();
 
     if (! (holder instanceof DrillSimpleFuncHolder)) {
       return null;
+    }
+
+    if (value.contains(funcHolderExpr)) {
+      return funcHolderExpr;
     }
 
     final String funcName = ((DrillSimpleFuncHolder) holder).getRegisteredNames()[0];
@@ -129,38 +134,54 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
       return handleCompareFunction(funcHolderExpr, value);
     }
 
-    return funcHolderExpr;
+    if (CastFunctions.isCastFunction(funcName)) {
+      List<LogicalExpression> newArgs = new ArrayList();
+      for (LogicalExpression arg : funcHolderExpr.args) {
+        final LogicalExpression newArg = arg.accept(this, value);
+        if (newArg == null) {
+          return null;
+        }
+        newArgs.add(newArg);
+      }
+
+      return funcHolderExpr.copy(newArgs);
+    } else {
+      return null;
+    }
   }
 
-  private LogicalExpression handleCompareFunction(FunctionHolderExpression functionHolderExpression, Void value) {
+  private LogicalExpression handleCompareFunction(FunctionHolderExpression functionHolderExpression, Set<LogicalExpression> value) {
+    List<LogicalExpression> newArgs = new ArrayList();
+
     for (LogicalExpression arg : functionHolderExpression.args) {
       LogicalExpression newArg = arg.accept(this, value);
       if (newArg == null) {
         return null;
       }
+      newArgs.add(newArg);
     }
 
     String funcName = ((DrillSimpleFuncHolder) functionHolderExpression.getHolder()).getRegisteredNames()[0];
 
     switch (funcName) {
     case FunctionGenerationHelper.EQ :
-      return new ParquetPredicates.EqualPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+      return new ParquetPredicates.EqualPredicate(newArgs.get(0), newArgs.get(1));
     case FunctionGenerationHelper.GT :
-      return new ParquetPredicates.GTPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+      return new ParquetPredicates.GTPredicate(newArgs.get(0), newArgs.get(1));
     case FunctionGenerationHelper.GE :
-      return new ParquetPredicates.GEPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+      return new ParquetPredicates.GEPredicate(newArgs.get(0), newArgs.get(1));
     case FunctionGenerationHelper.LT :
-      return new ParquetPredicates.LTPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+      return new ParquetPredicates.LTPredicate(newArgs.get(0), newArgs.get(1));
     case FunctionGenerationHelper.LE :
-      return new ParquetPredicates.LEPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+      return new ParquetPredicates.LEPredicate(newArgs.get(0), newArgs.get(1));
     case FunctionGenerationHelper.NE :
-      return new ParquetPredicates.NEPredicate(functionHolderExpression.args.get(0), functionHolderExpression.args.get(1));
+      return new ParquetPredicates.NEPredicate(newArgs.get(0), newArgs.get(1));
     default:
       return null;
     }
   }
 
-  private LogicalExpression handleCastFunction(FunctionHolderExpression functionHolderExpression, Void value) {
+  private LogicalExpression handleCastFunction(FunctionHolderExpression functionHolderExpression, Set<LogicalExpression> value) {
     for (LogicalExpression arg : functionHolderExpression.args) {
       LogicalExpression newArg = arg.accept(this, value);
       if (newArg == null) {
