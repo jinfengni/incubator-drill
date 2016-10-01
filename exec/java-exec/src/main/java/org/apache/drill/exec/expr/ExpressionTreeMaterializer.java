@@ -120,18 +120,9 @@ public class ExpressionTreeMaterializer {
   }
 
   public static LogicalExpression materializeFilterExpr(LogicalExpression expr, Map<String, MajorType> fieldTypes, ErrorCollector errorCollector, FunctionLookupContext functionLookupContext) {
-    LogicalExpression out =  expr.accept(new FilterMaterializeVisitor(fieldTypes, errorCollector), functionLookupContext);
-
+    final FilterMaterializeVisitor filterMaterializeVisitor = new FilterMaterializeVisitor(fieldTypes, errorCollector);
+    LogicalExpression out =  expr.accept(filterMaterializeVisitor, functionLookupContext);
     return out;
-//    if (!errorCollector.hasErrors()) {
-//      out = out.accept(ConditionalExprOptimizer.INSTANCE, null);
-//    }
-//
-//    if (out instanceof NullExpression) {
-//      return new TypedNullConstant(Types.optional(MinorType.INT));
-//    } else {
-//      return out;
-//    }
   }
 
   public static LogicalExpression materialize(LogicalExpression expr, VectorAccessible batch, ErrorCollector errorCollector, FunctionLookupContext functionLookupContext,

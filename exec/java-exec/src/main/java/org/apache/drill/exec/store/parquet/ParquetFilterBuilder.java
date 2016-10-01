@@ -23,10 +23,20 @@ import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
+import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
 import org.apache.drill.exec.expr.fn.FunctionGenerationHelper;
+import org.apache.drill.exec.expr.fn.interpreter.InterpreterEvaluator;
+import org.apache.drill.exec.expr.holders.BigIntHolder;
+import org.apache.drill.exec.expr.holders.DateHolder;
+import org.apache.drill.exec.expr.holders.Float4Holder;
+import org.apache.drill.exec.expr.holders.Float8Holder;
+import org.apache.drill.exec.expr.holders.IntHolder;
+import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.TypedFieldExpr;
+import org.apache.drill.exec.ops.UdfUtilities;
+import org.omg.CORBA.FloatHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,17 +44,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static javafx.scene.input.KeyCode.F;
+
 public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression, Set<LogicalExpression>, RuntimeException> {
   static final Logger logger = LoggerFactory.getLogger(ParquetFilterBuilder.class);
 
-  static final ParquetFilterBuilder FILTER_BUILDER = new ParquetFilterBuilder();
+  private final UdfUtilities udfUtilities;
 
-  public static LogicalExpression buildParquetFilterPredicate(LogicalExpression expr, final Set<LogicalExpression> constantBoundaries) {
-    final LogicalExpression predicate = expr.accept(FILTER_BUILDER, constantBoundaries);
+  public static LogicalExpression buildParquetFilterPredicate(LogicalExpression expr, final Set<LogicalExpression> constantBoundaries, UdfUtilities udfUtilities) {
+    final LogicalExpression predicate = expr.accept(new ParquetFilterBuilder(udfUtilities), constantBoundaries);
     return predicate;
   }
 
-  private ParquetFilterBuilder() {
+  private ParquetFilterBuilder(UdfUtilities udfUtilities) {
+    this.udfUtilities = udfUtilities;
   }
 
   @Override
@@ -115,6 +128,23 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
     }
   }
 
+  private LogicalExpression getValueExpressionFromConst(ValueHolder holder, TypeProtos.MinorType type) {
+    switch (type) {
+    case INT:
+      return ValueExpressions.getInt(((IntHolder) holder).value);
+    case BIGINT:
+      return ValueExpressions.getBigInt(((BigIntHolder) holder).value);
+    case FLOAT4:
+      return ValueExpressions.getFloat4(((Float4Holder) holder).value);
+    case FLOAT8:
+      return ValueExpressions.getFloat8(((Float8Holder) holder).value);
+    case DATE:
+      return ValueExpressions.getDate(((DateHolder) holder).value);
+    default:
+      return null;
+    }
+  }
+
   @Override
   public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression funcHolderExpr, Set<LogicalExpression> value)
       throws RuntimeException {
@@ -125,7 +155,16 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
     }
 
     if (value.contains(funcHolderExpr)) {
-      return funcHolderExpr;
+      ValueHolder result ;
+      try {
+        result = InterpreterEvaluator.evaluateConstantExpr(udfUtilities, funcHolderExpr);
+      } catch (Exception e) {
+        logger.warn("Error in evaluating function of {}", funcHolderExpr.getName());
+        return null;
+      }
+
+      logger.debug("Reduce a constant function expression into a value expression");
+      return getValueExpressionFromConst(result, funcHolderExpr.getMajorType().getMinorType());
     }
 
     final String funcName = ((DrillSimpleFuncHolder) holder).getRegisteredNames()[0];

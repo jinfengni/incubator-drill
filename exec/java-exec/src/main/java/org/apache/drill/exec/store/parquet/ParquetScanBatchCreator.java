@@ -112,6 +112,12 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           footers.put(e.getPath(), footer );
         }
 
+        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e, rowGroupScan.getSelectionRoot());
+        implicitColumns.add(implicitValues);
+        if (implicitValues.size() > mapWithMaxColumns.size()) {
+          mapWithMaxColumns = implicitValues;
+        }
+
         if (!context.getOptions().getOption(ExecConstants.PARQUET_NEW_RECORD_READER).bool_val && !isComplex(footers.get(e.getPath()))) {
           ParquetRecordReader reader =  null;
 
@@ -133,7 +139,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           if (filterExpr != null
               && ! filterExpr.equals(ValueExpressions.BooleanExpression.TRUE)
               && ParquetRGFilterEvaluator.evalFilter(filterExpr, footers.get(e.getPath()),
-                e.getRowGroupIndex(), context.getOptions(), context)) {
+                e.getRowGroupIndex(), context.getOptions(), context), implicitValues) {
 //            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
               rgFiltered ++;
               continue;
@@ -153,12 +159,6 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
         } else {
           ParquetMetadata footer = footers.get(e.getPath());
           readers.add(new DrillParquetReader(context, footer, e, columnExplorer.getTableColumns(), fs));
-        }
-
-        Map<String, String> implicitValues = columnExplorer.populateImplicitColumns(e, rowGroupScan.getSelectionRoot());
-        implicitColumns.add(implicitValues);
-        if (implicitValues.size() > mapWithMaxColumns.size()) {
-          mapWithMaxColumns = implicitValues;
         }
 
       } catch (IOException e1) {
