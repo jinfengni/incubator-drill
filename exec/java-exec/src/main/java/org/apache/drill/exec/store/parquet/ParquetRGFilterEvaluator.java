@@ -53,6 +53,7 @@ import org.joda.time.DateTimeUtils;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.drill.exec.store.ParquetOutputRecordWriter.JULIAN_DAY_EPOC;
@@ -68,7 +69,7 @@ public class ParquetRGFilterEvaluator {
     return false;
   }
 
-  public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext) {
+  public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext, Map<String, String> implicitColValues) {
     // figure out the set of columns referenced in expression.
     final Collection<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
     final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();
@@ -131,12 +132,11 @@ public class ParquetRGFilterEvaluator {
 
     Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
 
-    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter, constantBoundaries);
+    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter, constantBoundaries, fragmentContext);
 
     boolean canDrop = false;
     if (parquetPredicate != null) {
-      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, constantBoundaries, fragmentContext);
-
+      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap);
       canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
     }
 
