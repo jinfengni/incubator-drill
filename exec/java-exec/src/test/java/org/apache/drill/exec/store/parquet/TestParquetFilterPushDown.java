@@ -60,9 +60,11 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
     // test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_custkey < 2");
 //    test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_totalprice < 1.0 ");
 //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate > date '2998-08-01'");
-//      test("select dir0, filepath from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate` where  L_SHIPDATE > date '2998-08-01'");
+//      test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate` where  dir0 = 'lineitem' and L_SHIPDATE > date '2998-08-01'");
 //    test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  cast(l_partkey as int) < -1");
     //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate = cast(123456 as date)");
+//    test("select l_partkey from dfs.`/drill/testdata/tpch01/parquet/lineitem` l where l.l_shipdate >= date '1994-08-01' \n"
+//        + "  and l.l_shipdate < date '1994-08-01' + interval '1' month");
   }
 
   @Test
@@ -71,55 +73,55 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
     //    intCol : [0, 100].
     final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
     ParquetMetadata footer = getParquetMetaData(filePath);
-//
-//    testParquetRowGroupFilterEval(footer, "intCol = 100", false);
-//    testParquetRowGroupFilterEval(footer, "intCol = 0", false);
-//    testParquetRowGroupFilterEval(footer, "intCol = 50", false);
-//
-//    testParquetRowGroupFilterEval(footer, "intCol = -1", true);
-//    testParquetRowGroupFilterEval(footer, "intCol = 101", true);
-//
-//    testParquetRowGroupFilterEval(footer, "intCol > 100", true);
-//    testParquetRowGroupFilterEval(footer, "intCol > 99", false);
-//
-//    testParquetRowGroupFilterEval(footer, "intCol >= 100", false);
-//    testParquetRowGroupFilterEval(footer, "intCol >= 101", true);
-//
-//    testParquetRowGroupFilterEval(footer, "intCol < 100", false);
-//    testParquetRowGroupFilterEval(footer, "intCol < 1", false);
-//    testParquetRowGroupFilterEval(footer, "intCol < 0", true);
-//
-//    testParquetRowGroupFilterEval(footer, "intCol <= 100", false);
-//    testParquetRowGroupFilterEval(footer, "intCol <= 1", false);
-//    testParquetRowGroupFilterEval(footer, "intCol <= 0", false);
-//    testParquetRowGroupFilterEval(footer, "intCol <= -1", true);
-//
-//    // "and"
-//    testParquetRowGroupFilterEval(footer, "intCol > 100 and intCol  < 200", true);
-//    testParquetRowGroupFilterEval(footer, "intCol > 50 and intCol <200", false);
-//
-//    // "or"
-//    testParquetRowGroupFilterEval(footer, "intCol = 150 or intCol = 160", true);
-//    testParquetRowGroupFilterEval(footer, "intCol = 50 or intCol = 160", false);
+
+    testParquetRowGroupFilterEval(footer, "intCol = 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol = 0", false);
+    testParquetRowGroupFilterEval(footer, "intCol = 50", false);
+
+    testParquetRowGroupFilterEval(footer, "intCol = -1", true);
+    testParquetRowGroupFilterEval(footer, "intCol = 101", true);
+
+    testParquetRowGroupFilterEval(footer, "intCol > 100", true);
+    testParquetRowGroupFilterEval(footer, "intCol > 99", false);
+
+    testParquetRowGroupFilterEval(footer, "intCol >= 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol >= 101", true);
+
+    testParquetRowGroupFilterEval(footer, "intCol < 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol < 1", false);
+    testParquetRowGroupFilterEval(footer, "intCol < 0", true);
+
+    testParquetRowGroupFilterEval(footer, "intCol <= 100", false);
+    testParquetRowGroupFilterEval(footer, "intCol <= 1", false);
+    testParquetRowGroupFilterEval(footer, "intCol <= 0", false);
+    testParquetRowGroupFilterEval(footer, "intCol <= -1", true);
+
+    // "and"
+    testParquetRowGroupFilterEval(footer, "intCol > 100 and intCol  < 200", true);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and intCol <200", false);
+
+    // "or"
+    testParquetRowGroupFilterEval(footer, "intCol = 150 or intCol = 160", true);
+    testParquetRowGroupFilterEval(footer, "intCol = 50 or intCol = 160", false);
 
     //"nonExistCol" does not exist in the table.
-//    testParquetRowGroupFilterEval(footer, "intCol > 100 and nonExistCol = 100", true);
-//    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol = 100", false); // TODO : should be true since nonExistCol = 100 -> Unknown -> could drop.
+    testParquetRowGroupFilterEval(footer, "intCol > 100 and nonExistCol = 100", true);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol = 100", false); // TODO : should be true since nonExistCol = 100 -> Unknown -> could drop.
 //
-//    testParquetRowGroupFilterEval(footer, "intCol > 100 and nonExistCol < 'abc'", true);
-//    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol < 'abc'", false); // because nonExistCol < 'abc' hit NumberException and is ignored.
+    testParquetRowGroupFilterEval(footer, "intCol > 100 and nonExistCol < 'abc'", true);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol < 'abc'", false); // because nonExistCol < 'abc' hit NumberException and is ignored.
 
     testParquetRowGroupFilterEval(footer, "intCol > 100 or nonExistCol = 100", false); // TODO: should be true
     testParquetRowGroupFilterEval(footer, "intCol > 50 or nonExistCol < 200", false);
 
 //    //  Cast function
-//    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 100", false);
-//    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 0", false);
-//    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 50", false);
-//
-//    testParquetRowGroupFilterEval(footer, "intCol = cast(100 as bigint)", false);
-//    testParquetRowGroupFilterEval(footer, "intCol = cast(0 as bigint)", false);
-//    testParquetRowGroupFilterEval(footer, "intCol = cast(50 as bigint)", false);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 100", false);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 0", false);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 50", false);
+
+    testParquetRowGroupFilterEval(footer, "intCol = cast(100 as bigint)", false);
+    testParquetRowGroupFilterEval(footer, "intCol = cast(0 as bigint)", false);
+    testParquetRowGroupFilterEval(footer, "intCol = cast(50 as bigint)", false);
   }
 
 
@@ -132,8 +134,9 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
   private void testParquetRowGroupFilterEval(final ParquetMetadata footer, final int rowGroupIndex,
       final LogicalExpression filterExpr, boolean canDropExpected) throws Exception {
     final Stopwatch watch = Stopwatch.createStarted();
+
     boolean canDrop = ParquetRGFilterEvaluator.evalFilter(filterExpr, footer, rowGroupIndex,
-        fragContext.getOptions(), fragContext, null);
+        fragContext.getOptions(), fragContext);
     logger.debug("Took {} ms to evaluate the filter", watch.elapsed(TimeUnit.MILLISECONDS));
     Assert.assertEquals(canDrop, canDropExpected);
   }

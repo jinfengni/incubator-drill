@@ -25,7 +25,9 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.map.CaseInsensitiveMap;
+import org.apache.drill.common.types.MinorType;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.compile.sig.ConstantExpressionIdentifier;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionLookupContext;
@@ -38,6 +40,7 @@ import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.ParquetOutputRecordWriter;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetToDrillTypeConverter;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
@@ -52,6 +55,7 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.joda.time.DateTimeUtils;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -69,53 +73,80 @@ public class ParquetRGFilterEvaluator {
     return false;
   }
 
+  public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex,
+      OptionManager options, FragmentContext fragmentContext) {
+    final HashMap<String, String> emptyMap = new HashMap<String, String>();
+    return evalFilter(expr, footer, rowGroupIndex, options, fragmentContext, emptyMap);
+  }
+
   public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext, Map<String, String> implicitColValues) {
-    // figure out the set of columns referenced in expression.
-    final Collection<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
+    // map from column name to SchemaPath
     final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();
-    for (final SchemaPath path : schemaPathsInExpr) {
-      columnInExprMap.put(path.getRootSegment().getPath(), path);
-    }
 
     // map from column name to ColumnDescriptor
     CaseInsensitiveMap<ColumnDescriptor> columnDescMap = CaseInsensitiveMap.newHashMap();
-    for (final ColumnDescriptor column : footer.getFileMetaData().getSchema().getColumns()) {
-      columnDescMap.put(column.getPath()[0], column);
-    }
-
-    // map from column name to SchemeElement
-    final FileMetaData fileMetaData = new ParquetMetadataConverter().toParquetMetadata(ParquetFileWriter.CURRENT_VERSION, footer);
-    final CaseInsensitiveMap<SchemaElement> schemaElementMap = CaseInsensitiveMap.newHashMap();
-    for (final SchemaElement se : fileMetaData.getSchema()) {
-      schemaElementMap.put(se.getName(), se);
-    }
 
     // map from column name to ColumnChunkMetaData
-    final CaseInsensitiveMap<ColumnChunkMetaData> columnStatMap = CaseInsensitiveMap.newHashMap();
-    for (final ColumnChunkMetaData colMetaData: footer.getBlocks().get(rowGroupIndex).getColumns()) {
-      columnStatMap.put(colMetaData.getPath().toDotString(), colMetaData);
-    }
+    final CaseInsensitiveMap<ColumnChunkMetaData> columnChkMetaMap = CaseInsensitiveMap.newHashMap();
 
     // map from column name to MajorType
     final CaseInsensitiveMap<TypeProtos.MajorType> columnTypeMap = CaseInsensitiveMap.newHashMap();
 
-    // map from column name to column stat expression.
+    // map from column name to SchemaElement
+    final CaseInsensitiveMap<SchemaElement> schemaElementMap = CaseInsensitiveMap.newHashMap();
+
+    // map from column name to column statistics.
     CaseInsensitiveMap<Statistics> statMap = CaseInsensitiveMap.newHashMap();
 
+
+    final FileMetaData fileMetaData = new ParquetMetadataConverter().toParquetMetadata(ParquetFileWriter.CURRENT_VERSION, footer);
+
+    // figure out the set of columns referenced in expression.
+    final Collection<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
+    for (final SchemaPath path : schemaPathsInExpr) {
+      columnInExprMap.put(path.getRootSegment().getPath(), path);
+    }
+
+    for (final ColumnDescriptor column : footer.getFileMetaData().getSchema().getColumns()) {
+      if (columnInExprMap.containsKey(column.getPath()[0])) {
+        columnDescMap.put(column.getPath()[0], column);
+      }
+    }
+
+    for (final SchemaElement se : fileMetaData.getSchema()) {
+      if (columnInExprMap.containsKey(se.getName())) {
+        schemaElementMap.put(se.getName(), se);
+      }
+    }
+
+    for (final ColumnChunkMetaData colMetaData: footer.getBlocks().get(rowGroupIndex).getColumns()) {
+      if (columnInExprMap.containsKey(colMetaData.getPath().toDotString())) {
+        columnChkMetaMap.put(colMetaData.getPath().toDotString(), colMetaData);
+      }
+    }
+
     for (final String path : columnInExprMap.keySet()) {
-      if (columnDescMap.containsKey(path) && schemaElementMap.containsKey(path) && columnDescMap.containsKey(path)) {
+      if (columnDescMap.containsKey(path) && schemaElementMap.containsKey(path) && columnChkMetaMap.containsKey(path)) {
         ColumnDescriptor columnDesc =  columnDescMap.get(path);
         SchemaElement se = schemaElementMap.get(path);
-        ColumnChunkMetaData metaData = columnStatMap.get(path);
+        ColumnChunkMetaData metaData = columnChkMetaMap.get(path);
 
         TypeProtos.MajorType type = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
             getDataMode(columnDesc), se, options);
+
         columnTypeMap.put(path, type);
 
         if (metaData != null) {
           Statistics stat = convertStatIfNecessary(metaData.getStatistics(), type.getMinorType());
           statMap.put(path, stat);
         }
+      } else if (implicitColValues.containsKey(path)) {
+        columnTypeMap.put(path, Types.required(TypeProtos.MinorType.VARCHAR)); // implicit columns "dir0", "filename", etc.
+        Statistics stat = new BinaryStatistics();
+        stat.setNumNulls(0);
+        byte[] val = implicitColValues.get(path).getBytes();
+        stat.setMinMaxFromBytes(val, val);
+        statMap.put(path, stat);
       }
     }
 
@@ -161,8 +192,11 @@ public class ParquetRGFilterEvaluator {
     } else {
       IntStatistics dateStat = (IntStatistics) stat;
       LongStatistics dateMLS = new LongStatistics();
-      dateMLS.setMinMax(convertToDrillDateValue(dateStat.getMin()), convertToDrillDateValue(dateStat.getMax()));
-      dateMLS.setNumNulls(dateStat.getNumNulls());
+      if (!dateStat.isEmpty()) {
+        dateMLS.setMinMax(convertToDrillDateValue(dateStat.getMin()), convertToDrillDateValue(dateStat.getMax()));
+        dateMLS.setNumNulls(dateStat.getNumNulls());
+      }
+
       return dateMLS;
     }
   }

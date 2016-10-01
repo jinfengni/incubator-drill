@@ -36,15 +36,12 @@ import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.TypedFieldExpr;
 import org.apache.drill.exec.ops.UdfUtilities;
-import org.omg.CORBA.FloatHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
-import static javafx.scene.input.KeyCode.F;
 
 public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression, Set<LogicalExpression>, RuntimeException> {
   static final Logger logger = LoggerFactory.getLogger(ParquetFilterBuilder.class);
