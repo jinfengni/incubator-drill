@@ -68,8 +68,18 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
   }
 
   @Test
+  public void test() throws Exception {
+//    // intTbl.parquet has only one int column
+//    //    intCol : [0, 100].
+//    final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
+//    ParquetMetadata footer = getParquetMetaData(filePath);
+//
+//    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = -110.0", true);
+  }
+
+    @Test
   public void testIntPredicate() throws Exception {
-    // intTalbe has only one int column
+    // intTbl.parquet has only one int column
     //    intCol : [0, 100].
     final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
     ParquetMetadata footer = getParquetMetaData(filePath);
@@ -98,7 +108,8 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
 
     // "and"
     testParquetRowGroupFilterEval(footer, "intCol > 100 and intCol  < 200", true);
-    testParquetRowGroupFilterEval(footer, "intCol > 50 and intCol <200", false);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and intCol < 200", false);
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and intCol > 200", true); // essentially, intCol > 200
 
     // "or"
     testParquetRowGroupFilterEval(footer, "intCol = 150 or intCol = 160", true);
@@ -114,14 +125,41 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
     testParquetRowGroupFilterEval(footer, "intCol > 100 or nonExistCol = 100", false); // TODO: should be true
     testParquetRowGroupFilterEval(footer, "intCol > 50 or nonExistCol < 200", false);
 
-//    //  Cast function
+    // cast function on column side (LHS)
     testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 100", false);
     testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 0", false);
     testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 50", false);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 101", true);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = -1", true);
 
+    // cast function on constant side (RHS)
     testParquetRowGroupFilterEval(footer, "intCol = cast(100 as bigint)", false);
     testParquetRowGroupFilterEval(footer, "intCol = cast(0 as bigint)", false);
     testParquetRowGroupFilterEval(footer, "intCol = cast(50 as bigint)", false);
+    testParquetRowGroupFilterEval(footer, "intCol = cast(101 as bigint)", true);
+    testParquetRowGroupFilterEval(footer, "intCol = cast(-1 as bigint)", true);
+
+    // cast into float4/float8
+    testParquetRowGroupFilterEval(footer, "cast(intCol as float4) = cast(101.0 as float4)", true);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as float4) = cast(-1.0 as float4)", true);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as float4) = cast(1.0 as float4)", false);
+
+    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = 101.0", true);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = -1.0", true);
+    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = 1.0", false);
+
+  }
+
+  @Test
+  public void testIntPredicateAgainstAllNullCol() throws Exception {
+    // intAllNull.parquet has only one int column with all values being NULL.
+    // column values statistics: num_nulls: 25, min/max is not defined
+    final String filePath = String.format("%s/parquetFilterPush/intTbl/intAllNull.parquet", TEST_RES_PATH);
+    ParquetMetadata footer = getParquetMetaData(filePath);
+
+    testParquetRowGroupFilterEval(footer, "intCol = 100", true);
+    testParquetRowGroupFilterEval(footer, "intCol = 0", true);
+    testParquetRowGroupFilterEval(footer, "intCol = -100", true);
   }
 
 
@@ -138,7 +176,7 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
     boolean canDrop = ParquetRGFilterEvaluator.evalFilter(filterExpr, footer, rowGroupIndex,
         fragContext.getOptions(), fragContext);
     logger.debug("Took {} ms to evaluate the filter", watch.elapsed(TimeUnit.MILLISECONDS));
-    Assert.assertEquals(canDrop, canDropExpected);
+    Assert.assertEquals(canDropExpected, canDrop);
   }
 
   private ParquetMetadata getParquetMetaData(String filePathStr) throws IOException{
