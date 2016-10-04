@@ -54,9 +54,15 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
   static final Logger logger = LoggerFactory.getLogger(RangeExprEvaluator.class);
 
   private final Map<String, Statistics> columnStatMap;
+  private final long rowCount;
 
-  public RangeExprEvaluator(final Map<String, Statistics> columnStatMap) {
+  public RangeExprEvaluator(final Map<String, Statistics> columnStatMap, long rowCount) {
     this.columnStatMap = columnStatMap;
+    this.rowCount = rowCount;
+  }
+
+  public long getRowCount() {
+    return this.rowCount;
   }
 
   @Override

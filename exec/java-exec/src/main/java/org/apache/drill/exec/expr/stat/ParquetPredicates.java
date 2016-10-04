@@ -23,6 +23,7 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.LogicalExpressionBase;
 import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -100,6 +101,18 @@ public abstract  class ParquetPredicates {
     }
   }
 
+  // is this column chunk composed entirely of nulls?
+  // assumes the column chunk's statistics is not empty
+  protected static boolean isAllNulls(Statistics stat, long rowCount) {
+    return stat.getNumNulls() == rowCount;
+  }
+
+  // are there any nulls in this column chunk?
+  // assumes the column chunk's statistics is not empty
+  protected static boolean hasNulls(Statistics stat) {
+    return stat.getNumNulls() > 0;
+  }
+
   /**
    * EQ (=) predicate
    */
@@ -118,6 +131,12 @@ public abstract  class ParquetPredicates {
           leftStat.isEmpty() ||
           rightStat.isEmpty()) {
         return false;
+      }
+
+      // if either side is ALL null, = is evaluated to UNKNOW -> canDrop
+      if (isAllNulls(leftStat, evaluator.getRowCount()) ||
+          isAllNulls(rightStat, evaluator.getRowCount())) {
+        return true;
       }
 
       // can drop when left's max < right's min, or right's max < left's min
@@ -155,6 +174,12 @@ public abstract  class ParquetPredicates {
         return false;
       }
 
+      // if either side is ALL null, = is evaluated to UNKNOW -> canDrop
+      if (isAllNulls(leftStat, evaluator.getRowCount()) ||
+          isAllNulls(rightStat, evaluator.getRowCount())) {
+        return true;
+      }
+
       // can drop when left's max <= right's min.
       if ( leftStat.genericGetMax().compareTo(rightStat.genericGetMin()) <= 0 ) {
         return true;
@@ -182,6 +207,12 @@ public abstract  class ParquetPredicates {
           leftStat.isEmpty() ||
           rightStat.isEmpty()) {
         return false;
+      }
+
+      // if either side is ALL null, = is evaluated to UNKNOW -> canDrop
+      if (isAllNulls(leftStat, evaluator.getRowCount()) ||
+          isAllNulls(rightStat, evaluator.getRowCount())) {
+        return true;
       }
 
       // can drop when left's max < right's min.
@@ -213,6 +244,12 @@ public abstract  class ParquetPredicates {
         return false;
       }
 
+      // if either side is ALL null, = is evaluated to UNKNOW -> canDrop
+      if (isAllNulls(leftStat, evaluator.getRowCount()) ||
+          isAllNulls(rightStat, evaluator.getRowCount())) {
+        return true;
+      }
+
       // can drop when right's max <= left's min.
       if ( rightStat.genericGetMax().compareTo(leftStat.genericGetMin()) <= 0 ) {
         return true;
@@ -242,6 +279,12 @@ public abstract  class ParquetPredicates {
         return false;
       }
 
+      // if either side is ALL null, = is evaluated to UNKNOW -> canDrop
+      if (isAllNulls(leftStat, evaluator.getRowCount()) ||
+          isAllNulls(rightStat, evaluator.getRowCount())) {
+        return true;
+      }
+
       // can drop when right's max < left's min.
       if ( rightStat.genericGetMax().compareTo(leftStat.genericGetMin()) < 0 ) {
         return true;
@@ -269,6 +312,12 @@ public abstract  class ParquetPredicates {
           leftStat.isEmpty() ||
           rightStat.isEmpty()) {
         return false;
+      }
+
+      // if either side is ALL null, comparison is evaluated to UNKNOW -> canDrop
+      if (isAllNulls(leftStat, evaluator.getRowCount()) ||
+          isAllNulls(rightStat, evaluator.getRowCount())) {
+        return true;
       }
 
       // can drop when there is only one unique value.

@@ -82,19 +82,14 @@ public class ParquetRGFilterEvaluator {
   public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext, Map<String, String> implicitColValues) {
     // map from column name to SchemaPath
     final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();
-
     // map from column name to ColumnDescriptor
     CaseInsensitiveMap<ColumnDescriptor> columnDescMap = CaseInsensitiveMap.newHashMap();
-
     // map from column name to ColumnChunkMetaData
     final CaseInsensitiveMap<ColumnChunkMetaData> columnChkMetaMap = CaseInsensitiveMap.newHashMap();
-
     // map from column name to MajorType
     final CaseInsensitiveMap<TypeProtos.MajorType> columnTypeMap = CaseInsensitiveMap.newHashMap();
-
     // map from column name to SchemaElement
     final CaseInsensitiveMap<SchemaElement> schemaElementMap = CaseInsensitiveMap.newHashMap();
-
     // map from column name to column statistics.
     CaseInsensitiveMap<Statistics> statMap = CaseInsensitiveMap.newHashMap();
 
@@ -119,7 +114,15 @@ public class ParquetRGFilterEvaluator {
       }
     }
 
+    final long rowCount = footer.getBlocks().get(rowGroupIndex).getRowCount();
     for (final ColumnChunkMetaData colMetaData: footer.getBlocks().get(rowGroupIndex).getColumns()) {
+
+      if (rowCount != colMetaData.getValueCount()) {
+        logger.warn("rowCount : {} for rowGroup {} is different from column {}'s valueCount : {}",
+            rowCount, rowGroupIndex, colMetaData.getPath().toDotString(), colMetaData.getValueCount());
+        return false;
+      }
+
       if (columnInExprMap.containsKey(colMetaData.getPath().toDotString())) {
         columnChkMetaMap.put(colMetaData.getPath().toDotString(), colMetaData);
       }
@@ -151,28 +154,26 @@ public class ParquetRGFilterEvaluator {
     }
 
     ErrorCollector errorCollector = new ErrorCollectorImpl();
-
-    LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(expr, columnTypeMap, errorCollector, fragmentContext.getFunctionRegistry());
+    LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(
+        expr, columnTypeMap, errorCollector, fragmentContext.getFunctionRegistry());
 
     if (errorCollector.hasErrors()) {
-      logger.error("{} error(s) encountered when materialize filter expression : {}", errorCollector.getErrorCount(), errorCollector.toErrorString());
+      logger.error("{} error(s) encountered when materialize filter expression : {}",
+          errorCollector.getErrorCount(), errorCollector.toErrorString());
       return false;
     }
-
     logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
 
     Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
-
-    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(materializedFilter, constantBoundaries, fragmentContext);
+    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(
+        materializedFilter, constantBoundaries, fragmentContext);
 
     boolean canDrop = false;
     if (parquetPredicate != null) {
-      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap);
+      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, rowCount);
       canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
     }
-
     logger.debug(" canDrop {} ", canDrop);
-
     return canDrop;
   }
 
