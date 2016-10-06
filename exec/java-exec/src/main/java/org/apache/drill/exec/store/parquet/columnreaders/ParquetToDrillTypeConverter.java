@@ -32,13 +32,22 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class ParquetToDrillTypeConverter {
 
   private static TypeProtos.MinorType getDecimalType(SchemaElement schemaElement) {
-    return schemaElement.getPrecision() <= 28 ? TypeProtos.MinorType.DECIMAL28SPARSE : MinorType.DECIMAL38SPARSE;
+    return getDecimalType(schemaElement.getPrecision());
+  }
+
+  private static TypeProtos.MinorType getDecimalType(int precision) {
+    return precision <= 28 ? TypeProtos.MinorType.DECIMAL28SPARSE : MinorType.DECIMAL38SPARSE;
   }
 
   private static TypeProtos.MinorType getMinorType(PrimitiveType.PrimitiveTypeName primitiveTypeName, int length,
-                                                   SchemaElement schemaElement, OptionManager options) {
+      SchemaElement schemaElement, OptionManager options) {
+    return getMinorType(primitiveTypeName, length, schemaElement.getConverted_type(), schemaElement.getPrecision(), schemaElement.getScale(), options);
+  }
 
-    ConvertedType convertedType = schemaElement.getConverted_type();
+  private static TypeProtos.MinorType getMinorType(PrimitiveType.PrimitiveTypeName primitiveTypeName, int length,
+                                                   ConvertedType convertedType, int precision, int scale,
+      OptionManager options) {
+
 
     switch (primitiveTypeName) {
       case BINARY:
@@ -50,7 +59,7 @@ public class ParquetToDrillTypeConverter {
             return (TypeProtos.MinorType.VARCHAR);
           case DECIMAL:
             ParquetReaderUtility.checkDecimalTypeEnabled(options);
-            return (getDecimalType(schemaElement));
+            return (getDecimalType(precision));
           default:
             return (TypeProtos.MinorType.VARBINARY);
         }
@@ -101,7 +110,7 @@ public class ParquetToDrillTypeConverter {
           return TypeProtos.MinorType.VARBINARY;
         } else if (convertedType == ConvertedType.DECIMAL) {
           ParquetReaderUtility.checkDecimalTypeEnabled(options);
-          return getDecimalType(schemaElement);
+          return getDecimalType(precision);
         } else if (convertedType == ConvertedType.INTERVAL) {
           return TypeProtos.MinorType.INTERVAL;
         }

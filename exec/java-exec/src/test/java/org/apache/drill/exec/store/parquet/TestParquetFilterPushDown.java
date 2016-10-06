@@ -69,12 +69,12 @@ public class TestParquetFilterPushDown extends BaseTestQuery{
 
   @Test
   public void test() throws Exception {
-//    // intTbl.parquet has only one int column
-//    //    intCol : [0, 100].
-//    final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
-//    ParquetMetadata footer = getParquetMetaData(filePath);
-//
-//    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = -110.0", true);
+    // intTbl.parquet has only one int column
+    //    intCol : [0, 100].
+    final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
+    ParquetMetadata footer = getParquetMetaData(filePath);
+
+    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = -110.0", true);
   }
 
     @Test
