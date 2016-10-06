@@ -24,43 +24,24 @@ import org.apache.drill.common.expression.ExpressionStringBuilder;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
-import org.apache.drill.common.map.CaseInsensitiveMap;
-import org.apache.drill.common.types.MinorType;
-import org.apache.drill.common.types.TypeProtos;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.compile.sig.ConstantExpressionIdentifier;
 import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
-import org.apache.drill.exec.expr.fn.FunctionLookupContext;
 import org.apache.drill.exec.expr.stat.ParquetFilterPredicate;
-import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.RangeExprEvaluator;
 import org.apache.drill.exec.ops.FragmentContext;
-import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.server.options.OptionManager;
-import org.apache.drill.exec.store.ParquetOutputRecordWriter;
-import org.apache.drill.exec.store.parquet.columnreaders.ParquetToDrillTypeConverter;
-import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.statistics.BinaryStatistics;
-import org.apache.parquet.column.statistics.IntStatistics;
-import org.apache.parquet.column.statistics.LongStatistics;
-import org.apache.parquet.column.statistics.Statistics;
+import org.apache.drill.exec.store.parquet.stat.ColumnStatCollector;
+import org.apache.drill.exec.store.parquet.stat.ColumnStatCollectorImpl;
+import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
-import org.apache.parquet.format.FileMetaData;
-import org.apache.parquet.format.SchemaElement;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
-import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.joda.time.DateTimeUtils;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.apache.drill.exec.store.ParquetOutputRecordWriter.JULIAN_DAY_EPOC;
 
 public class ParquetRGFilterEvaluator {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetRGFilterEvaluator.class);
@@ -80,82 +61,15 @@ public class ParquetRGFilterEvaluator {
   }
 
   public static boolean evalFilter(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext, Map<String, String> implicitColValues) {
-    // map from column name to SchemaPath
-    final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();
-    // map from column name to ColumnDescriptor
-    CaseInsensitiveMap<ColumnDescriptor> columnDescMap = CaseInsensitiveMap.newHashMap();
-    // map from column name to ColumnChunkMetaData
-    final CaseInsensitiveMap<ColumnChunkMetaData> columnChkMetaMap = CaseInsensitiveMap.newHashMap();
-    // map from column name to MajorType
-    final CaseInsensitiveMap<TypeProtos.MajorType> columnTypeMap = CaseInsensitiveMap.newHashMap();
-    // map from column name to SchemaElement
-    final CaseInsensitiveMap<SchemaElement> schemaElementMap = CaseInsensitiveMap.newHashMap();
-    // map from column name to column statistics.
-    CaseInsensitiveMap<Statistics> statMap = CaseInsensitiveMap.newHashMap();
-
-
-    final FileMetaData fileMetaData = new ParquetMetadataConverter().toParquetMetadata(ParquetFileWriter.CURRENT_VERSION, footer);
-
     // figure out the set of columns referenced in expression.
-    final Collection<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
-    for (final SchemaPath path : schemaPathsInExpr) {
-      columnInExprMap.put(path.getRootSegment().getPath(), path);
-    }
+    final Set<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
+    final ColumnStatCollector columnStatCollector = new ColumnStatCollectorImpl(footer, rowGroupIndex, implicitColValues,options);
 
-    for (final ColumnDescriptor column : footer.getFileMetaData().getSchema().getColumns()) {
-      if (columnInExprMap.containsKey(column.getPath()[0])) {
-        columnDescMap.put(column.getPath()[0], column);
-      }
-    }
-
-    for (final SchemaElement se : fileMetaData.getSchema()) {
-      if (columnInExprMap.containsKey(se.getName())) {
-        schemaElementMap.put(se.getName(), se);
-      }
-    }
-
-    final long rowCount = footer.getBlocks().get(rowGroupIndex).getRowCount();
-    for (final ColumnChunkMetaData colMetaData: footer.getBlocks().get(rowGroupIndex).getColumns()) {
-
-      if (rowCount != colMetaData.getValueCount()) {
-        logger.warn("rowCount : {} for rowGroup {} is different from column {}'s valueCount : {}",
-            rowCount, rowGroupIndex, colMetaData.getPath().toDotString(), colMetaData.getValueCount());
-        return false;
-      }
-
-      if (columnInExprMap.containsKey(colMetaData.getPath().toDotString())) {
-        columnChkMetaMap.put(colMetaData.getPath().toDotString(), colMetaData);
-      }
-    }
-
-    for (final String path : columnInExprMap.keySet()) {
-      if (columnDescMap.containsKey(path) && schemaElementMap.containsKey(path) && columnChkMetaMap.containsKey(path)) {
-        ColumnDescriptor columnDesc =  columnDescMap.get(path);
-        SchemaElement se = schemaElementMap.get(path);
-        ColumnChunkMetaData metaData = columnChkMetaMap.get(path);
-
-        TypeProtos.MajorType type = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
-            getDataMode(columnDesc), se, options);
-
-        columnTypeMap.put(path, type);
-
-        if (metaData != null) {
-          Statistics stat = convertStatIfNecessary(metaData.getStatistics(), type.getMinorType());
-          statMap.put(path, stat);
-        }
-      } else if (implicitColValues.containsKey(path)) {
-        columnTypeMap.put(path, Types.required(TypeProtos.MinorType.VARCHAR)); // implicit columns "dir0", "filename", etc.
-        Statistics stat = new BinaryStatistics();
-        stat.setNumNulls(0);
-        byte[] val = implicitColValues.get(path).getBytes();
-        stat.setMinMaxFromBytes(val, val);
-        statMap.put(path, stat);
-      }
-    }
+    Map<SchemaPath, ColumnStatistics> columnStatisticsMap = columnStatCollector.collectColStat(schemaPathsInExpr);
 
     ErrorCollector errorCollector = new ErrorCollectorImpl();
     LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(
-        expr, columnTypeMap, errorCollector, fragmentContext.getFunctionRegistry());
+        expr, columnStatisticsMap, errorCollector, fragmentContext.getFunctionRegistry());
 
     if (errorCollector.hasErrors()) {
       logger.error("{} error(s) encountered when materialize filter expression : {}",
@@ -169,48 +83,147 @@ public class ParquetRGFilterEvaluator {
         materializedFilter, constantBoundaries, fragmentContext);
 
     boolean canDrop = false;
+    long rowCount = footer.getBlocks().get(rowGroupIndex).getRowCount();
     if (parquetPredicate != null) {
-      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, rowCount);
+      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(columnStatisticsMap, rowCount);
       canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
     }
     logger.debug(" canDrop {} ", canDrop);
     return canDrop;
   }
 
-  private static TypeProtos.DataMode getDataMode(ColumnDescriptor column) {
-    if (column.getMaxRepetitionLevel() > 0 ) {
-      return TypeProtos.DataMode.REPEATED;
-    } else if (column.getMaxDefinitionLevel() == 0) {
-      return TypeProtos.DataMode.REQUIRED;
-    } else {
-      return TypeProtos.DataMode.OPTIONAL;
-    }
-  }
-
-  private static Statistics convertStatIfNecessary(Statistics stat, TypeProtos.MinorType type) {
-    if (type != TypeProtos.MinorType.DATE) {
-      return stat;
-    } else {
-      IntStatistics dateStat = (IntStatistics) stat;
-      LongStatistics dateMLS = new LongStatistics();
-      if (!dateStat.isEmpty()) {
-        dateMLS.setMinMax(convertToDrillDateValue(dateStat.getMin()), convertToDrillDateValue(dateStat.getMax()));
-        dateMLS.setNumNulls(dateStat.getNumNulls());
-      }
-
-      return dateMLS;
-    }
-  }
-
-  private static long convertToDrillDateValue(int dateValue) {
-    long  dateInMillis = DateTimeUtils.fromJulianDay(dateValue - ParquetOutputRecordWriter.JULIAN_DAY_EPOC - 0.5);
-//    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
-//    // Apply the same shift as in ParquetOutputRecordWriter.java for data value.
-//    final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
-//    return intValue;
-    return dateInMillis;
-
-  }
+//  public static boolean evalFilter2(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext, Map<String, String> implicitColValues) {
+//    // map from column name to SchemaPath
+//    final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();
+//    // map from column name to ColumnDescriptor
+//    CaseInsensitiveMap<ColumnDescriptor> columnDescMap = CaseInsensitiveMap.newHashMap();
+//    // map from column name to ColumnChunkMetaData
+//    final CaseInsensitiveMap<ColumnChunkMetaData> columnChkMetaMap = CaseInsensitiveMap.newHashMap();
+//    // map from column name to MajorType
+//    final CaseInsensitiveMap<TypeProtos.MajorType> columnTypeMap = CaseInsensitiveMap.newHashMap();
+//    // map from column name to SchemaElement
+//    final CaseInsensitiveMap<SchemaElement> schemaElementMap = CaseInsensitiveMap.newHashMap();
+//    // map from column name to column statistics.
+//    CaseInsensitiveMap<Statistics> statMap = CaseInsensitiveMap.newHashMap();
+//
+//
+//    final FileMetaData fileMetaData = new ParquetMetadataConverter().toParquetMetadata(ParquetFileWriter.CURRENT_VERSION, footer);
+//
+//    // figure out the set of columns referenced in expression.
+//    final Set<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
+//    for (final SchemaPath path : schemaPathsInExpr) {
+//      columnInExprMap.put(path.getRootSegment().getPath(), path);
+//    }
+//
+//    for (final ColumnDescriptor column : footer.getFileMetaData().getSchema().getColumns()) {
+//      if (columnInExprMap.containsKey(column.getPath()[0])) {
+//        columnDescMap.put(column.getPath()[0], column);
+//      }
+//    }
+//
+//    for (final SchemaElement se : fileMetaData.getSchema()) {
+//      if (columnInExprMap.containsKey(se.getName())) {
+//        schemaElementMap.put(se.getName(), se);
+//      }
+//    }
+//
+//    final long rowCount = footer.getBlocks().get(rowGroupIndex).getRowCount();
+//    for (final ColumnChunkMetaData colMetaData: footer.getBlocks().get(rowGroupIndex).getColumns()) {
+//
+//      if (rowCount != colMetaData.getValueCount()) {
+//        logger.warn("rowCount : {} for rowGroup {} is different from column {}'s valueCount : {}",
+//            rowCount, rowGroupIndex, colMetaData.getPath().toDotString(), colMetaData.getValueCount());
+//        return false;
+//      }
+//
+//      if (columnInExprMap.containsKey(colMetaData.getPath().toDotString())) {
+//        columnChkMetaMap.put(colMetaData.getPath().toDotString(), colMetaData);
+//      }
+//    }
+//
+//    for (final String path : columnInExprMap.keySet()) {
+//      if (columnDescMap.containsKey(path) && schemaElementMap.containsKey(path) && columnChkMetaMap.containsKey(path)) {
+//        ColumnDescriptor columnDesc =  columnDescMap.get(path);
+//        SchemaElement se = schemaElementMap.get(path);
+//        ColumnChunkMetaData metaData = columnChkMetaMap.get(path);
+//
+//        TypeProtos.MajorType type = ParquetToDrillTypeConverter.toMajorType(columnDesc.getType(), se.getType_length(),
+//            getDataMode(columnDesc), se, options);
+//
+//        columnTypeMap.put(path, type);
+//
+//        if (metaData != null) {
+//          Statistics stat = convertStatIfNecessary(metaData.getStatistics(), type.getMinorType());
+//          statMap.put(path, stat);
+//        }
+//      } else if (implicitColValues.containsKey(path)) {
+//        columnTypeMap.put(path, Types.required(TypeProtos.MinorType.VARCHAR)); // implicit columns "dir0", "filename", etc.
+//        Statistics stat = new BinaryStatistics();
+//        stat.setNumNulls(0);
+//        byte[] val = implicitColValues.get(path).getBytes();
+//        stat.setMinMaxFromBytes(val, val);
+//        statMap.put(path, stat);
+//      }
+//    }
+//
+//    ErrorCollector errorCollector = new ErrorCollectorImpl();
+//    LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(
+//        expr, columnTypeMap, errorCollector, fragmentContext.getFunctionRegistry());
+//
+//    if (errorCollector.hasErrors()) {
+//      logger.error("{} error(s) encountered when materialize filter expression : {}",
+//          errorCollector.getErrorCount(), errorCollector.toErrorString());
+//      return false;
+//    }
+//    logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
+//
+//    Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
+//    ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(
+//        materializedFilter, constantBoundaries, fragmentContext);
+//
+//    boolean canDrop = false;
+//    if (parquetPredicate != null) {
+//      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(statMap, rowCount);
+//      canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
+//    }
+//    logger.debug(" canDrop {} ", canDrop);
+//    return canDrop;
+//  }
+//
+//  private static TypeProtos.DataMode getDataMode(ColumnDescriptor column) {
+//    if (column.getMaxRepetitionLevel() > 0 ) {
+//      return TypeProtos.DataMode.REPEATED;
+//    } else if (column.getMaxDefinitionLevel() == 0) {
+//      return TypeProtos.DataMode.REQUIRED;
+//    } else {
+//      return TypeProtos.DataMode.OPTIONAL;
+//    }
+//  }
+//
+//  private static Statistics convertStatIfNecessary(Statistics stat, TypeProtos.MinorType type) {
+//    if (type != TypeProtos.MinorType.DATE) {
+//      return stat;
+//    } else {
+//      IntStatistics dateStat = (IntStatistics) stat;
+//      LongStatistics dateMLS = new LongStatistics();
+//      if (!dateStat.isEmpty()) {
+//        dateMLS.setMinMax(convertToDrillDateValue(dateStat.getMin()), convertToDrillDateValue(dateStat.getMax()));
+//        dateMLS.setNumNulls(dateStat.getNumNulls());
+//      }
+//
+//      return dateMLS;
+//    }
+//  }
+//
+//  private static long convertToDrillDateValue(int dateValue) {
+//    long  dateInMillis = DateTimeUtils.fromJulianDay(dateValue - ParquetOutputRecordWriter.JULIAN_DAY_EPOC - 0.5);
+////    // Specific for date column created by Drill CTAS prior fix for DRILL-4203.
+////    // Apply the same shift as in ParquetOutputRecordWriter.java for data value.
+////    final int intValue = (int) (DateTimeUtils.toJulianDayNumber(dateInMillis) + JULIAN_DAY_EPOC);
+////    return intValue;
+//    return dateInMillis;
+//
+//  }
 
   /**
    * Search through a LogicalExpression, finding all internal schema path references and returning them in a set.

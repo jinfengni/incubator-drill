@@ -92,6 +92,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
 import org.apache.drill.exec.util.DecimalUtility;
 
 public class ExpressionTreeMaterializer {
@@ -119,7 +120,7 @@ public class ExpressionTreeMaterializer {
     return materialize(expr, batch, errorCollector, functionLookupContext, allowComplexWriterExpr, false);
   }
 
-  public static LogicalExpression materializeFilterExpr(LogicalExpression expr, Map<String, MajorType> fieldTypes, ErrorCollector errorCollector, FunctionLookupContext functionLookupContext) {
+  public static LogicalExpression materializeFilterExpr(LogicalExpression expr, Map<SchemaPath, ColumnStatistics> fieldTypes, ErrorCollector errorCollector, FunctionLookupContext functionLookupContext) {
     final FilterMaterializeVisitor filterMaterializeVisitor = new FilterMaterializeVisitor(fieldTypes, errorCollector);
     LogicalExpression out =  expr.accept(filterMaterializeVisitor, functionLookupContext);
     return out;
@@ -246,21 +247,23 @@ public class ExpressionTreeMaterializer {
   }
 
   private static class FilterMaterializeVisitor extends AbstractMaterializeVisitor {
-    private final Map<String, MajorType> types;
+    private final Map<SchemaPath, ColumnStatistics> stats;
 
-    public FilterMaterializeVisitor(Map<String, MajorType> types, ErrorCollector errorCollector) {
+    public FilterMaterializeVisitor(Map<SchemaPath, ColumnStatistics> stats, ErrorCollector errorCollector) {
       super(errorCollector, false, false);
-      this.types = types;
+      this.stats = stats;
     }
 
     @Override
     public LogicalExpression visitSchemaPath(SchemaPath path, FunctionLookupContext functionLookupContext) {
-      MajorType type = types.get(path.getRootSegment().getPath());
+      MajorType type = null;
+
+      if (stats.containsKey(path)) {
+        type = stats.get(path).getMajorType();
+      }
 
       if (type != null) {
         return new TypedFieldExpr(path, type);
-//      } else if (path.getRootSegment().getPath().matches("dir[0-9]")) {
-//        return new TypedFieldExpr(path, Types.required(MinorType.VARCHAR));
       } else {
         logger.warn("Unable to find value vector of path {}, returning null-int instance.", path);
         return new TypedFieldExpr(path, Types.optional(MinorType.INT));

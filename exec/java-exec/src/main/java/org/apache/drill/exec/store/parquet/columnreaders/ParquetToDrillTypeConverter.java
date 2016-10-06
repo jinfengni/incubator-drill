@@ -31,18 +31,18 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class ParquetToDrillTypeConverter {
 
-  private static TypeProtos.MinorType getDecimalType(SchemaElement schemaElement) {
-    return getDecimalType(schemaElement.getPrecision());
-  }
+//  private static TypeProtos.MinorType getDecimalType(SchemaElement schemaElement) {
+//    return getDecimalType(schemaElement.getPrecision());
+//  }
 
   private static TypeProtos.MinorType getDecimalType(int precision) {
     return precision <= 28 ? TypeProtos.MinorType.DECIMAL28SPARSE : MinorType.DECIMAL38SPARSE;
   }
 
-  private static TypeProtos.MinorType getMinorType(PrimitiveType.PrimitiveTypeName primitiveTypeName, int length,
-      SchemaElement schemaElement, OptionManager options) {
-    return getMinorType(primitiveTypeName, length, schemaElement.getConverted_type(), schemaElement.getPrecision(), schemaElement.getScale(), options);
-  }
+//  private static TypeProtos.MinorType getMinorType(PrimitiveType.PrimitiveTypeName primitiveTypeName, int length,
+//      SchemaElement schemaElement, OptionManager options) {
+//    return getMinorType(primitiveTypeName, length, schemaElement.getConverted_type(), schemaElement.getPrecision(), schemaElement.getScale(), options);
+//  }
 
   private static TypeProtos.MinorType getMinorType(PrimitiveType.PrimitiveTypeName primitiveTypeName, int length,
                                                    ConvertedType convertedType, int precision, int scale,
@@ -122,11 +122,24 @@ public class ParquetToDrillTypeConverter {
   public static TypeProtos.MajorType toMajorType(PrimitiveType.PrimitiveTypeName primitiveTypeName, int length,
                                           TypeProtos.DataMode mode, SchemaElement schemaElement,
                                           OptionManager options) {
-    MinorType minorType = getMinorType(primitiveTypeName, length, schemaElement, options);
+    return toMajorType(primitiveTypeName, length, mode, schemaElement.getConverted_type(), schemaElement.getPrecision(), schemaElement.getScale(), options);
+//    MinorType minorType = getMinorType(primitiveTypeName, length, schemaElement, options);
+//    TypeProtos.MajorType.Builder typeBuilder = TypeProtos.MajorType.newBuilder().setMinorType(minorType).setMode(mode);
+//
+//    if (CoreDecimalUtility.isDecimalType(minorType)) {
+//      typeBuilder.setPrecision(schemaElement.getPrecision()).setScale(schemaElement.getScale());
+//    }
+//    return typeBuilder.build();
+  }
+
+  public static TypeProtos.MajorType toMajorType(PrimitiveType.PrimitiveTypeName primitiveTypeName, int length,
+      TypeProtos.DataMode mode, ConvertedType convertedType, int precision, int scale,
+      OptionManager options) {
+    MinorType minorType = getMinorType(primitiveTypeName, length, convertedType, precision, scale, options);
     TypeProtos.MajorType.Builder typeBuilder = TypeProtos.MajorType.newBuilder().setMinorType(minorType).setMode(mode);
 
     if (CoreDecimalUtility.isDecimalType(minorType)) {
-      typeBuilder.setPrecision(schemaElement.getPrecision()).setScale(schemaElement.getScale());
+      typeBuilder.setPrecision(precision).setScale(scale);
     }
     return typeBuilder.build();
   }

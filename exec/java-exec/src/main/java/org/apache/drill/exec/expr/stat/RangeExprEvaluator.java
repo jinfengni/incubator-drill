@@ -20,6 +20,7 @@ package org.apache.drill.exec.expr.stat;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.fn.FuncHolder;
@@ -29,13 +30,11 @@ import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
 import org.apache.drill.exec.expr.fn.interpreter.InterpreterEvaluator;
 import org.apache.drill.exec.expr.holders.BigIntHolder;
-import org.apache.drill.exec.expr.holders.DateHolder;
 import org.apache.drill.exec.expr.holders.Float4Holder;
 import org.apache.drill.exec.expr.holders.Float8Holder;
 import org.apache.drill.exec.expr.holders.IntHolder;
 import org.apache.drill.exec.expr.holders.ValueHolder;
-import org.apache.drill.exec.ops.UdfUtilities;
-import org.apache.drill.exec.store.parquet.ParquetFilterBuilder;
+import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
 import org.apache.drill.exec.vector.ValueHolderHelper;
 import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.FloatStatistics;
@@ -53,10 +52,10 @@ import java.util.Set;
 public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, RuntimeException> {
   static final Logger logger = LoggerFactory.getLogger(RangeExprEvaluator.class);
 
-  private final Map<String, Statistics> columnStatMap;
+  private final Map<SchemaPath, ColumnStatistics> columnStatMap;
   private final long rowCount;
 
-  public RangeExprEvaluator(final Map<String, Statistics> columnStatMap, long rowCount) {
+  public RangeExprEvaluator(final Map<SchemaPath, ColumnStatistics> columnStatMap, long rowCount) {
     this.columnStatMap = columnStatMap;
     this.rowCount = rowCount;
   }
@@ -69,7 +68,10 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
   public Statistics visitUnknown(LogicalExpression e, Void value) throws RuntimeException {
     if (e instanceof TypedFieldExpr) {
       TypedFieldExpr fieldExpr = (TypedFieldExpr) e;
-      return columnStatMap.get(fieldExpr.getName());
+      final ColumnStatistics columnStatistics = columnStatMap.get(fieldExpr.getPath());
+      if (columnStatistics != null) {
+        return columnStatistics.getStatistics();
+      }
     }
     return null;
   }

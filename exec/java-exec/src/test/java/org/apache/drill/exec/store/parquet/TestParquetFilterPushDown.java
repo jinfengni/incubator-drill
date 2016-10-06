@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.hadoop.hdfs.TestBlockStoragePolicy.conf;
 
-public class TestParquetFilterPushDown extends BaseTestQuery{
+public class TestParquetFilterPushDown extends BaseTestQuery {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestParquetFilterPushDown.class);
 
   private static final String WORKING_PATH = TestTools.getWorkingPath();
