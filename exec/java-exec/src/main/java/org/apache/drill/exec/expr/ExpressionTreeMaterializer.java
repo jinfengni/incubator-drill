@@ -266,7 +266,7 @@ public class ExpressionTreeMaterializer {
         return new TypedFieldExpr(path, type);
       } else {
         logger.warn("Unable to find value vector of path {}, returning null-int instance.", path);
-        return new TypedFieldExpr(path, Types.optional(MinorType.INT));
+        return new TypedFieldExpr(path, Types.OPTIONAL_INT);
         // return NullExpression.INSTANCE;
       }
     }

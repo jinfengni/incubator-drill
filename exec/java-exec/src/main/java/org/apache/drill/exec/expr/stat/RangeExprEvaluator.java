@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.expr.stat;
 
+import com.google.common.base.Preconditions;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
@@ -26,6 +27,7 @@ import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.expression.fn.FuncHolder;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
 import org.apache.drill.exec.expr.fn.interpreter.InterpreterEvaluator;
@@ -71,6 +73,12 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
       final ColumnStatistics columnStatistics = columnStatMap.get(fieldExpr.getPath());
       if (columnStatistics != null) {
         return columnStatistics.getStatistics();
+      } else {
+        // field does not exist.
+        Preconditions.checkArgument(fieldExpr.getMajorType().equals(Types.OPTIONAL_INT));
+        IntStatistics intStatistics = new IntStatistics();
+        intStatistics.setNumNulls(rowCount); // all values are nulls
+        return intStatistics;
       }
     }
     return null;

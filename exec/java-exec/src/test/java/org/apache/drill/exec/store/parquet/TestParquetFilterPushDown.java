@@ -74,7 +74,11 @@ public class TestParquetFilterPushDown extends BaseTestQuery {
     final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
     ParquetMetadata footer = getParquetMetaData(filePath);
 
-    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = -110.0", true);
+//    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = -110.0", true);
+//    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol = 100", true);
+//    testParquetRowGroupFilterEval(footer, "nonExistCol = 100 and intCol > 50", true);
+//    testParquetRowGroupFilterEval(footer, "intCol > 100 or nonExistCol = 100", true);
+
   }
 
     @Test
@@ -115,15 +119,19 @@ public class TestParquetFilterPushDown extends BaseTestQuery {
     testParquetRowGroupFilterEval(footer, "intCol = 150 or intCol = 160", true);
     testParquetRowGroupFilterEval(footer, "intCol = 50 or intCol = 160", false);
 
-    //"nonExistCol" does not exist in the table.
+    //"nonExistCol" does not exist in the table. "AND" with a filter on exist column
     testParquetRowGroupFilterEval(footer, "intCol > 100 and nonExistCol = 100", true);
-    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol = 100", false); // TODO : should be true since nonExistCol = 100 -> Unknown -> could drop.
-//
+    testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol = 100", true); // since nonExistCol = 100 -> Unknown -> could drop.
+    testParquetRowGroupFilterEval(footer, "nonExistCol = 100 and intCol > 50", true); // since nonExistCol = 100 -> Unknown -> could drop.
     testParquetRowGroupFilterEval(footer, "intCol > 100 and nonExistCol < 'abc'", true);
+    testParquetRowGroupFilterEval(footer, "nonExistCol < 'abc' and intCol > 100", true); // nonExistCol < 'abc' hit NumberException and is ignored, but intCol >100 will say "drop".
     testParquetRowGroupFilterEval(footer, "intCol > 50 and nonExistCol < 'abc'", false); // because nonExistCol < 'abc' hit NumberException and is ignored.
 
-    testParquetRowGroupFilterEval(footer, "intCol > 100 or nonExistCol = 100", false); // TODO: should be true
-    testParquetRowGroupFilterEval(footer, "intCol > 50 or nonExistCol < 200", false);
+    //"nonExistCol" does not exist in the table. "OR" with a filter on exist column
+    testParquetRowGroupFilterEval(footer, "intCol > 100 or nonExistCol = 100", true); // nonExistCol = 100 -> could drop.
+    testParquetRowGroupFilterEval(footer, "nonExistCol = 100 or intCol > 100", true); // nonExistCol = 100 -> could drop.
+    testParquetRowGroupFilterEval(footer, "intCol > 50 or nonExistCol < 100", false);
+    testParquetRowGroupFilterEval(footer, "nonExistCol < 100 or intCol > 50", false);
 
     // cast function on column side (LHS)
     testParquetRowGroupFilterEval(footer, "cast(intCol as bigint) = 100", false);
