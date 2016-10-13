@@ -137,7 +137,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           final LogicalExpression filterExpr = rowGroupScan.getFilter();
 
           if (filterExpr != null
-              && ! filterExpr.equals(ValueExpressions.BooleanExpression.TRUE)
+              && ! isTrueCondition(filterExpr)
               && ParquetRGFilterEvaluator.evalFilter(filterExpr, footers.get(e.getPath()),
                 e.getRowGroupIndex(), context.getOptions(), context, implicitValues)) {
 //            if (ParquetRGFilterEvaluator.evalFilter(rowGroupScan.getFilter(), footers.get(e.getPath()).getBlocks().get(e.getRowGroupIndex()).getColumns())) {
@@ -178,6 +178,10 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
       readers.add(firstReader);
     }
     return new ScanBatch(rowGroupScan, context, oContext, readers.iterator(), implicitColumns);
+  }
+
+  private boolean isTrueCondition(LogicalExpression filter) {
+    return (filter instanceof ValueExpressions.BooleanExpression && ((ValueExpressions.BooleanExpression) filter).getBoolean());
   }
 
   private static boolean isComplex(ParquetMetadata footer) {

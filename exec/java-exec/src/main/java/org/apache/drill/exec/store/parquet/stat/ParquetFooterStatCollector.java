@@ -39,14 +39,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class ColumnStatCollectorImpl implements ColumnStatCollector {
+public class ParquetFooterStatCollector implements ColumnStatCollector {
 
   private final ParquetMetadata footer;
   private final int rowGroupIndex;
   private final OptionManager options;
   private final Map<String, String> implicitColValues;
 
-  public ColumnStatCollectorImpl(ParquetMetadata footer, int rowGroupIndex, Map<String, String> implicitColValues, OptionManager options) {
+  public ParquetFooterStatCollector(ParquetMetadata footer, int rowGroupIndex, Map<String, String> implicitColValues, OptionManager options) {
     this.footer = footer;
     this.rowGroupIndex = rowGroupIndex;
     this.options = options;
@@ -141,7 +141,7 @@ public class ColumnStatCollectorImpl implements ColumnStatCollector {
     }
   }
 
-  private static Statistics convertStatIfNecessary(Statistics stat, TypeProtos.MinorType type) {
+  public static Statistics convertStatIfNecessary(Statistics stat, TypeProtos.MinorType type) {
     if (type != TypeProtos.MinorType.DATE) {
       return stat;
     } else {

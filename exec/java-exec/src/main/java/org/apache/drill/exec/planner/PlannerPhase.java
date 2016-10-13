@@ -91,6 +91,7 @@ import org.apache.drill.exec.store.StoragePlugin;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
+import org.apache.drill.exec.store.parquet.ParquetPushDownFilter;
 
 public enum PlannerPhase {
   //private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillRuleSets.class);
@@ -337,6 +338,8 @@ public enum PlannerPhase {
             PruneScanRule.getDirFilterOnScan(optimizerRulesContext),
             ParquetPruneScanRule.getFilterOnProjectParquet(optimizerRulesContext),
             ParquetPruneScanRule.getFilterOnScanParquet(optimizerRulesContext),
+            ParquetPushDownFilter.getFilterOnProject(optimizerRulesContext),
+            ParquetPushDownFilter.getFilterOnScan(optimizerRulesContext),
             DrillPushLimitToScanRule.LIMIT_ON_SCAN,
             DrillPushLimitToScanRule.LIMIT_ON_PROJECT
         )

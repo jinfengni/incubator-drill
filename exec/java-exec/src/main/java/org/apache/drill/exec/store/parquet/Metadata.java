@@ -618,6 +618,8 @@ public class Metadata {
     @JsonIgnore public abstract OriginalType getOriginalType(String[] columnName);
 
     @JsonIgnore public abstract ParquetTableMetadataBase clone();
+
+    @JsonIgnore public abstract boolean hasColumnMinMaxBoth();
   }
 
   public static abstract class ParquetFileMetadata {
@@ -715,6 +717,11 @@ public class Metadata {
 
     @JsonIgnore @Override public ParquetTableMetadataBase clone() {
       return new ParquetTableMetadata_v1(files, directories);
+    }
+
+    @Override
+    public boolean hasColumnMinMaxBoth() {
+      return true; // v1 has both min/max set. Null means null (no non-null value in column)
     }
   }
 
@@ -973,6 +980,11 @@ public class Metadata {
 
     @JsonIgnore @Override public ParquetTableMetadataBase clone() {
       return new ParquetTableMetadata_v2(files, directories, columnTypeInfo);
+    }
+
+    @Override
+    public boolean hasColumnMinMaxBoth() {
+      return false;  // v2 only set min/max when they are equal. Otherwise, both of them are null.
     }
   }
 
@@ -1292,6 +1304,11 @@ public class Metadata {
 
     @JsonIgnore @Override public ParquetTableMetadataBase clone() {
       return new ParquetTableMetadata_v3(files, directories, columnTypeInfo);
+    }
+
+    @Override
+    public boolean hasColumnMinMaxBoth() {
+      return true; // v3 has both min/max set. Null means null (no non-null value in column)
     }
   }
 

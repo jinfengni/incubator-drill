@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.avro.generic.GenericData;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.ExpressionStringBuilder;
@@ -37,6 +38,9 @@ import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.ops.OptimizerRulesContext;
+import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.physical.EndpointAffinity;
 import org.apache.drill.exec.physical.PhysicalOperatorSetupException;
 import org.apache.drill.exec.physical.base.AbstractFileGroupScan;
@@ -46,6 +50,8 @@ import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.base.ScanStats;
 import org.apache.drill.exec.physical.base.ScanStats.GroupScanProperty;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.server.options.OptionManager;
+import org.apache.drill.exec.store.ImplicitColumnExplorer;
 import org.apache.drill.exec.store.ParquetOutputRecordWriter;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
@@ -60,6 +66,8 @@ import org.apache.drill.exec.store.parquet.Metadata.ColumnMetadata;
 import org.apache.drill.exec.store.parquet.Metadata.ParquetFileMetadata;
 import org.apache.drill.exec.store.parquet.Metadata.ParquetTableMetadataBase;
 import org.apache.drill.exec.store.parquet.Metadata.RowGroupMetadata;
+import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
+import org.apache.drill.exec.store.parquet.stat.ParquetMetaStatCollector;
 import org.apache.drill.exec.store.schedule.AffinityCreator;
 import org.apache.drill.exec.store.schedule.AssignmentCreator;
 import org.apache.drill.exec.store.schedule.CompleteWork;
@@ -232,7 +240,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     this.rowGroupInfos = that.rowGroupInfos == null ? null : Lists.newArrayList(that.rowGroupInfos);
     this.selectionRoot = that.selectionRoot;
     this.columnValueCounts = that.columnValueCounts == null ? null : new HashMap<>(that.columnValueCounts);
-    this.columnTypeMap = that.columnTypeMap == null ? null : new HashMap<>(that.columnTypeMap);
+    this.partitionColTypeMap = that.partitionColTypeMap == null ? null : new HashMap<>(that.partitionColTypeMap);
     this.partitionValueMap = that.partitionValueMap == null ? null : new HashMap<>(that.partitionValueMap);
     this.fileSet = that.fileSet == null ? null : new HashSet<>(that.fileSet);
     this.usedMetadataCache = that.usedMetadataCache;
@@ -308,7 +316,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
   private Set<String> fileSet;
 
   @JsonIgnore
-  private Map<SchemaPath, MajorType> columnTypeMap = Maps.newHashMap();
+  // only for partition columns : value is unique for each partition
+  private Map<SchemaPath, MajorType> partitionColTypeMap = Maps.newHashMap();
 
   /**
    * When reading the very first footer, any column is a potential partition column. So for the first footer, we check
@@ -330,21 +339,21 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     }
     if (first) {
       if (hasSingleValue(columnMetadata)) {
-        columnTypeMap.put(schemaPath, getType(primitiveType, originalType));
+        partitionColTypeMap.put(schemaPath, getType(primitiveType, originalType));
         return true;
       } else {
         return false;
       }
     } else {
-      if (!columnTypeMap.keySet().contains(schemaPath)) {
+      if (!partitionColTypeMap.keySet().contains(schemaPath)) {
         return false;
       } else {
         if (!hasSingleValue(columnMetadata)) {
-          columnTypeMap.remove(schemaPath);
+          partitionColTypeMap.remove(schemaPath);
           return false;
         }
-        if (!getType(primitiveType, originalType).equals(columnTypeMap.get(schemaPath))) {
-          columnTypeMap.remove(schemaPath);
+        if (!getType(primitiveType, originalType).equals(partitionColTypeMap.get(schemaPath))) {
+          partitionColTypeMap.remove(schemaPath);
           return false;
         }
       }
@@ -352,7 +361,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     return true;
   }
 
-  private MajorType getType(PrimitiveTypeName type, OriginalType originalType) {
+  public static MajorType getType(PrimitiveTypeName type, OriginalType originalType) {
     if (originalType != null) {
       switch (originalType) {
         case DECIMAL:
@@ -425,7 +434,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
   }
 
   public MajorType getTypeForColumn(SchemaPath schemaPath) {
-    return columnTypeMap.get(schemaPath);
+    return partitionColTypeMap.get(schemaPath);
   }
 
   private Map<String, Map<SchemaPath, Object>> partitionValueMap = Maps.newHashMap();
@@ -791,13 +800,13 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
             Object currentValue = column.getMaxValue();
             if (value != null) {
               if (value != currentValue) {
-                columnTypeMap.remove(schemaPath);
+                partitionColTypeMap.remove(schemaPath);
               }
             } else {
               map.put(schemaPath, currentValue);
             }
           } else {
-            columnTypeMap.remove(schemaPath);
+            partitionColTypeMap.remove(schemaPath);
           }
         }
         this.rowCount += rowGroup.getRowCount();
@@ -996,6 +1005,63 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
   @Override
   public List<SchemaPath> getPartitionColumns() {
-    return new ArrayList<>(columnTypeMap.keySet());
+    return new ArrayList<>(partitionColTypeMap.keySet());
   }
+
+  public GroupScan applyFilter(LogicalExpression filterExpr, UdfUtilities udfUtilities, FunctionImplementationRegistry functionImplementationRegistry, OptionManager optionManager) {
+    if (fileSet.size() == 1) {
+      return null; // no pruning for 1 single parquet file.
+    }
+
+    final Set<SchemaPath> schemaPathsInExpr = filterExpr.accept(new ParquetRGFilterEvaluator.FieldReferenceFinder(), null);
+
+    final List<RowGroupMetadata> qualifiedRGs = new ArrayList<>(parquetTableMetadata.getFiles().size());
+    Set<String> fileNames = Sets.newHashSet(); // HashSet keeps a fileName unique.
+
+    for (ParquetFileMetadata file : parquetTableMetadata.getFiles()) {
+      final ImplicitColumnExplorer columnExplorer = new ImplicitColumnExplorer(optionManager, this.columns);
+      Map<String, String> implicitColValues = columnExplorer.populateImplicitColumns(file.getPath(), selectionRoot);
+
+      for (RowGroupMetadata rowGroup : file.getRowGroups()) {
+        ParquetMetaStatCollector statCollector = new ParquetMetaStatCollector(
+            parquetTableMetadata,
+            rowGroup.getColumns(),
+            rowGroup.getRowCount(),
+            implicitColValues);
+
+        Map<SchemaPath, ColumnStatistics> columnStatisticsMap = statCollector.collectColStat(schemaPathsInExpr);
+        long rowCount = rowGroup.getRowCount();
+        if (ParquetRGFilterEvaluator.canDrop(
+            filterExpr,
+            columnStatisticsMap,
+            rowCount,
+            udfUtilities,
+            functionImplementationRegistry)) {
+          continue;
+        }
+
+        qualifiedRGs.add(rowGroup);
+        fileNames.add(file.getPath());  // TODO : optimize when 1 file contains m row groups.
+      }
+    }
+
+    if (fileNames.size() == fileSet.size() ) {
+      // There is no reduction of rowGroups. Return the original groupScan.
+      logger.debug("applyFilter does not have any pruning!");
+      return null;
+    } else if (fileNames.size() == 0) {
+      fileNames.add(fileSet.iterator().next());
+    }
+
+    try {
+      FileSelection newSelection = new FileSelection(null, Lists.newArrayList(fileNames), getSelectionRoot(), cacheFileRoot, false);
+
+      logger.info("applyFilter {} reduce parquet file # from {} to {}", ExpressionStringBuilder.toString(filterExpr), fileSet.size(), fileNames.size());
+      return this.clone(newSelection);
+    } catch (IOException e) {
+      logger.warn("Could not apply filter prune due to Exception : {}", e);
+      return null;
+    }
+  }
+
 }
