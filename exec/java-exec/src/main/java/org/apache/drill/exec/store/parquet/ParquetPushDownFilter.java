@@ -15,6 +15,7 @@
  */
 package org.apache.drill.exec.store.parquet;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptRuleCall;
@@ -35,8 +36,13 @@ import org.apache.drill.exec.planner.logical.DrillScanRel;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
 import org.apache.drill.exec.planner.physical.PrelUtil;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
+import org.apache.hadoop.util.StopWatch;
+
+import java.util.concurrent.TimeUnit;
 
 public abstract class ParquetPushDownFilter extends StoragePluginOptimizerRule {
+
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ParquetPushDownFilter.class);
 
   public static RelOptRule getFilterOnProject(OptimizerRulesContext optimizerRulesContext) {
     return new ParquetPushDownFilter(
@@ -124,7 +130,9 @@ public abstract class ParquetPushDownFilter extends StoragePluginOptimizerRule {
     LogicalExpression conditionExp = DrillOptiq.toDrill(
         new DrillParseContext(PrelUtil.getPlannerSettings(call.getPlanner())), scan, condition);
 
+    Stopwatch timer = Stopwatch.createStarted();
     final GroupScan newGroupScan = groupScan.applyFilter(conditionExp,optimizerContext, optimizerContext.getFunctionRegistry(), optimizerContext.getPlannerSettings().getOptions());
+    logger.warn("Took {} ms to apply filter on parquet row groups. ", timer.elapsed(TimeUnit.MILLISECONDS));
 
     if (newGroupScan == null ) {
       return;
