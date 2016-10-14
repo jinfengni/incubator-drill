@@ -925,9 +925,9 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
         + ", numFiles=" + getEntries().size()
         + ", usedMetadataFile=" + usedMetadataCache
         + filterStr
+        + cacheFileString
         + ", columns=" + columns
-        + "]"
-        + cacheFileString;
+        + "]";
   }
 
   @Override
