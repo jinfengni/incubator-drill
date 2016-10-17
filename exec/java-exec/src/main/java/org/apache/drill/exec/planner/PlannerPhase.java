@@ -155,6 +155,12 @@ public enum PlannerPhase {
     }
   },
 
+  PHYSICAL_PARTITION_PRUNING("Physical Partition Prune Planning") {
+    public RuleSet getRules(OptimizerRulesContext context, Collection<StoragePlugin> plugins) {
+      return PlannerPhase.mergedRuleSets(getPhysicalPruneScanRules(context), getStorageRules(context, plugins, this));
+    }
+  },
+
   DIRECTORY_PRUNING("Directory Prune Planning") {
     public RuleSet getRules(OptimizerRulesContext context, Collection<StoragePlugin> plugins) {
       return PlannerPhase.mergedRuleSets(getDirPruneScanRules(context), getStorageRules(context, plugins, this));
@@ -342,6 +348,20 @@ public enum PlannerPhase {
             ParquetPushDownFilter.getFilterOnScan(optimizerRulesContext),
             DrillPushLimitToScanRule.LIMIT_ON_SCAN,
             DrillPushLimitToScanRule.LIMIT_ON_PROJECT
+        )
+        .build();
+
+    return RuleSets.ofList(pruneRules);
+  }
+
+  /**
+   *   Get an immutable list of partition pruning rules that will be used in logical planning.
+   */
+  static RuleSet getPhysicalPruneScanRules(OptimizerRulesContext optimizerRulesContext) {
+    final ImmutableSet<RelOptRule> pruneRules = ImmutableSet.<RelOptRule>builder()
+        .add(
+            ParquetPushDownFilter.getFilterOnProject(optimizerRulesContext),
+            ParquetPushDownFilter.getFilterOnScan(optimizerRulesContext)
         )
         .build();
 
