@@ -22,11 +22,14 @@ import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.plan.RelOptRuleOperand;
 import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.Filter;
+import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rex.RexNode;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.exec.ops.OptimizerRulesContext;
 import org.apache.drill.exec.physical.base.GroupScan;
+import org.apache.drill.exec.planner.logical.DrillFilterPrunedRel;
 import org.apache.drill.exec.planner.logical.DrillFilterRel;
 import org.apache.drill.exec.planner.logical.DrillOptiq;
 import org.apache.drill.exec.planner.logical.DrillParseContext;
@@ -146,10 +149,6 @@ public abstract class ParquetPushDownFilter extends StoragePluginOptimizerRule {
         scan.getColumns(),
         scan.partitionFilterPushdown());
 
-//        sca
-//        DrillScanRel.create(scan, filter.getTraitSet(),
-//        newGroupScan, scan.getRowType());
-
     RelNode inputRel = newScanRel;
 
     if (project != null) {
@@ -158,7 +157,9 @@ public abstract class ParquetPushDownFilter extends StoragePluginOptimizerRule {
 
     // Normally we could eliminate the filter if all expressions were pushed down;
     // however, the Parquet filter implementation is type specific (whereas Drill is not)
-    final RelNode newFilter = filter.copy(filter.getTraitSet(), ImmutableList.of(inputRel));
+//    final RelNode newFilter = filter.copy(filter.getTraitSet(), inputRel, filter.getCondition());
+
+    final DrillFilterRel newFilter = new DrillFilterPrunedRel(filter.getCluster(), filter.getTraitSet(), inputRel, filter.getCondition());
     call.transformTo(newFilter);
   }
 }
