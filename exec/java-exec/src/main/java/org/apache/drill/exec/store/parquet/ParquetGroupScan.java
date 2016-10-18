@@ -29,6 +29,8 @@ import java.util.Set;
 import org.apache.avro.generic.GenericData;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
+import org.apache.drill.common.expression.ErrorCollector;
+import org.apache.drill.common.expression.ErrorCollectorImpl;
 import org.apache.drill.common.expression.ExpressionStringBuilder;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
@@ -38,7 +40,10 @@ import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.compile.sig.ConstantExpressionIdentifier;
+import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.expr.stat.ParquetFilterPredicate;
 import org.apache.drill.exec.ops.OptimizerRulesContext;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.physical.EndpointAffinity;
@@ -1018,6 +1023,8 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     final List<RowGroupMetadata> qualifiedRGs = new ArrayList<>(parquetTableMetadata.getFiles().size());
     Set<String> fileNames = Sets.newHashSet(); // HashSet keeps a fileName unique.
 
+    ParquetFilterPredicate filterPredicate = null;
+
     for (ParquetFileMetadata file : parquetTableMetadata.getFiles()) {
       final ImplicitColumnExplorer columnExplorer = new ImplicitColumnExplorer(optionManager, this.columns);
       Map<String, String> implicitColValues = columnExplorer.populateImplicitColumns(file.getPath(), selectionRoot);
@@ -1031,12 +1038,29 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
         Map<SchemaPath, ColumnStatistics> columnStatisticsMap = statCollector.collectColStat(schemaPathsInExpr);
         long rowCount = rowGroup.getRowCount();
-        if (ParquetRGFilterEvaluator.canDrop(
-            filterExpr,
-            columnStatisticsMap,
-            rowCount,
-            udfUtilities,
-            functionImplementationRegistry)) {
+
+        if (filterPredicate == null) {
+          ErrorCollector errorCollector = new ErrorCollectorImpl();
+          LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(
+              filterExpr, columnStatisticsMap, errorCollector, functionImplementationRegistry);
+
+          if (errorCollector.hasErrors()) {
+            logger.error("{} error(s) encountered when materialize filter expression : {}",
+                errorCollector.getErrorCount(), errorCollector.toErrorString());
+            return null;
+          }
+          //    logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
+
+          Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
+          filterPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(
+              materializedFilter, constantBoundaries, udfUtilities);
+
+          if (filterPredicate == null) {
+            return null;
+          }
+        }
+
+        if (ParquetRGFilterEvaluator.canDrop(filterPredicate, columnStatisticsMap, rowCount)) {
           continue;
         }
 

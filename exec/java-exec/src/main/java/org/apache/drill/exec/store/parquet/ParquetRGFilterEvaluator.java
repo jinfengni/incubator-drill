@@ -20,7 +20,6 @@ package org.apache.drill.exec.store.parquet;
 import com.google.common.collect.Sets;
 import org.apache.drill.common.expression.ErrorCollector;
 import org.apache.drill.common.expression.ErrorCollectorImpl;
-import org.apache.drill.common.expression.ExpressionStringBuilder;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
@@ -33,8 +32,8 @@ import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.parquet.stat.ColumnStatCollector;
-import org.apache.drill.exec.store.parquet.stat.ParquetFooterStatCollector;
 import org.apache.drill.exec.store.parquet.stat.ColumnStatistics;
+import org.apache.drill.exec.store.parquet.stat.ParquetFooterStatCollector;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -96,6 +95,17 @@ public class ParquetRGFilterEvaluator {
 //    return canDrop;
   }
 
+  public static boolean canDrop(ParquetFilterPredicate parquetPredicate, Map<SchemaPath, ColumnStatistics> columnStatisticsMap, long rowCount) {
+    boolean canDrop = false;
+    if (parquetPredicate != null) {
+      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(columnStatisticsMap, rowCount);
+      canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
+    }
+    //    logger.debug(" canDrop {} ", canDrop);
+    return canDrop;
+
+  }
+
   public static boolean canDrop(LogicalExpression expr, Map<SchemaPath, ColumnStatistics> columnStatisticsMap, long rowCount, UdfUtilities udfUtilities, FunctionImplementationRegistry functionImplementationRegistry) {
     ErrorCollector errorCollector = new ErrorCollectorImpl();
     LogicalExpression materializedFilter = ExpressionTreeMaterializer.materializeFilterExpr(
@@ -106,21 +116,14 @@ public class ParquetRGFilterEvaluator {
           errorCollector.getErrorCount(), errorCollector.toErrorString());
       return false;
     }
-    logger.debug("materializedFilter : {}", ExpressionStringBuilder.toString(materializedFilter));
 
     Set<LogicalExpression> constantBoundaries = ConstantExpressionIdentifier.getConstantExpressionSet(materializedFilter);
     ParquetFilterPredicate parquetPredicate = (ParquetFilterPredicate) ParquetFilterBuilder.buildParquetFilterPredicate(
         materializedFilter, constantBoundaries, udfUtilities);
 
-    boolean canDrop = false;
-    if (parquetPredicate != null) {
-      RangeExprEvaluator rangeExprEvaluator = new RangeExprEvaluator(columnStatisticsMap, rowCount);
-      canDrop = parquetPredicate.canDrop(rangeExprEvaluator);
-    }
-    logger.debug(" canDrop {} ", canDrop);
-    return canDrop;
-
+    return canDrop(parquetPredicate, columnStatisticsMap, rowCount);
   }
+
 //  public static boolean evalFilter2(LogicalExpression expr, ParquetMetadata footer, int rowGroupIndex, OptionManager options, FragmentContext fragmentContext, Map<String, String> implicitColValues) {
 //    // map from column name to SchemaPath
 //    final CaseInsensitiveMap<SchemaPath> columnInExprMap = CaseInsensitiveMap.newHashMap();

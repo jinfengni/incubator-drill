@@ -23,6 +23,7 @@ import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.proto.BitControl;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -33,8 +34,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-
-import static org.apache.hadoop.hdfs.TestBlockStoragePolicy.conf;
 
 public class TestParquetFilterPushDown extends BaseTestQuery {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestParquetFilterPushDown.class);
@@ -63,8 +62,8 @@ public class TestParquetFilterPushDown extends BaseTestQuery {
 //      test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate` where  dir0 = 'lineitem' and L_SHIPDATE > date '2998-08-01'");
 //    test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  cast(l_partkey as int) < -1");
     //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate = cast(123456 as date)");
-//    test("select l_partkey from dfs.`/drill/testdata/tpch01/parquet/lineitem` l where l.l_shipdate >= date '1994-08-01' \n"
-//        + "  and l.l_shipdate < date '1994-08-01' + interval '1' month");
+    test("select l_partkey from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate` l where l.l_shipdate >= date '1994-08-01' \n"
+        + "  and l.l_shipdate < date '1994-08-01' + interval '1' month");
   }
 
   @Test
@@ -188,7 +187,8 @@ public class TestParquetFilterPushDown extends BaseTestQuery {
   }
 
   private ParquetMetadata getParquetMetaData(String filePathStr) throws IOException{
-    ParquetMetadata footer = ParquetFileReader.readFooter(conf, new Path(filePathStr));
+    Configuration fsConf = new Configuration();
+    ParquetMetadata footer = ParquetFileReader.readFooter(fsConf, new Path(filePathStr));
     return footer;
   }
 
