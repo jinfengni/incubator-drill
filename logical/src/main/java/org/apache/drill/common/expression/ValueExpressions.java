@@ -59,6 +59,10 @@ public class ValueExpressions {
     return new org.apache.drill.common.expression.ValueExpressions.DateExpression(date.getTimeInMillis());
   }
 
+  public static LogicalExpression getDate(long milliSecond){
+    return new org.apache.drill.common.expression.ValueExpressions.DateExpression(milliSecond);
+  }
+
   public static LogicalExpression getTime(GregorianCalendar time) {
       int millis = time.get(GregorianCalendar.HOUR_OF_DAY) * 60 * 60 * 1000 +
                    time.get(GregorianCalendar.MINUTE) * 60 * 1000 +
@@ -140,6 +144,8 @@ public class ValueExpressions {
 
   public static class BooleanExpression extends ValueExpression<Boolean> {
 
+    public static final BooleanExpression TRUE = new BooleanExpression("true", ExpressionPosition.UNKNOWN);
+    public static final BooleanExpression FALSE = new BooleanExpression("false", ExpressionPosition.UNKNOWN);
 
     public BooleanExpression(String value, ExpressionPosition pos) {
       super(value, pos);
