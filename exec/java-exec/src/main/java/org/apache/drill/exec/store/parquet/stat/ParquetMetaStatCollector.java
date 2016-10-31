@@ -58,10 +58,6 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
 
     for (final Metadata.ColumnMetadata columnMetadata : columnMetadataList) {
       SchemaPath schemaPath = SchemaPath.getCompoundPath(columnMetadata.getName());
-      if (! fields.contains(schemaPath)) {
-        continue; // this filed is not referenced in the expression.
-      }
-
       columnMetadataMap.put(schemaPath, columnMetadata);
     }
 
@@ -76,15 +72,11 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
         final Object max = columnMetadata.getMaxValue();
         final Long numNull = columnMetadata.getNulls();
 
-        if (this.parquetTableMetadata.hasColumnMetadata()) {
-          primitiveType = this.parquetTableMetadata.getPrimitiveType(columnMetadata.getName());
-          originalType = this.parquetTableMetadata.getOriginalType(columnMetadata.getName());
-        } else {
-          primitiveType = columnMetadata.getPrimitiveType();
-          originalType = columnMetadata.getOriginalType();
-        }
+        primitiveType = this.parquetTableMetadata.getPrimitiveType(columnMetadata.getName());
+        originalType = this.parquetTableMetadata.getOriginalType(columnMetadata.getName());
+        final int repetitionLevel = this.parquetTableMetadata.getRepetitionLevel(columnMetadata.getName());
 
-        statMap.put(schemaPath, getStat(min, max, numNull, primitiveType, originalType));
+        statMap.put(schemaPath, getStat(min, max, numNull, primitiveType, originalType, repetitionLevel));
       } else {
         final String columnName = schemaPath.getRootSegment().getPath();
         if (implicitColValues.containsKey(columnName)) {
@@ -102,11 +94,16 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
   }
 
   private ColumnStatistics getStat(Object min, Object max, Long numNull,
-      PrimitiveType.PrimitiveTypeName primitiveType, OriginalType originalType) {
+      PrimitiveType.PrimitiveTypeName primitiveType, OriginalType originalType, int repetitionLevel) {
     Statistics stat = Statistics.getStatsBasedOnType(primitiveType);
     Statistics convertedStat = stat;
 
     TypeProtos.MajorType type = ParquetGroupScan.getType(primitiveType, originalType);
+
+    // Change to repeated if repetitionLevel > 0
+    if (repetitionLevel > 0) {
+      type = TypeProtos.MajorType.newBuilder().setMinorType(type.getMinorType()).setMode(TypeProtos.DataMode.REPEATED).build();
+    }
 
     if (numNull != null) {
       stat.setNumNulls(numNull.longValue());
@@ -114,10 +111,12 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
 
     if (min != null && max != null ) {
       switch (type.getMinorType()) {
-      case INT:
+      case INT :
+      caseTIME:
         ((IntStatistics) stat).setMinMax(((Integer) min).intValue(), ((Integer) max).intValue());
         break;
       case BIGINT:
+      case TIMESTAMP:
         ((LongStatistics) stat).setMinMax(((Long) min).longValue(), ((Long) max).longValue());
         break;
       case FLOAT4:
@@ -132,6 +131,8 @@ public class ParquetMetaStatCollector implements  ColumnStatCollector{
         final long minMS = convertToDrillDateValue(((Integer) min).intValue());
         final long maxMS = convertToDrillDateValue(((Integer) max).intValue());
         ((LongStatistics) convertedStat ).setMinMax(minMS, maxMS);
+        break;
+      default:
       }
     }
 

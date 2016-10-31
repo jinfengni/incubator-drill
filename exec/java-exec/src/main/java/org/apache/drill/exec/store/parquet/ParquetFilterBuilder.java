@@ -34,6 +34,8 @@ import org.apache.drill.exec.expr.holders.DateHolder;
 import org.apache.drill.exec.expr.holders.Float4Holder;
 import org.apache.drill.exec.expr.holders.Float8Holder;
 import org.apache.drill.exec.expr.holders.IntHolder;
+import org.apache.drill.exec.expr.holders.TimeHolder;
+import org.apache.drill.exec.expr.holders.TimeStampHolder;
 import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.expr.stat.ParquetPredicates;
 import org.apache.drill.exec.expr.stat.TypedFieldExpr;
@@ -45,11 +47,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * A visitor which visits a materialized logical expression, and build ParquetFilterPredicate
+ * If a visitXXX method returns null, that means the corresponding filter branch is not qualified for pushdown.
+ */
 public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression, Set<LogicalExpression>, RuntimeException> {
   static final Logger logger = LoggerFactory.getLogger(ParquetFilterBuilder.class);
 
   private final UdfUtilities udfUtilities;
 
+  /**
+   * @param expr materialized filter expression
+   * @param constantBoundaries set of constant expressions
+   * @param udfUtilities
+   */
   public static LogicalExpression buildParquetFilterPredicate(LogicalExpression expr, final Set<LogicalExpression> constantBoundaries, UdfUtilities udfUtilities) {
     final LogicalExpression predicate = expr.accept(new ParquetFilterBuilder(udfUtilities), constantBoundaries);
     return predicate;
@@ -61,8 +72,12 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
 
   @Override
   public LogicalExpression visitUnknown(LogicalExpression e, Set<LogicalExpression> value) {
-    if (e instanceof TypedFieldExpr && ! containsArraySeg(((TypedFieldExpr) e).getPath())) {
-      // Only TypedFieldExpr with simple Path is qualified for parquet filter pushdown (Only simple path may have statistics).
+    if (e instanceof TypedFieldExpr &&
+        ! containsArraySeg(((TypedFieldExpr) e).getPath()) &&
+        e.getMajorType().getMode() != TypeProtos.DataMode.REPEATED) {
+      // A filter is not qualified for push down, if
+      // 1. it contains an array segment : a.b[1], a.b[1].c.d
+      // 2. it's repeated type.
       return e;
     }
 
@@ -96,6 +111,16 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
   @Override
   public LogicalExpression visitDateConstant(ValueExpressions.DateExpression dateExpr, Set<LogicalExpression> value) throws RuntimeException {
     return dateExpr;
+  }
+
+  @Override
+  public LogicalExpression visitTimeStampConstant(ValueExpressions.TimeStampExpression tsExpr, Set<LogicalExpression> value) throws RuntimeException {
+    return tsExpr;
+  }
+
+  @Override
+  public LogicalExpression visitTimeConstant(ValueExpressions.TimeExpression timeExpr, Set<LogicalExpression> value) throws RuntimeException {
+    return timeExpr;
   }
 
   @Override
@@ -152,6 +177,10 @@ public class ParquetFilterBuilder extends AbstractExprVisitor<LogicalExpression,
       return ValueExpressions.getFloat8(((Float8Holder) holder).value);
     case DATE:
       return ValueExpressions.getDate(((DateHolder) holder).value);
+    case TIMESTAMP:
+      return ValueExpressions.getTimeStamp(((TimeStampHolder) holder).value);
+    case TIME:
+      return ValueExpressions.getTime(((TimeHolder) holder).value);
     default:
       return null;
     }

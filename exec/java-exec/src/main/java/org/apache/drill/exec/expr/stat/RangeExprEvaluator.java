@@ -111,6 +111,18 @@ public class RangeExprEvaluator extends AbstractExprVisitor<Statistics, Void, Ru
   }
 
   @Override
+  public Statistics visitTimeStampConstant(ValueExpressions.TimeStampExpression tsExpr, Void value) throws RuntimeException {
+    long tsInMillis = tsExpr.getTimeStamp();
+    return getStatistics(tsInMillis);
+  }
+
+  @Override
+  public Statistics visitTimeConstant(ValueExpressions.TimeExpression timeExpr, Void value) throws RuntimeException {
+    int milliSeconds = timeExpr.getTime();
+    return getStatistics(milliSeconds);
+  }
+
+  @Override
   public Statistics visitFunctionHolderExpression(FunctionHolderExpression holderExpr, Void value) throws RuntimeException {
     FuncHolder funcHolder = holderExpr.getHolder();
 

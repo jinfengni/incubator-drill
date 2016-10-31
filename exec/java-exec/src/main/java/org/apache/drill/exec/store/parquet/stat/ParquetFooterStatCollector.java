@@ -37,6 +37,7 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.joda.time.DateTimeConstants;
 import org.joda.time.DateTimeUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -47,16 +48,22 @@ public class ParquetFooterStatCollector implements ColumnStatCollector {
   private final int rowGroupIndex;
   private final OptionManager options;
   private final Map<String, String> implicitColValues;
+  private final boolean autoCorrectCorruptDates;
 
-  public ParquetFooterStatCollector(ParquetMetadata footer, int rowGroupIndex, Map<String, String> implicitColValues, OptionManager options) {
+  public ParquetFooterStatCollector(ParquetMetadata footer, int rowGroupIndex, Map<String, String> implicitColValues,
+      boolean autoCorrectCorruptDates, OptionManager options) {
     this.footer = footer;
     this.rowGroupIndex = rowGroupIndex;
-    this.options = options;
     this.implicitColValues = implicitColValues;
+    this.autoCorrectCorruptDates = autoCorrectCorruptDates;
+    this.options = options;
   }
 
   @Override
   public Map<SchemaPath, ColumnStatistics> collectColStat(Set<SchemaPath> fields) {
+    ParquetReaderUtility.DateCorruptionStatus containsCorruptDates =
+        ParquetReaderUtility.detectCorruptDates(footer, new ArrayList<>(fields), autoCorrectCorruptDates);
+
     // map from column name to ColumnDescriptor
     Map<SchemaPath, ColumnDescriptor> columnDescMap = new HashMap<>();
 
@@ -108,7 +115,7 @@ public class ParquetFooterStatCollector implements ColumnStatCollector {
 
         Statistics stat = metaData.getStatistics();
         if (type.getMinorType() == TypeProtos.MinorType.DATE) {
-          stat = convertDateStatIfNecessary(metaData.getStatistics(), type.getMinorType(), true);
+          stat = convertDateStatIfNecessary(metaData.getStatistics(), containsCorruptDates);
         }
 
         statMap.put(path, new ColumnStatistics(stat, type));
@@ -138,25 +145,28 @@ public class ParquetFooterStatCollector implements ColumnStatCollector {
     }
   }
 
-  public static Statistics convertDateStatIfNecessary(Statistics stat, TypeProtos.MinorType type, boolean isDateCorrect) {
-    if (type != TypeProtos.MinorType.DATE) {
-      return stat;
-    } else {
-      IntStatistics dateStat = (IntStatistics) stat;
-      LongStatistics dateMLS = new LongStatistics();
-      if (!dateStat.isEmpty()) {
-        dateMLS.setMinMax(convertToDrillDateValue(dateStat.getMin(), isDateCorrect), convertToDrillDateValue(dateStat.getMax(), isDateCorrect));
-        dateMLS.setNumNulls(dateStat.getNumNulls());
-      }
+  public static Statistics convertDateStatIfNecessary(Statistics stat,
+      ParquetReaderUtility.DateCorruptionStatus containsCorruptDates) {
+    IntStatistics dateStat = (IntStatistics) stat;
+    LongStatistics dateMLS = new LongStatistics();
 
-      return dateMLS;
+    boolean isDateCorrect = containsCorruptDates == ParquetReaderUtility.DateCorruptionStatus.META_SHOWS_NO_CORRUPTION;
+
+    // Only do conversion when stat is NOT empty.
+    if (!dateStat.isEmpty()) {
+        dateMLS.setMinMax(
+            convertToDrillDateValue(dateStat.getMin(), isDateCorrect),
+            convertToDrillDateValue(dateStat.getMax(), isDateCorrect));
+        dateMLS.setNumNulls(dateStat.getNumNulls());
     }
+
+    return dateMLS;
+
   }
 
   private static long convertToDrillDateValue(int dateValue, boolean isDateCorrect) {
     // See DRILL-4203 for the background regarding date type corruption issue in Drill CTAS prior to 1.9.0 release.
     if (isDateCorrect) {
-      //    long  dateInMillis = DateTimeUtils.fromJulianDay(dateValue - ParquetOutputRecordWriter.JULIAN_DAY_EPOC - 0.5);
       return dateValue * (long) DateTimeConstants.MILLIS_PER_DAY;
     } else {
       return (dateValue - ParquetReaderUtility.CORRECT_CORRUPT_DATE_SHIFT) * DateTimeConstants.MILLIS_PER_DAY;

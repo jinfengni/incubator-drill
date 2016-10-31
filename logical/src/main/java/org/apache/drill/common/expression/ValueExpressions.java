@@ -72,9 +72,18 @@ public class ValueExpressions {
       return new TimeExpression(millis);
   }
 
+  public static LogicalExpression getTime(int milliSeconds) {
+    return new TimeExpression(milliSeconds);
+  }
+
   public static LogicalExpression getTimeStamp(GregorianCalendar date) {
     return new org.apache.drill.common.expression.ValueExpressions.TimeStampExpression(date.getTimeInMillis());
   }
+
+  public static LogicalExpression getTimeStamp(long milliSeconds) {
+    return new org.apache.drill.common.expression.ValueExpressions.TimeStampExpression(milliSeconds);
+  }
+
   public static LogicalExpression getIntervalYear(int months) {
     return new IntervalYearExpression(months);
   }

@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
+import static org.apache.zookeeper.ZooDefs.OpCode.create;
 import static org.junit.Assert.assertEquals;
 
 public class TestParquetFilterPushDown extends PlanTestBase {
@@ -158,7 +159,68 @@ public class TestParquetFilterPushDown extends PlanTestBase {
   }
 
   @Test
-  public void testDatePredicateAgainstDrillCTASPost1_8WithEval() {
+  public void testDatePredicateAgainstDrillCTAS1_8WithEval() throws Exception {
+    // The parquet file is created on drill 1.8.0 with DRILL CTAS:
+    //   create table dfs.tmp.`dateTblCorrupted/t1` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-01' and date '1992-01-03';
+
+    final String filePath = String.format("%s/parquetFilterPush/dateTblCorrupted/t1/0_0_0.parquet", TEST_RES_PATH);
+    ParquetMetadata footer = getParquetMetaData(filePath);
+
+    testDatePredicateAgainstDrillCTASHelper(footer);
+  }
+
+  @Test
+  public void testDatePredicateAgainstDrillCTASPost1_8WithEval() throws Exception {
+    // The parquet file is created on drill 1.9.0-SNAPSHOT (commit id:03e8f9f3e01c56a9411bb4333e4851c92db6e410) with DRILL CTAS:
+    //   create table dfs.tmp.`dateTbl1_9/t1` as select cast(o_orderdate as date) as o_orderdate from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-01' and date '1992-01-03';
+
+    final String filePath = String.format("%s/parquetFilterPush/dateTbl1_9/t1/0_0_0.parquet", TEST_RES_PATH);
+    ParquetMetadata footer = getParquetMetaData(filePath);
+
+    testDatePredicateAgainstDrillCTASHelper(footer);
+  }
+
+
+  private void testDatePredicateAgainstDrillCTASHelper(ParquetMetadata footer) throws Exception{
+    testParquetRowGroupFilterEval(footer, "o_orderdate = cast('1992-01-01' as date)", false);
+    testParquetRowGroupFilterEval(footer, "o_orderdate = cast('1991-12-31' as date)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_orderdate >= cast('1991-12-31' as date)", false);
+    testParquetRowGroupFilterEval(footer, "o_orderdate >= cast('1992-01-03' as date)", false);
+    testParquetRowGroupFilterEval(footer, "o_orderdate >= cast('1992-01-04' as date)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_orderdate > cast('1992-01-01' as date)", false);
+    testParquetRowGroupFilterEval(footer, "o_orderdate > cast('1992-01-03' as date)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_orderdate <= cast('1992-01-01' as date)", false);
+    testParquetRowGroupFilterEval(footer, "o_orderdate <= cast('1991-12-31' as date)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_orderdate < cast('1992-01-02' as date)", false);
+    testParquetRowGroupFilterEval(footer, "o_orderdate < cast('1992-01-01' as date)", true);
+  }
+
+  @Test
+  public void testTimeStampPredicateWithEval() throws Exception {
+    // Table dateTblCorrupted is created by CTAS in drill 1.8.0.
+    //    create table dfs.tmp.`tsTbl/t1` as select DATE_ADD(cast(o_orderdate as date), INTERVAL '0 10:20:30' DAY TO SECOND) as o_ordertimestamp from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-01' and date '1992-01-03';
+    final String filePath = String.format("%s/parquetFilterPush/tsTbl/t1/0_0_0.parquet", TEST_RES_PATH);
+    ParquetMetadata footer = getParquetMetaData(filePath);
+
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp = cast('1992-01-01 10:20:30' as timestamp)", false);
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp = cast('1992-01-01 10:20:29' as timestamp)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp >= cast('1992-01-01 10:20:29' as timestamp)", false);
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp >= cast('1992-01-03 10:20:30' as timestamp)", false);
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp >= cast('1992-01-03 10:20:31' as timestamp)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp > cast('1992-01-03 10:20:29' as timestamp)", false);
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp > cast('1992-01-03 10:20:30' as timestamp)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp <= cast('1992-01-01 10:20:30' as timestamp)", false);
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp <= cast('1992-01-01 10:20:29' as timestamp)", true);
+
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp < cast('1992-01-01 10:20:31' as timestamp)", false);
+    testParquetRowGroupFilterEval(footer, "o_ordertimestamp < cast('1992-01-01 10:20:30' as timestamp)", true);
 
   }
 
@@ -215,7 +277,7 @@ public class TestParquetFilterPushDown extends PlanTestBase {
 
   @Test
   public void testParquetFilterPDOptionsDisabled() throws Exception {
-    String tableName = "order_ctas";
+    final String tableName = "order_ctas";
 
     try {
       deleteTableIfExists(tableName);
@@ -265,24 +327,22 @@ public class TestParquetFilterPushDown extends PlanTestBase {
   }
 
   @Test
-  public void test() throws Exception {
-    //        test("select * from dfs.`/drill/testdata/PF/orders` where o_orderstatus2 = 100 and dir0 < 'Nov'");
-    // test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_custkey < 2");
-    //    test("select * from dfs.`/drill/testdata/PF/orders_pt_custkey` where o_totalprice < 1.0 ");
-    //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate > date '2998-08-01'");
-    //      test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate` where  dir0 = 'lineitem' and L_SHIPDATE > date '2998-08-01'");
-    //    test("select * from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate/lineitem` where  cast(l_partkey as int) < -1");
-    //    test("select * from dfs.`/drill/testdata/PF/orders` where  o_orderdate = cast(123456 as date)");
-    //    test("select count(l_partkey) from dfs.`/drill/testdata/PF/tpch-sf10-drill-bs10M_ob_shipdate` l where l.l_shipdate >= date '1994-08-01' \n"
-    //        + "  and l.l_shipdate < date '1994-08-01' + interval '1' month");
+  public void testTimeStampPredicate() throws Exception {
+    // Table dateTblCorrupted is created by CTAS in drill 1.8.0.
+    //    create table dfs.tmp.`tsTbl/t1` as select DATE_ADD(cast(o_orderdate as date), INTERVAL '0 10:20:30' DAY TO SECOND) as o_ordertimestamp from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-01' and date '1992-01-03';
+    //    create table dfs.tmp.`tsTbl/t2` as select DATE_ADD(cast(o_orderdate as date), INTERVAL '0 10:20:30' DAY TO SECOND) as o_ordertimestamp from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-04' and date '1992-01-06';
+    //    create table dfs.tmp.`tsTbl/t3` as select DATE_ADD(cast(o_orderdate as date), INTERVAL '0 10:20:30' DAY TO SECOND) as o_ordertimestamp from cp.`tpch/orders.parquet` where o_orderdate between date '1992-01-07' and date '1992-01-09';
 
-    // intTbl.parquet has only one int column
-    //    intCol : [0, 100].
-    //    final String filePath = String.format("%s/parquetFilterPush/intTbl/intTbl.parquet", TEST_RES_PATH);
-    //    ParquetMetadata footer = getParquetMetaData(filePath);
+    final String query1 = String.format("select o_ordertimestamp from dfs_test.`%s/parquetFilterPush/tsTbl` where o_ordertimestamp = timestamp '1992-01-01 10:20:30'", TEST_RES_PATH);
+    testParquetFilterPD(query1, 9, 1, false);
 
-    //    testParquetRowGroupFilterEval(footer, "cast(intCol as float8) = -110.0", true);
+    final String query2 = String.format("select o_ordertimestamp from dfs_test.`%s/parquetFilterPush/tsTbl` where o_ordertimestamp < timestamp '1992-01-01 10:20:30'", TEST_RES_PATH);
+    testParquetFilterPD(query2, 0, 1, false);
+
+    final String query3 = String.format("select o_ordertimestamp from dfs_test.`%s/parquetFilterPush/tsTbl` where o_ordertimestamp between timestamp '1992-01-01 00:00:00' and timestamp '1992-01-06 10:20:30'", TEST_RES_PATH);
+    testParquetFilterPD(query3, 49, 2, false);
   }
+
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Some test helper functions.

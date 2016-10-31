@@ -57,11 +57,12 @@ public class ParquetRGFilterEvaluator {
       OptionManager options, FragmentContext fragmentContext, Map<String, String> implicitColValues) {
     // figure out the set of columns referenced in expression.
     final Set<SchemaPath> schemaPathsInExpr = expr.accept(new FieldReferenceFinder(), null);
-    final ColumnStatCollector columnStatCollector = new ParquetFooterStatCollector(footer, rowGroupIndex, implicitColValues,options);
+    final ColumnStatCollector columnStatCollector = new ParquetFooterStatCollector(footer, rowGroupIndex, implicitColValues,true, options);
 
     Map<SchemaPath, ColumnStatistics> columnStatisticsMap = columnStatCollector.collectColStat(schemaPathsInExpr);
 
-    return canDrop(expr, columnStatisticsMap, footer.getBlocks().get(rowGroupIndex).getRowCount(), fragmentContext, fragmentContext.getFunctionRegistry());
+    boolean canDrop = canDrop(expr, columnStatisticsMap, footer.getBlocks().get(rowGroupIndex).getRowCount(), fragmentContext, fragmentContext.getFunctionRegistry());
+    return canDrop;
   }
 
 

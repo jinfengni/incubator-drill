@@ -1058,14 +1058,14 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
 
   public GroupScan applyFilter(LogicalExpression filterExpr, UdfUtilities udfUtilities,
       FunctionImplementationRegistry functionImplementationRegistry, OptionManager optionManager) {
-    if (fileSet.size() == 1) {
-      return null; // no pruning for 1 single parquet file.
+    if (fileSet.size() == 1 || ! (parquetTableMetadata instanceof Metadata.ParquetTableMetadata_v3)) {
+      return null; // no pruning for 1 single parquet file or metadata is prior v3.
     }
 
     final Set<SchemaPath> schemaPathsInExpr = filterExpr.accept(new ParquetRGFilterEvaluator.FieldReferenceFinder(), null);
 
     final List<RowGroupMetadata> qualifiedRGs = new ArrayList<>(parquetTableMetadata.getFiles().size());
-    Set<String> fileNames = Sets.newHashSet(); // HashSet keeps a fileName unique.
+    Set<String> qualifiedFileNames = Sets.newHashSet(); // HashSet keeps a fileName unique.
 
     ParquetFilterPredicate filterPredicate = null;
 
@@ -1107,22 +1107,22 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
         }
 
         qualifiedRGs.add(rowGroup);
-        fileNames.add(file.getPath());  // TODO : optimize when 1 file contains m row groups.
+        qualifiedFileNames.add(file.getPath());  // TODO : optimize when 1 file contains m row groups.
       }
     }
 
-    if (fileNames.size() == fileSet.size() ) {
+    if (qualifiedFileNames.size() == fileSet.size() ) {
       // There is no reduction of rowGroups. Return the original groupScan.
       logger.debug("applyFilter does not have any pruning!");
       return null;
-    } else if (fileNames.size() == 0) {
+    } else if (qualifiedFileNames.size() == 0) {
       logger.warn("All rowgroups have been filtered out. Add back one to get schema from scannner");
-      fileNames.add(fileSet.iterator().next());
+      qualifiedFileNames.add(fileSet.iterator().next());
     }
 
     try {
-      FileSelection newSelection = new FileSelection(null, Lists.newArrayList(fileNames), getSelectionRoot(), cacheFileRoot, false);
-      logger.info("applyFilter {} reduce parquet file # from {} to {}", ExpressionStringBuilder.toString(filterExpr), fileSet.size(), fileNames.size());
+      FileSelection newSelection = new FileSelection(null, Lists.newArrayList(qualifiedFileNames), getSelectionRoot(), cacheFileRoot, false);
+      logger.info("applyFilter {} reduce parquet file # from {} to {}", ExpressionStringBuilder.toString(filterExpr), fileSet.size(), qualifiedFileNames.size());
       return this.clone(newSelection);
     } catch (IOException e) {
       logger.warn("Could not apply filter prune due to Exception : {}", e);
