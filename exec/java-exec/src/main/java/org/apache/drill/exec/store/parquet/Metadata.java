@@ -330,7 +330,7 @@ public class Metadata {
     return getOriginalType(t, path, depth + 1);
   }
 
-  private ColLogicalTypeInfo getColLogicalTypeInfo(Type type, String[] path, int depth) {
+  private ColTypeInfo getColTypeInfo(MessageType schema, Type type, String[] path, int depth) {
     if (type.isPrimitive()) {
       PrimitiveType primitiveType = (PrimitiveType) type;
       int precision = 0;
@@ -339,21 +339,26 @@ public class Metadata {
         precision = primitiveType.getDecimalMetadata().getPrecision();
         scale = primitiveType.getDecimalMetadata().getScale();
       }
-      return new ColLogicalTypeInfo(type.getOriginalType(), precision, scale);
+
+      int repetitionLevel = schema.getMaxRepetitionLevel(path);
+
+      return new ColTypeInfo(type.getOriginalType(), precision, scale, repetitionLevel);
     }
     Type t = ((GroupType) type).getType(path[depth]);
-    return getColLogicalTypeInfo(t, path, depth + 1);
+    return getColTypeInfo(schema, t, path, depth + 1);
   }
 
-  private class ColLogicalTypeInfo {
+  private class ColTypeInfo {
     public OriginalType originalType;
     public int precision;
     public int scale;
+    public int repetitionLevel;
 
-    public ColLogicalTypeInfo(OriginalType originalType, int precision, int scale) {
+    public ColTypeInfo(OriginalType originalType, int precision, int scale, int repetitionLevel) {
       this.originalType = originalType;
       this.precision = precision;
       this.scale = scale;
+      this.repetitionLevel = repetitionLevel;
     }
   }
 
@@ -370,10 +375,10 @@ public class Metadata {
     MessageType schema = metadata.getFileMetaData().getSchema();
 
 //    Map<SchemaPath, OriginalType> originalTypeMap = Maps.newHashMap();
-    Map<SchemaPath, ColLogicalTypeInfo> colLogicalTypeInfoMap = Maps.newHashMap();
+    Map<SchemaPath, ColTypeInfo> colTypeInfoMap = Maps.newHashMap();
     schema.getPaths();
     for (String[] path : schema.getPaths()) {
-      colLogicalTypeInfoMap.put(SchemaPath.getCompoundPath(path), getColLogicalTypeInfo(schema, path, 0));
+      colTypeInfoMap.put(SchemaPath.getCompoundPath(path), getColTypeInfo(schema, schema, path, 0));
     }
 
     List<RowGroupMetadata_v3> rowGroupMetadataList = Lists.newArrayList();
@@ -394,10 +399,11 @@ public class Metadata {
         Statistics<?> stats = col.getStatistics();
         String[] columnName = col.getPath().toArray();
         SchemaPath columnSchemaName = SchemaPath.getCompoundPath(columnName);
-        ColLogicalTypeInfo colLogicalTypeInfo = colLogicalTypeInfoMap.get(columnSchemaName);
+        ColTypeInfo colTypeInfo = colTypeInfoMap.get(columnSchemaName);
 
         ColumnTypeMetadata_v3 columnTypeMetadata =
-            new ColumnTypeMetadata_v3(columnName, col.getType(), colLogicalTypeInfo.originalType, colLogicalTypeInfo.precision, colLogicalTypeInfo.scale);
+            new ColumnTypeMetadata_v3(columnName, col.getType(), colTypeInfo.originalType, colTypeInfo.precision, colTypeInfo.scale, colTypeInfo.repetitionLevel);
+
         if (parquetTableMetadata.columnTypeInfo == null) {
           parquetTableMetadata.columnTypeInfo = new ConcurrentHashMap<>();
         }
@@ -633,6 +639,8 @@ public class Metadata {
 
     @JsonIgnore public abstract OriginalType getOriginalType(String[] columnName);
 
+    @JsonIgnore public abstract int getRepetitionLevel(String[] columnName);
+
     @JsonIgnore public abstract ParquetTableMetadataBase clone();
 
     @JsonIgnore public abstract String getDrillVersion();
@@ -748,6 +756,11 @@ public class Metadata {
 
     @JsonIgnore @Override public OriginalType getOriginalType(String[] columnName) {
       return null;
+    }
+
+    @JsonIgnore @Override
+    public int getRepetitionLevel(String[] columnName) {
+      return 0;
     }
 
     @JsonIgnore @Override public ParquetTableMetadataBase clone() {
@@ -1025,6 +1038,11 @@ public class Metadata {
 
     @JsonIgnore @Override public OriginalType getOriginalType(String[] columnName) {
       return getColumnTypeInfo(columnName).originalType;
+    }
+
+    @JsonIgnore @Override
+    public int getRepetitionLevel(String[] columnName) {
+      return 0;
     }
 
     @JsonIgnore @Override public ParquetTableMetadataBase clone() {
@@ -1369,6 +1387,11 @@ public class Metadata {
       return getColumnTypeInfo(columnName).originalType;
     }
 
+    @JsonIgnore @Override
+    public int getRepetitionLevel(String[] columnName) {
+      return getColumnTypeInfo(columnName).repetitionLevel;
+    }
+
     @JsonIgnore @Override public ParquetTableMetadataBase clone() {
       return new ParquetTableMetadata_v3(files, directories, columnTypeInfo);
     }
@@ -1472,6 +1495,7 @@ public class Metadata {
     @JsonProperty public OriginalType originalType;
     @JsonProperty public int precision;
     @JsonProperty public int scale;
+    @JsonProperty public int repetitionLevel;
 
     // Key to find by name only
     @JsonIgnore private Key key;
@@ -1480,12 +1504,13 @@ public class Metadata {
       super();
     }
 
-    public ColumnTypeMetadata_v3(String[] name, PrimitiveTypeName primitiveType, OriginalType originalType, int precision, int scale) {
+    public ColumnTypeMetadata_v3(String[] name, PrimitiveTypeName primitiveType, OriginalType originalType, int precision, int scale, int repetitionLevel) {
       this.name = name;
       this.primitiveType = primitiveType;
       this.originalType = originalType;
       this.precision = precision;
       this.scale = scale;
+      this.repetitionLevel = repetitionLevel;
       this.key = new Key(name);
     }
 
