@@ -35,15 +35,29 @@ public class Project extends AbstractSingle{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Project.class);
 
   private final List<NamedExpression> exprs;
+  /**
+   * {@link org.apache.drill.exec.planner.physical.ProjectPrel for the meaning of flag 'outputProj'}
+   */
+  private boolean outputProj = false;
 
   @JsonCreator
-  public Project(@JsonProperty("exprs") List<NamedExpression> exprs, @JsonProperty("child") PhysicalOperator child) {
+  public Project(@JsonProperty("exprs") List<NamedExpression> exprs, @JsonProperty("child") PhysicalOperator child, @JsonProperty("outputproj") boolean outputProj) {
+    super(child);
+    this.exprs = exprs;
+    this.outputProj = outputProj;
+  }
+
+  public Project(List<NamedExpression> exprs, PhysicalOperator child) {
     super(child);
     this.exprs = exprs;
   }
 
   public List<NamedExpression> getExprs() {
     return exprs;
+  }
+
+  public boolean isOutputProj() {
+    return outputProj;
   }
 
   @Override
@@ -53,7 +67,7 @@ public class Project extends AbstractSingle{
 
   @Override
   protected PhysicalOperator getNewWithChild(PhysicalOperator child) {
-    return new Project(exprs, child);
+    return new Project(exprs, child, outputProj);
   }
 
   @Override

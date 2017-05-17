@@ -35,18 +35,43 @@ import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.sql.SqlKind;
 
+/**
+ * A physical Prel node for Project operator.
+ */
 public class ProjectPrel extends DrillProjectRelBase implements Prel{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ProjectPrel.class);
 
+  private final boolean outputProj;
 
   public ProjectPrel(RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,
       RelDataType rowType) {
+    this(cluster, traits, child, exps, rowType, false);
+  }
+
+  /**
+   * Constructor for ProjectPrel.
+   * @param cluster
+   * @param traits traits of ProjectPrel node
+   * @param child  input
+   * @param exps   list of RexNode, representing expressions of projection.
+   * @param rowType output rowType of projection expression.
+   * @param outputProj true if ProjectPrel is inserted by {@link org.apache.drill.exec.planner.physical.visitor.TopProjectVisitor}
+   *                   Such top Project operator does the following processing, before the result was presented to Screen/Writer
+   *                   1) ensure final output field names are preserved,
+   *                   2) handle cases where input does not return any batch (a fast NONE) (see ProjectRecordBatch.handleFastNone() method)
+   *                   3) handle cases where expressions in upstream operator were evaluated to NULL type
+   *                   (Null type will be converted into Nullable-INT)
+   *                   false otherwise.
+   */
+  public ProjectPrel(RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,
+      RelDataType rowType, boolean outputProj) {
     super(DRILL_PHYSICAL, cluster, traits, child, exps, rowType);
+    this.outputProj = outputProj;
   }
 
   @Override
   public Project copy(RelTraitSet traitSet, RelNode input, List<RexNode> exps, RelDataType rowType) {
-    return new ProjectPrel(getCluster(), traitSet, input, exps, rowType);
+    return new ProjectPrel(getCluster(), traitSet, input, exps, rowType, this.outputProj);
   }
 
 
@@ -57,7 +82,7 @@ public class ProjectPrel extends DrillProjectRelBase implements Prel{
     PhysicalOperator childPOP = child.getPhysicalOperator(creator);
 
     org.apache.drill.exec.physical.config.Project p = new org.apache.drill.exec.physical.config.Project(
-        this.getProjectExpressions(new DrillParseContext(PrelUtil.getSettings(getCluster()))),  childPOP);
+        this.getProjectExpressions(new DrillParseContext(PrelUtil.getSettings(getCluster()))),  childPOP, outputProj);
     return creator.addMetadata(this, p);
   }
 

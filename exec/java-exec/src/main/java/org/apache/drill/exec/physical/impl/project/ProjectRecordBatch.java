@@ -17,10 +17,10 @@
  */
 package org.apache.drill.exec.physical.impl.project;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-
+import com.carrotsearch.hppc.IntHashSet;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.drill.common.expression.ConvertExpression;
 import org.apache.drill.common.expression.ErrorCollector;
@@ -35,6 +35,7 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.logical.data.NamedExpression;
+import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.exception.ClassTransformationException;
@@ -61,14 +62,15 @@ import org.apache.drill.exec.record.VectorWrapper;
 import org.apache.drill.exec.store.ColumnExplorer;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.FixedWidthVector;
+import org.apache.drill.exec.vector.UntypedNullHolder;
+import org.apache.drill.exec.vector.UntypedNullVector;
 import org.apache.drill.exec.vector.ValueVector;
-import org.apache.drill.exec.vector.complex.MapVector;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ComplexWriter;
 
-import com.carrotsearch.hppc.IntHashSet;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ProjectRecordBatch.class);
@@ -165,8 +167,8 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
             // Only need to add the schema for the complex exprs because others should already have
             // been setup during setupNewSchema
             for (FieldReference fieldReference : complexFieldReferencesList) {
-              container.addOrGet(fieldReference.getRootSegment().getPath(),
-                  Types.required(MinorType.MAP), MapVector.class);
+              MaterializedField field = MaterializedField.create(fieldReference.getAsNamePart().getName(), UntypedNullHolder.TYPE);
+              container.add(new UntypedNullVector(field, container.getAllocator()));
             }
             container.buildSchema(SelectionVectorMode.NONE);
             wasNone = true;
@@ -623,11 +625,6 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
 
     final int incomingSchemaSize = incoming.getSchema().getFieldCount();
 
-    // for debugging..
-    // if (incomingSchemaSize > 9) {
-    // assert false;
-    // }
-
     // input is '*' and output is 'prefix_*'
     if (exprIsStar && refHasPrefix && refEndsWithStar) {
       final String[] components = ref.getPath().split(StarColumnHelper.PREFIX_DELIMITER, 2);
@@ -768,4 +765,73 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
       }
     }
   }
+
+  /**
+   * handle FAST NONE specially when Project for query output. This happens when input returns a
+   * FAST NONE directly ( input does not return any batch with schema/data).
+   *
+   * Project operator has to return a batch with schema derived using the following 3 rules:
+   *  Case 1:  *  ==>  expand into an empty list of columns.
+   *  Case 2:  regular column reference ==> treat as nullable-int column
+   *  Case 3:  expressions => Call ExpressionTreeMaterialization over an empty vector contain.
+   *           Once the expression is materialized without error, use the output type of materialized
+   *           expression.
+   * The batch is constructed with the above rules, and recordCount = 0.
+   * Returned with OK_NEW_SCHEMA to down-stream operator.
+   */
+  @Override
+  protected IterOutcome handleFastNone() {
+    if (! popConfig.isOutputProj()) {
+      return super.handleFastNone();
+    }
+
+    allocationVectors = new ArrayList<>();
+    final List<NamedExpression> exprs = getExpressionList();
+    final ErrorCollector collector = new ErrorCollectorImpl();
+    VectorContainer fakedIncomingVC = new VectorContainer();
+
+    for (NamedExpression namedExpression : exprs) {
+      if (namedExpression.getExpr() instanceof SchemaPath) {
+        final NameSegment expr = ((SchemaPath) namedExpression.getExpr()).getRootSegment();
+        if (expr.getPath().contains(StarColumnHelper.STAR_COLUMN)) {
+          continue; // * would expand into an empty list.
+        } else {
+          final TypeProtos.MajorType majorType = TypeProtos.MajorType.newBuilder()
+              .setMinorType(MinorType.INT)
+              .setMode(TypeProtos.DataMode.OPTIONAL)
+              .build();
+
+          MaterializedField outputField = MaterializedField.create(namedExpression.getRef().getRootSegment().getPath(), majorType);
+          final ValueVector vv = container.addOrGet(outputField, callBack);
+          allocationVectors.add(vv);
+        }
+        continue;
+      }
+
+      final LogicalExpression materializedExpr = ExpressionTreeMaterializer.materialize(namedExpression.getExpr(),
+          fakedIncomingVC,
+          collector,
+          context.getFunctionRegistry(),
+          true,
+          unionTypeEnabled);
+
+      if (collector.hasErrors()) {
+        throw new IllegalArgumentException(String.format("Failure while trying to materialize expressions : %s.  Errors:\n %s.",
+            namedExpression.getExpr(),
+            collector.toErrorString()));
+      }
+
+      final MaterializedField outputField = MaterializedField.create(namedExpression.getRef().getRootSegment().getPath(),
+          materializedExpr.getMajorType());
+      final ValueVector vv = container.addOrGet(outputField, callBack);
+      allocationVectors.add(vv);
+
+    }
+
+    doAlloc(0);
+    container.buildSchema(SelectionVectorMode.NONE);
+    wasNone = true;
+    return IterOutcome.OK_NEW_SCHEMA;
+  }
+
 }

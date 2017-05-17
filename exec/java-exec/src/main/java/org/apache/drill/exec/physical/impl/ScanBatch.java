@@ -17,16 +17,14 @@
  */
 package org.apache.drill.exec.physical.impl;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import io.netty.buffer.DrillBuf;
-
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.common.map.CaseInsensitiveMap;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.exception.OutOfMemoryException;
@@ -55,10 +53,10 @@ import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.NullableVarCharVector;
 import org.apache.drill.exec.vector.SchemaChangeCallBack;
 import org.apache.drill.exec.vector.ValueVector;
-import org.apache.drill.common.map.CaseInsensitiveMap;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Maps;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Record batch used for a particular scan. Operators against one or more
@@ -78,30 +76,40 @@ public class ScanBatch implements CloseableRecordBatch {
   private BatchSchema schema;
   private final Mutator mutator;
   private boolean done = false;
-  private boolean hasReadNonEmptyFile = false;
-  private Map<String, ValueVector> implicitVectors;
+  private Map<String, ValueVector> implicitVectors = Maps.newHashMap();
   private Iterator<Map<String, String>> implicitColumns;
   private Map<String, String> implicitValues;
   private final BufferAllocator allocator;
 
+  /**
+   *
+   * @param subScanConfig
+   * @param context
+   * @param oContext
+   * @param readers
+   * @param implicitColumns : either an emptylist's iterator when all the readers do not have implicit
+   *                        columns, or there is a one-to-one mapping between reader iterator and implicitColumns iterator.
+   */
   public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context,
                    OperatorContext oContext, Iterator<RecordReader> readers,
-                   List<Map<String, String>> implicitColumns) {
+                   Iterator<Map<String, String>> implicitColumns) {
     this.context = context;
     this.readers = readers;
+    this.implicitColumns = implicitColumns;
     if (!readers.hasNext()) {
       throw UserException.systemError(
           new ExecutionSetupException("A scan batch must contain at least one reader."))
         .build(logger);
     }
-    currentReader = readers.next();
+
     this.oContext = oContext;
     allocator = oContext.getAllocator();
     mutator = new Mutator(oContext, allocator, container);
 
     try {
       oContext.getStats().startProcessing();
-      currentReader.setup(oContext, mutator);
+      advanceNextReader();
+      addImplicitVectors();
     } catch (ExecutionSetupException e) {
       try {
         currentReader.close();
@@ -114,10 +122,7 @@ public class ScanBatch implements CloseableRecordBatch {
     } finally {
       oContext.getStats().stopProcessing();
     }
-    this.implicitColumns = implicitColumns.iterator();
-    this.implicitValues = this.implicitColumns.hasNext() ? this.implicitColumns.next() : null;
 
-    addImplicitVectors();
   }
 
   public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context,
@@ -125,7 +130,7 @@ public class ScanBatch implements CloseableRecordBatch {
       throws ExecutionSetupException {
     this(subScanConfig, context,
         context.newOperatorContext(subScanConfig),
-        readers, Collections.<Map<String, String>> emptyList());
+        readers, Collections.<Map<String, String>> emptyList().iterator());
   }
 
   @Override
@@ -152,16 +157,6 @@ public class ScanBatch implements CloseableRecordBatch {
     }
   }
 
-  private void releaseAssets() {
-    container.zeroVectors();
-  }
-
-  private void clearFieldVectorMap() {
-    for (final ValueVector v : mutator.fieldVectorMap().values()) {
-      v.clear();
-    }
-  }
-
   @Override
   public IterOutcome next() {
     if (done) {
@@ -169,79 +164,67 @@ public class ScanBatch implements CloseableRecordBatch {
     }
     oContext.getStats().startProcessing();
     try {
-      try {
-        injector.injectChecked(context.getExecutionControls(), "next-allocate", OutOfMemoryException.class);
-
-        currentReader.allocate(mutator.fieldVectorMap());
-      } catch (OutOfMemoryException e) {
-        clearFieldVectorMap();
-        throw UserException.memoryError(e).build(logger);
-      }
-      while ((recordCount = currentReader.next()) == 0) {
+      while (true) {
         try {
-          if (!readers.hasNext()) {
-            // We're on the last reader, and it has no (more) rows.
-            currentReader.close();
-            releaseAssets();
-            done = true;  // have any future call to next() return NONE
-
-            if (mutator.isNewSchema()) {
-              // This last reader has a new schema (e.g., we have a zero-row
-              // file or other source).  (Note that some sources have a non-
-              // null/non-trivial schema even when there are no rows.)
-
-              container.buildSchema(SelectionVectorMode.NONE);
-              schema = container.getSchema();
-
-              return IterOutcome.OK_NEW_SCHEMA;
-            }
-            return IterOutcome.NONE;
-          }
-          // At this point, the reader that hit its end is not the last reader.
-
-          // If all the files we have read so far are just empty, the schema is not useful
-          if (! hasReadNonEmptyFile) {
-            container.clear();
-            clearFieldVectorMap();
-            mutator.clear();
-          }
-
-          currentReader.close();
-          currentReader = readers.next();
-          implicitValues = implicitColumns.hasNext() ? implicitColumns.next() : null;
-          currentReader.setup(oContext, mutator);
-          try {
-            currentReader.allocate(mutator.fieldVectorMap());
-          } catch (OutOfMemoryException e) {
-            clearFieldVectorMap();
-            throw UserException.memoryError(e).build(logger);
-          }
-          addImplicitVectors();
-        } catch (ExecutionSetupException e) {
-          releaseAssets();
-          throw UserException.systemError(e).build(logger);
+          injector.injectChecked(context.getExecutionControls(), "next-allocate", OutOfMemoryException.class);
+          currentReader.allocate(mutator.fieldVectorMap());
+        } catch (OutOfMemoryException e) {
+          clearFieldVectorMap();
+          throw UserException.memoryError(e).build(logger);
         }
-      }
 
-      // At this point, the current reader has read 1 or more rows.
+        recordCount = currentReader.next();
+        Preconditions.checkArgument(recordCount >= 0,
+            "recordCount from RecordReader.next() should not be negative");
 
-      hasReadNonEmptyFile = true;
-      populateImplicitVectors();
+        boolean isNewRegularSchema = mutator.isNewSchema();
+        // We should skip the reader, when recordCount = 0 && ! isNewRegularSchema.
+        // Add/set implicit column vectors, only when reader gets > 0 row, or
+        // when reader gets 0 row but with a schema with new field added
+        if (recordCount > 0 || isNewRegularSchema) {
+          addImplicitVectors();
+          populateImplicitVectors();
+        }
 
-      for (VectorWrapper<?> w : container) {
-        w.getValueVector().getMutator().setValueCount(recordCount);
-      }
+        boolean isNewImplicitSchema = mutator.isNewSchema();
+        for (VectorWrapper<?> w : container) {
+          w.getValueVector().getMutator().setValueCount(recordCount);
+        }
+        final boolean isNewSchema = isNewRegularSchema || isNewImplicitSchema;
+        oContext.getStats().batchReceived(0, recordCount, isNewSchema);
 
-      // this is a slight misuse of this metric but it will allow Readers to report how many records they generated.
-      final boolean isNewSchema = mutator.isNewSchema();
-      oContext.getStats().batchReceived(0, getRecordCount(), isNewSchema);
-
-      if (isNewSchema) {
-        container.buildSchema(SelectionVectorMode.NONE);
-        schema = container.getSchema();
-        return IterOutcome.OK_NEW_SCHEMA;
-      } else {
-        return IterOutcome.OK;
+        if (recordCount == 0) {
+          currentReader.close();
+          if (isNewSchema) {
+            // current reader presents a new schema in mutator even though it has 0 row.
+            // This could happen when data sources have a non-trivial schema with 0 row.
+            container.buildSchema(SelectionVectorMode.NONE);
+            schema = container.getSchema();
+            if (readers.hasNext()) {
+              advanceNextReader();
+            } else {
+              done = true;  // indicates the follow-up next() call will return IterOutcome.NONE.
+            }
+            return IterOutcome.OK_NEW_SCHEMA;
+          } else { // not a new schema
+            if (readers.hasNext()) {
+              advanceNextReader();
+              continue; // skip reader returning 0 row and having same schema.
+                        // Skip to next loop iteration with next available reader.
+            } else {
+              releaseAssets(); // All data has been read. Release resource.
+              return IterOutcome.NONE;
+            }
+          }
+        } else { // recordCount > 0
+          if (isNewSchema) {
+            container.buildSchema(SelectionVectorMode.NONE);
+            schema = container.getSchema();
+            return IterOutcome.OK_NEW_SCHEMA;
+          } else {
+            return IterOutcome.OK;
+          }
+        }
       }
     } catch (OutOfMemoryException ex) {
       throw UserException.memoryError(ex).build(logger);
@@ -252,14 +235,28 @@ public class ScanBatch implements CloseableRecordBatch {
     }
   }
 
+  private void releaseAssets() {
+    container.zeroVectors();
+  }
+
+  private void clearFieldVectorMap() {
+    for (final ValueVector v : mutator.fieldVectorMap().values()) {
+      v.clear();
+    }
+  }
+
+  private void advanceNextReader() throws ExecutionSetupException {
+    currentReader = readers.next();
+    implicitValues = implicitColumns.hasNext() ? implicitColumns.next() : null;
+    currentReader.setup(oContext, mutator);
+  }
+
   private void addImplicitVectors() {
     try {
-      if (implicitVectors != null) {
-        for (ValueVector v : implicitVectors.values()) {
-          v.clear();
-        }
+      for (ValueVector v : implicitVectors.values()) {
+        v.clear();
       }
-      implicitVectors = Maps.newHashMap();
+      implicitVectors.clear();
 
       if (implicitValues != null) {
         for (String column : implicitValues.keySet()) {
@@ -329,9 +326,11 @@ public class ScanBatch implements CloseableRecordBatch {
 
   @VisibleForTesting
   public static class Mutator implements OutputMutator {
-    /** Whether schema has changed since last inquiry (via #isNewSchema}).  Is
-     *  true before first inquiry. */
-    private boolean schemaChanged = true;
+    /** Flag keeping track whether top-level schema has changed since last inquiry (via #isNewSchema}).
+     * It's initialized to false, or reset to false after #isNewSchema or after #clear, until a new value vector
+     * or a value vector with different type is added to fieldVectorMap.
+     **/
+    private boolean schemaChanged;
 
     /** Fields' value vectors indexed by fields' keys. */
     private final CaseInsensitiveMap<ValueVector> fieldVectorMap =
@@ -348,6 +347,7 @@ public class ScanBatch implements CloseableRecordBatch {
       this.oContext = oContext;
       this.allocator = allocator;
       this.container = container;
+      this.schemaChanged = false;
     }
 
     public Map<String, ValueVector> fieldVectorMap() {
@@ -424,6 +424,7 @@ public class ScanBatch implements CloseableRecordBatch {
 
     public void clear() {
       fieldVectorMap.clear();
+      schemaChanged = false;
     }
   }
 
