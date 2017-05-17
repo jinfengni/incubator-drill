@@ -229,7 +229,9 @@ public class JSONRecordReader extends AbstractRecordReader {
            handleAndRaise("Error parsing JSON", ex);
         }
     }
-    jsonReader.ensureAtLeastOneField(writer);
+    if (recordCount > 0) {
+      jsonReader.ensureAtLeastOneField(writer);
+    }
     writer.setValueCount(recordCount);
     updateRunningCount();
     return recordCount;

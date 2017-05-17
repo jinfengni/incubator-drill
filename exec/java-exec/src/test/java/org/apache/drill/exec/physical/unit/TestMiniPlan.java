@@ -54,7 +54,7 @@ public class TestMiniPlan extends MiniPlanUnitTestBase {
   }
 
   @Test
-  @Ignore("DRILL-5464: A bug in JsonRecordReader handling empty file")
+//  @Ignore("DRILL-5464: A bug in JsonRecordReader handling empty file")
   public void testEmptyJsonInput() throws Exception {
     String emptyFile = FileUtils.getResourceAsFile("/project/pushdown/empty.json").toURI().toString();
 

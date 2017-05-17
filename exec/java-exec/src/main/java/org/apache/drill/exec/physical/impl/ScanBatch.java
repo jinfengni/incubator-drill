@@ -331,7 +331,7 @@ public class ScanBatch implements CloseableRecordBatch {
   public static class Mutator implements OutputMutator {
     /** Whether schema has changed since last inquiry (via #isNewSchema}).  Is
      *  true before first inquiry. */
-    private boolean schemaChanged = true;
+    private boolean schemaChanged = false;
 
     /** Fields' value vectors indexed by fields' keys. */
     private final CaseInsensitiveMap<ValueVector> fieldVectorMap =
