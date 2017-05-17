@@ -156,6 +156,12 @@ public class HBaseGroupScan extends AbstractGroupScan implements DrillHBaseConst
     try (Admin admin = conn.getAdmin();
          RegionLocator locator = conn.getRegionLocator(tableName)) {
       this.hTableDesc = admin.getTableDescriptor(tableName);
+
+      logger.debug("Table {} has # {} column family", tableName, hTableDesc.getColumnFamilies().length);
+      for (int i = 0; i < hTableDesc.getColumnFamilies().length; i++) {
+        logger.debug("Table {} column family {}, index {}", tableName, hTableDesc.getColumnFamilies()[i].getNameAsString(), i);
+      }
+
       List<HRegionLocation> regionLocations = locator.getAllRegionLocations();
       statsCalculator = new TableStatsCalculator(conn, hbaseScanSpec, storagePlugin.getContext().getConfig(), storagePluginConfig);
 
