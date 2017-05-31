@@ -17,13 +17,6 @@
  */
 package org.apache.drill.test.rowSet.test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.exec.record.BatchSchema;
@@ -45,6 +38,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.google.common.base.Splitter;
+
+import static org.junit.Assert.*;
 
 public class RowSetTest {
 
@@ -395,6 +390,42 @@ public class RowSetTest {
 
     new RowSetComparison(rs1)
       .verifyAndClear(rs2);
+  }
+
+  @Test
+  public void testMapWithDifferentFields() {
+    BatchSchema batchSchema1 = new SchemaBuilder()
+        .addMap("a")
+          .addNullable("b1", MinorType.VARCHAR)
+          .buildMap()
+        .build();
+
+    BatchSchema batchSchema2 = new SchemaBuilder()
+        .addMap("a")
+          .addNullable("b2", MinorType.VARCHAR)
+          .buildMap()
+        .build();
+
+    assertNotEquals(batchSchema1, batchSchema2);
+  }
+
+  @Test
+  public void testMapWithFieldsInDiffOrder() {
+    BatchSchema batchSchema1 = new SchemaBuilder()
+        .addMap("a")
+          .addNullable("b1", MinorType.VARCHAR)
+          .addNullable("b2", MinorType.INT)
+          .buildMap()
+        .build();
+
+    BatchSchema batchSchema2 = new SchemaBuilder()
+        .addMap("a")
+          .addNullable("b2", MinorType.INT)
+          .addNullable("b1", MinorType.VARCHAR)
+          .buildMap()
+        .build();
+
+    assertNotEquals(batchSchema1, batchSchema2);
   }
 
 }

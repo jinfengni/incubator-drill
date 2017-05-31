@@ -21,8 +21,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 
+import com.google.common.collect.Sets;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.expr.BasicTypeHelper;
@@ -38,17 +40,17 @@ import org.apache.drill.exec.proto.UserBitShared.SerializedField;
 public class MaterializedField {
   private final String name;
   private final MajorType type;
-  // use an ordered set as existing code relies on order (e,g. parquet writer)
-  private final LinkedHashSet<MaterializedField> children;
+  // use list for nested fields, since the order of nested fields matter when compare two BatchSchema / MaterializedField.
+  private final List<MaterializedField> children;
 
-  private MaterializedField(String name, MajorType type, LinkedHashSet<MaterializedField> children) {
+  private MaterializedField(String name, MajorType type, List<MaterializedField> children) {
     this.name = name;
     this.type = type;
     this.children = children;
   }
 
   public static MaterializedField create(SerializedField serField){
-    LinkedHashSet<MaterializedField> children = new LinkedHashSet<>();
+    List<MaterializedField> children = new ArrayList<>();
     for (SerializedField sf : serField.getChildList()) {
       children.add(MaterializedField.create(sf));
     }
@@ -99,20 +101,12 @@ public class MaterializedField {
   }
 
   public MaterializedField withPathAndType(String name, final MajorType type) {
-    final LinkedHashSet<MaterializedField> newChildren = new LinkedHashSet<>(children.size());
+    final List<MaterializedField> newChildren = new ArrayList<>(children.size());
     for (final MaterializedField child:children) {
       newChildren.add(child.clone());
     }
     return new MaterializedField(name, type, newChildren);
   }
-
-//  public String getLastName(){
-//    PathSegment seg = key.path.getRootSegment();
-//    while (seg.getChild() != null) {
-//      seg = seg.getChild();
-//    }
-//    return seg.getNameSegment().getPath();
-//  }
 
   // TODO: rewrite without as direct match rather than conversion then match.
   public boolean matches(SerializedField field){
@@ -121,29 +115,8 @@ public class MaterializedField {
   }
 
   public static MaterializedField create(String name, MajorType type){
-    return new MaterializedField(name, type, new LinkedHashSet<MaterializedField>());
+    return new MaterializedField(name, type, new ArrayList<MaterializedField>());
   }
-
-//  public String getName(){
-//    StringBuilder sb = new StringBuilder();
-//    boolean first = true;
-//    for(NamePart np : def.getNameList()){
-//      if(np.getType() == Type.ARRAY){
-//        sb.append("[]");
-//      }else{
-//        if(first){
-//          first = false;
-//        }else{
-//          sb.append(".");
-//        }
-//        sb.append('`');
-//        sb.append(np.getName());
-//        sb.append('`');
-//
-//      }
-//    }
-//    return sb.toString();
-//  }
 
   public String getPath() { return getName(); }
   public String getLastName() { return getName(); }
@@ -191,12 +164,15 @@ public class MaterializedField {
     if (getClass() != obj.getClass()) {
       return false;
     }
+
     MaterializedField other = (MaterializedField) obj;
     // DRILL-1872: Compute equals only on key. See also the comment
     // in MapVector$MapTransferPair
 
     return this.name.equalsIgnoreCase(other.name) &&
-            Objects.equals(this.type, other.type);
+        majorTypeEqual(this.type, other.type) &&
+        Objects.equals(children, other.children);
+
   }
 
   /**
@@ -251,4 +227,32 @@ public class MaterializedField {
     builder.append("]");
     return builder.toString();
   }
+
+  /**
+   * We treat fields with same set of Subtypes as equal, even if they are in a different order
+   * @param t1
+   * @param t2
+   * @return
+   */
+  private boolean majorTypeEqual(MajorType t1, MajorType t2) {
+    if ( (t1 == null && t2 != null) ||
+        ( t1 != null && t2 == null)) {
+      return false;
+    }
+
+    if (t1.equals(t2)) {
+      return true;
+    }
+    if (!t1.getMinorType().equals(t2.getMinorType())) {
+      return false;
+    }
+    if (!t1.getMode().equals(t2.getMode())) {
+      return false;
+    }
+    if (!Sets.newHashSet(t1.getSubTypeList()).equals(Sets.newHashSet(t2.getSubTypeList()))) {
+      return false;
+    }
+    return true;
+  }
+
 }
