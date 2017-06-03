@@ -41,7 +41,12 @@
     <appender-ref ref="SOCKET" />
   </logger>
 
-<!--   <logger name="io.netty" additivity="false"> -->
+  <logger name="org.apache.drill.exec.physical.impl.validate.IteratorValidatorBatchIterator" additivity="false">
+    <level value="trace" />
+    <appender-ref ref="SOCKET" />
+  </logger>
+
+  <!--   <logger name="io.netty" additivity="false"> -->
 <!--     <level value="debug" /> -->
 <!--     <appender-ref ref="SOCKET" /> -->
 <!--   </logger> -->
