@@ -126,6 +126,7 @@ public abstract class AbstractMapVector extends AbstractContainerVector {
     } else if (clazz.isAssignableFrom(existing.getClass())) {
       return (T) existing;
     } else if (nullFilled(existing)) {
+      field.removeChild(existing.getField());
       existing.clear();
       create = true;
     }

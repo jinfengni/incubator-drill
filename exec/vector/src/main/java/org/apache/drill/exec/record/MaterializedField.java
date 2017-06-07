@@ -86,6 +86,10 @@ public class MaterializedField {
     children.add(field);
   }
 
+  public boolean removeChild(MaterializedField field){
+    return children.remove(field);
+  }
+
   public MaterializedField clone() {
     return withPathAndType(name, getType());
   }
