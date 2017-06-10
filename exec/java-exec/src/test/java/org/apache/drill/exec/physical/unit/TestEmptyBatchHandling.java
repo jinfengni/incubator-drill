@@ -34,6 +34,7 @@ import org.apache.drill.exec.physical.config.Limit;
 import org.apache.drill.exec.physical.config.Project;
 import org.apache.drill.exec.physical.config.StreamingAggregate;
 import org.apache.drill.exec.physical.config.UnionAll;
+import org.apache.drill.exec.planner.physical.AggPrelBase;
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
@@ -63,7 +64,7 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
     new MiniPlanTestBuilder()
         .root(scanBatch)
-        .expectZeroBatch(true)
+        .expectNullBatch(true)
         .go();
   }
 
@@ -83,7 +84,7 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
   @Test
   public void testHashAggEmpty() throws Exception {
-    final PhysicalOperator hashAgg = new HashAggregate(null, parseExprs("a", "a"), parseExprs("sum(b)", "b_sum"), 1.0f);
+    final PhysicalOperator hashAgg = new HashAggregate(null, AggPrelBase.OperatorPhase.PHASE_1of1, parseExprs("a", "a"), parseExprs("sum(b)", "b_sum"), 1.0f);
 
     testEmptyBatchHandlingHelper(hashAgg);
   }
@@ -133,7 +134,7 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
     new MiniPlanTestBuilder()
         .root(unionBatch)
-        .expectZeroBatch(true)
+        .expectNullBatch(true)
         .go();
   }
 
@@ -170,16 +171,13 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
     new MiniPlanTestBuilder()
         .root(unionBatch)
-        .expectedSchema(expectedSchema)
+        .expectSchema(expectedSchema)
         .baselineValues(10L)
         .baselineValues(11L)
         .go();
   }
 
-
   @Test
-  // TODO: Fail.
-  @Ignore("DRILL-5464: handle empty batch in Join operator")
   public void testInnerJoinEmptyBoth() throws Exception {
     RecordBatch left = createEmptyBatch();
     RecordBatch right = createEmptyBatch();
@@ -192,13 +190,73 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
     new MiniPlanTestBuilder()
         .root(joinBatch)
-        .expectZeroBatch(true)
+        .expectNullBatch(true)
         .go();
   }
 
   @Test
-  // TODO: Fail.
-  @Ignore("DRILL-5464: handle empty batch in Join operator")
+  public void testInnerJoinLeftEmpty() throws Exception {
+    RecordBatch left = createEmptyBatch();
+
+    List<String> rightJsonBatches = Lists.newArrayList(
+        "[{\"a\": 50, \"b\" : 10 }]");
+
+    RecordBatch rightScan = new JsonScanBuilder()
+        .jsonBatches(rightJsonBatches)
+        .columnsToRead("a", "b")
+        .build();
+
+    RecordBatch joinBatch = new PopBuilder()
+        .physicalOperator(new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "a2")), JoinRelType.INNER))
+        .addInput(left)
+        .addInput(rightScan)
+        .build();
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("a", TypeProtos.MinorType.BIGINT)
+        .addNullable("b", TypeProtos.MinorType.BIGINT)
+        .withSVMode(BatchSchema.SelectionVectorMode.NONE)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(joinBatch)
+        .expectSchema(expectedSchema)
+        .expectZeroRow(true)
+        .go();
+  }
+
+  @Test
+  public void testInnerJoinRightEmpty() throws Exception {
+    List<String> leftJsonBatches = Lists.newArrayList(
+        "[{\"a\": 50, \"b\" : 10 }]");
+
+    RecordBatch leftScan = new JsonScanBuilder()
+        .jsonBatches(leftJsonBatches)
+        .columnsToRead("a", "b")
+        .build();
+
+    RecordBatch right = createEmptyBatch();
+
+    RecordBatch joinBatch = new PopBuilder()
+        .physicalOperator(new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "a2")), JoinRelType.INNER))
+        .addInput(leftScan)
+        .addInput(right)
+        .build();
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("a", TypeProtos.MinorType.BIGINT)
+        .addNullable("b", TypeProtos.MinorType.BIGINT)
+        .withSVMode(BatchSchema.SelectionVectorMode.NONE)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(joinBatch)
+        .expectSchema(expectedSchema)
+        .expectZeroRow(true)
+        .go();
+  }
+
+  @Test
   public void testLeftJoinEmptyBoth() throws Exception {
     RecordBatch left = createEmptyBatch();
     RecordBatch right = createEmptyBatch();
@@ -211,7 +269,69 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
     new MiniPlanTestBuilder()
         .root(joinBatch)
-        .expectZeroBatch(true)
+        .expectNullBatch(true)
+        .go();
+  }
+
+  @Test
+  public void testLeftJoinLeftEmpty() throws Exception {
+    RecordBatch left = createEmptyBatch();
+
+    List<String> rightJsonBatches = Lists.newArrayList(
+        "[{\"a\": 50, \"b\" : 10 }]");
+
+    RecordBatch rightScan = new JsonScanBuilder()
+        .jsonBatches(rightJsonBatches)
+        .columnsToRead("a", "b")
+        .build();
+
+    RecordBatch joinBatch = new PopBuilder()
+        .physicalOperator(new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "a2")), JoinRelType.LEFT))
+        .addInput(left)
+        .addInput(rightScan)
+        .build();
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("a", TypeProtos.MinorType.BIGINT)
+        .addNullable("b", TypeProtos.MinorType.BIGINT)
+        .withSVMode(BatchSchema.SelectionVectorMode.NONE)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(joinBatch)
+        .expectSchema(expectedSchema)
+        .expectZeroRow(true)
+        .go();
+  }
+
+  @Test
+  public void testLeftJoinRightEmpty() throws Exception {
+    List<String> leftJsonBatches = Lists.newArrayList(
+        "[{\"a\": 50, \"b\" : 10 }]");
+
+    RecordBatch leftScan = new JsonScanBuilder()
+        .jsonBatches(leftJsonBatches)
+        .columnsToRead("a", "b")
+        .build();
+
+    RecordBatch right = createEmptyBatch();
+
+    RecordBatch joinBatch = new PopBuilder()
+        .physicalOperator(new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "a2")), JoinRelType.LEFT))
+        .addInput(leftScan)
+        .addInput(right)
+        .build();
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("a", TypeProtos.MinorType.BIGINT)
+        .addNullable("b", TypeProtos.MinorType.BIGINT)
+        .withSVMode(BatchSchema.SelectionVectorMode.NONE)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(joinBatch)
+        .expectSchema(expectedSchema)
+        .baselineValues(50L, 10L)
         .go();
   }
 
@@ -258,7 +378,7 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
     new MiniPlanTestBuilder()
         .root(batch)
-        .expectedSchema(expectedSchema)
+        .expectSchema(expectedSchema)
         .go();
   }
 
@@ -272,7 +392,7 @@ public class TestEmptyBatchHandling extends MiniPlanUnitTestBase{
 
     new MiniPlanTestBuilder()
         .root(projBatch)
-        .expectZeroBatch(true)
+        .expectNullBatch(true)
         .go();
 
   }

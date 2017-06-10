@@ -19,12 +19,9 @@
 package org.apache.drill.exec.physical.unit;
 
 import com.google.common.collect.Lists;
-import org.apache.calcite.rel.core.JoinRelType;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.exec.physical.config.Filter;
-import org.apache.drill.exec.physical.config.HashJoinPOP;
-import org.apache.drill.exec.physical.config.Project;
 import org.apache.drill.exec.physical.config.UnionAll;
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.RecordBatch;
@@ -33,14 +30,10 @@ import org.apache.drill.test.rowSet.SchemaBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
-
-import static org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.InputType.file;
-import static org.reflections.util.ConfigurationBuilder.build;
 
 /**
  * This class contains examples to show how to use MiniPlanTestBuilder to test a
@@ -75,7 +68,7 @@ public class TestMiniPlan extends MiniPlanUnitTestBase {
 
     new MiniPlanTestBuilder()
         .root(scanBatch)
-        .expectedSchema(expectedSchema)
+        .expectSchema(expectedSchema)
         .baselineValues(0L)
         .baselineValues(1L)
         .go();
@@ -97,7 +90,7 @@ public class TestMiniPlan extends MiniPlanUnitTestBase {
 
     new MiniPlanTestBuilder()
         .root(scanBatch)
-        .expectedSchema(expectedSchema)
+        .expectSchema(expectedSchema)
         .baselineValues(100L)
         .go();
   }
@@ -139,7 +132,7 @@ public class TestMiniPlan extends MiniPlanUnitTestBase {
 
     new MiniPlanTestBuilder()
         .root(batch)
-        .expectedSchema(expectedSchema)
+        .expectSchema(expectedSchema)
         .baselineValues(5l, 1l)
         .baselineValues(5l, 5l)
         .baselineValues(50l, 100l)

@@ -185,6 +185,11 @@ public class HashJoinBatch extends AbstractRecordBatch<HashJoinPOP> {
       return;
     }
 
+    if (leftUpstream == IterOutcome.NONE && rightUpstream == IterOutcome.NONE) {
+      state = BatchState.DONE;
+      return;
+    }
+
     // Initialize the hash join helper context
     hjHelper = new HashJoinHelper(context, oContext.getAllocator());
     try {
