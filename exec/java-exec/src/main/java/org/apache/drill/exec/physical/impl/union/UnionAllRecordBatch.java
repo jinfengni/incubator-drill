@@ -17,10 +17,7 @@
  */
 package org.apache.drill.exec.physical.impl.union;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-
+import com.google.common.collect.Lists;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.ErrorCollector;
 import org.apache.drill.common.expression.ErrorCollectorImpl;
@@ -55,7 +52,9 @@ import org.apache.drill.exec.vector.FixedWidthVector;
 import org.apache.drill.exec.vector.SchemaChangeCallBack;
 import org.apache.drill.exec.vector.ValueVector;
 
-import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
 
 public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UnionAllRecordBatch.class);
@@ -142,6 +141,7 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
   }
 
   private boolean doAlloc() {
+    logger.debug("unionAll.doAlloc is called. left : {}, right : {}", stats.batchesReceivedByInput[0], stats.batchesReceivedByInput[1]);
     for (ValueVector v : allocationVectors) {
       try {
         AllocationHelper.allocateNew(v, current.getRecordCount());
@@ -154,6 +154,7 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
 
   @SuppressWarnings("resource")
   private IterOutcome doWork() throws ClassTransformationException, IOException, SchemaChangeException {
+    logger.debug("UnionAll.doWork() is called. left : {}, right : {}", stats.batchesReceivedByInput[0], stats.batchesReceivedByInput[1]);
     if (allocationVectors != null) {
       for (ValueVector v : allocationVectors) {
         v.clear();
@@ -230,6 +231,8 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
           TypedFieldId fid = container.getValueVectorId(SchemaPath.getSimplePath(outputField.getPath()));
           ValueVectorWriteExpression write = new ValueVectorWriteExpression(fid, expr, true);
           cg.addExpr(write);
+
+          logger.debug("unionAll do directCopy. left : {}, right : {}", stats.batchesReceivedByInput[0], stats.batchesReceivedByInput[1]);
         }
       // Cast is necessary
       } else {
@@ -265,12 +268,15 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
         boolean useSetSafe = !(vector instanceof FixedWidthVector);
         ValueVectorWriteExpression write = new ValueVectorWriteExpression(fid, expr, useSetSafe);
         cg.addExpr(write);
+        logger.debug("unionAll do implictCast and copy. left : {}, right : {}", stats.batchesReceivedByInput[0], stats.batchesReceivedByInput[1]);
       }
       ++index;
     }
 
     unionall = context.getImplementationClass(cg.getCodeGenerator());
     unionall.setup(context, current, this, transfers);
+
+    logger.debug("unionAll.setup() is called after run-time code generation. left : {}, right : {}", stats.batchesReceivedByInput[0], stats.batchesReceivedByInput[1]);
 
     if(!schemaAvailable) {
       container.buildSchema(BatchSchema.SelectionVectorMode.NONE);
@@ -283,6 +289,8 @@ public class UnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
 
     recordCount = unionall.unionRecords(0, current.getRecordCount(), 0);
     setValueCount(recordCount);
+
+    logger.debug("doWork() complete with {} records in outgoing batch. left : {}, right : {}",recordCount, stats.batchesReceivedByInput[0], stats.batchesReceivedByInput[1]);
     return IterOutcome.OK;
   }
 
