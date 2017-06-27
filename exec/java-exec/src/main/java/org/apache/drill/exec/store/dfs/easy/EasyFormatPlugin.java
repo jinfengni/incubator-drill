@@ -163,7 +163,7 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
       map.putAll(Maps.difference(map, diff).entriesOnlyOnRight());
       }
 
-    return new ScanBatch(scan, context, oContext, readers.iterator(), implicitColumns);
+    return new ScanBatch(scan, context, oContext, readers.iterator(), implicitColumns.iterator());
   }
 
   public abstract RecordWriter getRecordWriter(FragmentContext context, EasyWriter writer) throws IOException;

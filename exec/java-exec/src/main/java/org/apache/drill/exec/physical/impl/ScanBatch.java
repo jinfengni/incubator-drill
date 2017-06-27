@@ -79,22 +79,35 @@ public class ScanBatch implements CloseableRecordBatch {
   private final Mutator mutator;
   private boolean done = false;
   private boolean hasReadNonEmptyFile = false;
-  private Map<String, ValueVector> implicitVectors;
+  private Map<String, ValueVector> implicitVectors = Maps.newHashMap();
   private Iterator<Map<String, String>> implicitColumns;
   private Map<String, String> implicitValues;
   private final BufferAllocator allocator;
 
+  /**
+   *
+   * @param subScanConfig
+   * @param context
+   * @param oContext
+   * @param readers
+   * @param implicitColumns : either an emptylist's iterator when all the readers do not have implicit
+   *                        columns, or there is a one-to-one mapping between reader iterator and implicitColumns iterator.
+   */
   public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context,
                    OperatorContext oContext, Iterator<RecordReader> readers,
-                   List<Map<String, String>> implicitColumns) {
+                   Iterator<Map<String, String>> implicitColumns) {
     this.context = context;
     this.readers = readers;
+    this.implicitColumns = implicitColumns;
     if (!readers.hasNext()) {
       throw UserException.systemError(
           new ExecutionSetupException("A scan batch must contain at least one reader."))
         .build(logger);
     }
+
     currentReader = readers.next();
+    this.implicitValues = this.implicitColumns.hasNext() ? this.implicitColumns.next() : null;
+
     this.oContext = oContext;
     allocator = oContext.getAllocator();
     mutator = new Mutator(oContext, allocator, container);
@@ -114,10 +127,7 @@ public class ScanBatch implements CloseableRecordBatch {
     } finally {
       oContext.getStats().stopProcessing();
     }
-    this.implicitColumns = implicitColumns.iterator();
-    this.implicitValues = this.implicitColumns.hasNext() ? this.implicitColumns.next() : null;
 
-    addImplicitVectors();
   }
 
   public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context,
@@ -125,7 +135,7 @@ public class ScanBatch implements CloseableRecordBatch {
       throws ExecutionSetupException {
     this(subScanConfig, context,
         context.newOperatorContext(subScanConfig),
-        readers, Collections.<Map<String, String>> emptyList());
+        readers, Collections.<Map<String, String>> emptyList().iterator());
   }
 
   @Override
@@ -216,7 +226,6 @@ public class ScanBatch implements CloseableRecordBatch {
             clearFieldVectorMap();
             throw UserException.memoryError(e).build(logger);
           }
-          addImplicitVectors();
         } catch (ExecutionSetupException e) {
           releaseAssets();
           throw UserException.systemError(e).build(logger);
@@ -226,6 +235,7 @@ public class ScanBatch implements CloseableRecordBatch {
       // At this point, the current reader has read 1 or more rows.
 
       hasReadNonEmptyFile = true;
+      addImplicitVectors();
       populateImplicitVectors();
 
       for (VectorWrapper<?> w : container) {
@@ -254,12 +264,10 @@ public class ScanBatch implements CloseableRecordBatch {
 
   private void addImplicitVectors() {
     try {
-      if (implicitVectors != null) {
-        for (ValueVector v : implicitVectors.values()) {
-          v.clear();
-        }
+      for (ValueVector v : implicitVectors.values()) {
+        v.clear();
       }
-      implicitVectors = Maps.newHashMap();
+      implicitVectors.clear();
 
       if (implicitValues != null) {
         for (String column : implicitValues.keySet()) {
@@ -329,9 +337,11 @@ public class ScanBatch implements CloseableRecordBatch {
 
   @VisibleForTesting
   public static class Mutator implements OutputMutator {
-    /** Whether schema has changed since last inquiry (via #isNewSchema}).  Is
-     *  true before first inquiry. */
-    private boolean schemaChanged = false;
+    /** Flag keeping track whether top-level schema has changed since last inquiry (via #isNewSchema}).
+     * It's initialized to false, or reset to false after #isNewSchema or after #clear, until a new value vector
+     * or a value vector with different type is added to fieldVectorMap.
+     **/
+    private boolean schemaChanged;
 
     /** Fields' value vectors indexed by fields' keys. */
     private final CaseInsensitiveMap<ValueVector> fieldVectorMap =
@@ -348,6 +358,7 @@ public class ScanBatch implements CloseableRecordBatch {
       this.oContext = oContext;
       this.allocator = allocator;
       this.container = container;
+      this.schemaChanged = false;
     }
 
     public Map<String, ValueVector> fieldVectorMap() {
@@ -424,6 +435,7 @@ public class ScanBatch implements CloseableRecordBatch {
 
     public void clear() {
       fieldVectorMap.clear();
+      schemaChanged = false;
     }
   }
 
