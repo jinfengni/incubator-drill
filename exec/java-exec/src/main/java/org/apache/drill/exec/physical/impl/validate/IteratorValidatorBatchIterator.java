@@ -307,12 +307,12 @@ public class IteratorValidatorBatchIterator implements CloseableRecordBatch {
                   "Incoming batch [#%d, %s] has a null schema. This is not allowed.",
                   instNum, batchTypeName));
         }
-        if (lastSchema.getFieldCount() == 0) {
-          throw new IllegalStateException(
-              String.format(
-                  "Incoming batch [#%d, %s] has an empty schema. This is not allowed.",
-                  instNum, batchTypeName));
-        }
+//        if (lastSchema.getFieldCount() == 0) {
+//          throw new IllegalStateException(
+//              String.format(
+//                  "Incoming batch [#%d, %s] has an empty schema. This is not allowed.",
+//                  instNum, batchTypeName));
+//        }
         if (incoming.getRecordCount() > MAX_BATCH_SIZE) {
           throw new IllegalStateException(
               String.format(

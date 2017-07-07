@@ -35,15 +35,28 @@ public class Project extends AbstractSingle{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Project.class);
 
   private final List<NamedExpression> exprs;
+  private final boolean preserveFastNone;
 
   @JsonCreator
   public Project(@JsonProperty("exprs") List<NamedExpression> exprs, @JsonProperty("child") PhysicalOperator child) {
     super(child);
     this.exprs = exprs;
+    this.preserveFastNone = true;
+  }
+
+  @JsonCreator
+  public Project(@JsonProperty("exprs") List<NamedExpression> exprs, @JsonProperty("child") PhysicalOperator child, @JsonProperty("preservefastnone") boolean preserveFastNone) {
+    super(child);
+    this.exprs = exprs;
+    this.preserveFastNone = preserveFastNone;
   }
 
   public List<NamedExpression> getExprs() {
     return exprs;
+  }
+
+  public boolean isPreserveFastNone() {
+    return preserveFastNone;
   }
 
   @Override
@@ -53,7 +66,7 @@ public class Project extends AbstractSingle{
 
   @Override
   protected PhysicalOperator getNewWithChild(PhysicalOperator child) {
-    return new Project(exprs, child);
+    return new Project(exprs, child, preserveFastNone);
   }
 
   @Override

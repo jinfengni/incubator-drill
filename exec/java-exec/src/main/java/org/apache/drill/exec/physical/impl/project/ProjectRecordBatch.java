@@ -18,6 +18,7 @@
 package org.apache.drill.exec.physical.impl.project;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -35,6 +36,7 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.expression.ValueExpressions;
 import org.apache.drill.common.expression.fn.CastFunctions;
 import org.apache.drill.common.logical.data.NamedExpression;
+import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.exception.ClassTransformationException;
@@ -768,4 +770,60 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
       }
     }
   }
+
+  @Override
+  protected IterOutcome handleFastNone() {
+    if (popConfig.isPreserveFastNone()) {
+      return super.handleFastNone();
+    }
+
+    allocationVectors = new ArrayList<>();
+    final List<NamedExpression> exprs = getExpressionList();
+    final ErrorCollector collector = new ErrorCollectorImpl();
+    VectorContainer fakedIncomingVC = new VectorContainer();
+
+    for (NamedExpression namedExpression : exprs) {
+
+      if (namedExpression.getExpr() instanceof SchemaPath) {
+        final NameSegment expr = ((SchemaPath) namedExpression.getExpr()).getRootSegment();
+        if (expr.getPath().contains(StarColumnHelper.STAR_COLUMN)) {
+          continue; // * would expand into an empty list.
+        } else {
+          final TypeProtos.MajorType majorType = TypeProtos.MajorType.newBuilder()
+              .setMinorType(MinorType.INT)
+              .setMode(TypeProtos.DataMode.OPTIONAL)
+              .build();
+
+          MaterializedField outputField = MaterializedField.create(expr.getPath(), majorType);
+          final ValueVector vv = container.addOrGet(outputField, callBack);
+          allocationVectors.add(vv);
+        }
+        continue;
+      }
+
+      final LogicalExpression materializedExpr = ExpressionTreeMaterializer.materialize(namedExpression.getExpr(),
+          fakedIncomingVC,
+          collector,
+          context.getFunctionRegistry(),
+          true,
+          unionTypeEnabled);
+
+      if (collector.hasErrors()) {
+        throw new IllegalArgumentException(String.format("Failure while trying to materialize expressions : %s.  Errors:\n %s.",
+            namedExpression.getExpr(),
+            collector.toErrorString()));
+      }
+
+      final MaterializedField outputField = MaterializedField.create(namedExpression.getRef().getAsUnescapedPath(), materializedExpr.getMajorType());
+      final ValueVector vv = container.addOrGet(outputField, callBack);
+      allocationVectors.add(vv);
+
+    }
+
+    doAlloc(0);
+    container.buildSchema(SelectionVectorMode.NONE);
+    wasNone = true;
+    return IterOutcome.OK_NEW_SCHEMA;
+  }
+
 }

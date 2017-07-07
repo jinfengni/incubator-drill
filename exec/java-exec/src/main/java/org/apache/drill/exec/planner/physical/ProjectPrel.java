@@ -38,15 +38,22 @@ import org.apache.calcite.sql.SqlKind;
 public class ProjectPrel extends DrillProjectRelBase implements Prel{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ProjectPrel.class);
 
+  private final boolean preserveFastNone;
 
   public ProjectPrel(RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,
       RelDataType rowType) {
+    this(cluster, traits, child, exps, rowType, true);
+  }
+
+  public ProjectPrel(RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,
+      RelDataType rowType, boolean preserveFastNone) {
     super(DRILL_PHYSICAL, cluster, traits, child, exps, rowType);
+    this.preserveFastNone = preserveFastNone;
   }
 
   @Override
   public Project copy(RelTraitSet traitSet, RelNode input, List<RexNode> exps, RelDataType rowType) {
-    return new ProjectPrel(getCluster(), traitSet, input, exps, rowType);
+    return new ProjectPrel(getCluster(), traitSet, input, exps, rowType, this.preserveFastNone);
   }
 
 
@@ -57,7 +64,7 @@ public class ProjectPrel extends DrillProjectRelBase implements Prel{
     PhysicalOperator childPOP = child.getPhysicalOperator(creator);
 
     org.apache.drill.exec.physical.config.Project p = new org.apache.drill.exec.physical.config.Project(
-        this.getProjectExpressions(new DrillParseContext(PrelUtil.getSettings(getCluster()))),  childPOP);
+        this.getProjectExpressions(new DrillParseContext(PrelUtil.getSettings(getCluster()))),  childPOP, preserveFastNone);
     return creator.addMetadata(this, p);
   }
 
