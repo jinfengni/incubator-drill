@@ -25,7 +25,8 @@
   },
   {
     pop: "project", @id: 2, child: 1,
-    exprs: [{ref: "testColumn", expr: "__CONVERT_EXPRESSION__"}]
+    exprs: [{ref: "testColumn", expr: "__CONVERT_EXPRESSION__"}],
+    preservefastnone: true
   },
   {
     pop: "selection-vector-remover", @id:3, child: 2

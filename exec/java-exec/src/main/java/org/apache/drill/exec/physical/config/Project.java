@@ -35,20 +35,18 @@ public class Project extends AbstractSingle{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Project.class);
 
   private final List<NamedExpression> exprs;
-  private final boolean preserveFastNone;
-
-  @JsonCreator
-  public Project(@JsonProperty("exprs") List<NamedExpression> exprs, @JsonProperty("child") PhysicalOperator child) {
-    super(child);
-    this.exprs = exprs;
-    this.preserveFastNone = true;
-  }
+  private boolean preserveFastNone = true;
 
   @JsonCreator
   public Project(@JsonProperty("exprs") List<NamedExpression> exprs, @JsonProperty("child") PhysicalOperator child, @JsonProperty("preservefastnone") boolean preserveFastNone) {
     super(child);
     this.exprs = exprs;
     this.preserveFastNone = preserveFastNone;
+  }
+
+  public Project(List<NamedExpression> exprs, PhysicalOperator child) {
+    super(child);
+    this.exprs = exprs;
   }
 
   public List<NamedExpression> getExprs() {
