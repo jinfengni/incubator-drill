@@ -17,7 +17,6 @@
  */
 package org.apache.drill.exec.physical.impl.union;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.calcite.util.Pair;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
@@ -36,7 +35,7 @@ import org.apache.drill.exec.expr.ExpressionTreeMaterializer;
 import org.apache.drill.exec.expr.ValueVectorWriteExpression;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.UnionAll;
-import org.apache.drill.exec.record.AbstractRecordBatch;
+import org.apache.drill.exec.record.AbstractBinaryRecordBatch;
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.RecordBatch;
@@ -56,14 +55,12 @@ import java.util.Stack;
 
 import static org.apache.drill.exec.physical.impl.union.UnionAllRecordBatch.hasSameTypeAndMode;
 
-public class NewUnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
+public class NewUnionAllRecordBatch extends AbstractBinaryRecordBatch<UnionAll> {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(NewUnionAllRecordBatch.class);
 
   protected SchemaChangeCallBack callBack = new SchemaChangeCallBack();
 
   private UnionAller unionall;
-  private final RecordBatch left;
-  private final RecordBatch right;
   private final List<TransferPair> transfers = Lists.newArrayList();
   private List<ValueVector> allocationVectors = Lists.newArrayList();
   private int recordCount = 0;
@@ -71,10 +68,7 @@ public class NewUnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
 
 
   public NewUnionAllRecordBatch(UnionAll config, List<RecordBatch> children, FragmentContext context) throws OutOfMemoryException {
-    super(config, context, true);
-    Preconditions.checkArgument(children.size() == 2, "The number of the operands of Union must be 2");
-    left = children.get(0);
-    right = children.get(1);
+    super(config, context, true, children.get(0), children.get(1));
   }
 
   @Override
@@ -85,27 +79,14 @@ public class NewUnionAllRecordBatch extends AbstractRecordBatch<UnionAll> {
 
   @Override
   protected void buildSchema() throws SchemaChangeException {
-    IterOutcome leftUpstream = next(0, left);
-    IterOutcome rightUpstream = next(1, right);
-
-    if (leftUpstream == IterOutcome.STOP || rightUpstream == IterOutcome.STOP) {
-      state = BatchState.STOP;
-      return;
-    }
-
-    if (leftUpstream == IterOutcome.OUT_OF_MEMORY || rightUpstream == IterOutcome.OUT_OF_MEMORY) {
-      state = BatchState.OUT_OF_MEMORY;
-      return;
-    }
-
-    if (leftUpstream == IterOutcome.NONE && rightUpstream == IterOutcome.NONE) {
-      state = BatchState.DONE;
+    if (prefetchFirstBatchFromBothSides()) {
       return;
     }
 
     if (rightUpstream == IterOutcome.OK_NEW_SCHEMA) {
       batchStatusStack.push(new BatchStatusWrappper(true, right, 1));
     }
+
     if (leftUpstream == IterOutcome.OK_NEW_SCHEMA) {
       batchStatusStack.push(new BatchStatusWrappper(true, left, 0));
     }
