@@ -500,7 +500,8 @@ public class MergingRecordBatch extends AbstractRecordBatch<MergingReceiverPOP> 
     } catch (final IOException e) {
       throw new DrillRuntimeException(e);
     }
-    outgoingContainer = VectorContainer.canonicalize(outgoingContainer);
+//    outgoingContainer = VectorContainer.canonicalize(outgoingContainer);
+    outgoingContainer.canonicalize();
     outgoingContainer.buildSchema(SelectionVectorMode.NONE);
   }
 

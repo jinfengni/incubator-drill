@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.drill.common.expression.ConvertExpression;
@@ -63,6 +64,7 @@ import org.apache.drill.exec.record.VectorWrapper;
 import org.apache.drill.exec.store.ImplicitColumnExplorer;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.FixedWidthVector;
+import org.apache.drill.exec.vector.SchemaChangeCallBack;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.complex.MapVector;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ComplexWriter;
@@ -85,6 +87,8 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
   private static final String EMPTY_STRING = "";
   private boolean first = true;
   private boolean wasNone = false; // whether a NONE iter outcome was already seen
+
+  private Map<String, Integer> outputColToIndex;
 
   private class ClassifierResult {
     public boolean isStar = false;
@@ -170,6 +174,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
               container.addOrGet(fieldReference.getRootSegment().getPath(),
                   Types.required(MinorType.MAP), MapVector.class);
             }
+            container.orderVectorByIndex(outputColToIndex);
             container.buildSchema(SelectionVectorMode.NONE);
             wasNone = true;
             return IterOutcome.OK_NEW_SCHEMA;
@@ -212,6 +217,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
     // In case of complex writer expression, vectors would be added to batch run-time.
     // We have to re-build the schema.
     if (complexWriters != null) {
+      container.orderVectorByIndex(outputColToIndex);
       container.buildSchema(SelectionVectorMode.NONE);
     }
 
@@ -241,6 +247,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
     // In case of complex writer expression, vectors would be added to batch run-time.
     // We have to re-build the schema.
     if (complexWriters != null) {
+      container.orderVectorByIndex(outputColToIndex);
       container.buildSchema(SelectionVectorMode.NONE);
     }
   }
@@ -311,6 +318,12 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
         v.clear();
       }
     }
+
+    if (outputColToIndex != null) {
+      outputColToIndex.clear();
+    }
+    outputColToIndex = org.apache.drill.common.map.CaseInsensitiveMap.newHashMap();
+
     this.allocationVectors = Lists.newArrayList();
     if (complexWriters != null) {
       container.clear();
@@ -360,7 +373,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
               }
 
               final FieldReference ref = new FieldReference(name);
-              final ValueVector vvOut = container.addOrGet(MaterializedField.create(ref.getAsNamePart().getName(), vvIn.getField().getType()), callBack);
+              final ValueVector vvOut = addOutputCol(MaterializedField.create(ref.getAsNamePart().getName(), vvIn.getField().getType()));
               final TransferPair tp = vvIn.makeTransferPair(vvOut);
               transfers.add(tp);
             }
@@ -387,7 +400,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
               }
 
               final MaterializedField outputField = MaterializedField.create(name, expr.getMajorType());
-              final ValueVector vv = container.addOrGet(outputField, callBack);
+              final ValueVector vv = addOutputCol(outputField);
               allocationVectors.add(vv);
               final TypedFieldId fid = container.getValueVectorId(SchemaPath.getSimplePath(outputField.getPath()));
               final ValueVectorWriteExpression write = new ValueVectorWriteExpression(fid, expr, true);
@@ -439,7 +452,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
         Preconditions.checkNotNull(incoming);
 
         final FieldReference ref = getRef(namedExpression);
-        final ValueVector vvOut = container.addOrGet(MaterializedField.create(ref.getAsUnescapedPath(), vectorRead.getMajorType()), callBack);
+        final ValueVector vvOut = addOutputCol(MaterializedField.create(ref.getAsUnescapedPath(), vectorRead.getMajorType()));
         final TransferPair tp = vvIn.makeTransferPair(vvOut);
         transfers.add(tp);
         transferFieldIds.add(vectorRead.getFieldId().getFieldIds()[0]);
@@ -461,9 +474,10 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
         }
         // save the field reference for later for getting schema when input is empty
         complexFieldReferencesList.add(namedExpression.getRef());
+        addOutputColComplex(namedExpression.getRef().getAsUnescapedPath());
       } else {
         // need to do evaluation.
-        final ValueVector vector = container.addOrGet(outputField, callBack);
+        final ValueVector vector = addOutputCol(outputField);
         allocationVectors.add(vector);
         final TypedFieldId fid = container.getValueVectorId(SchemaPath.getSimplePath(outputField.getPath()));
         final boolean useSetSafe = !(vector instanceof FixedWidthVector);
@@ -499,6 +513,22 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
     } else {
       return false;
     }
+  }
+
+  private ValueVector addOutputCol(final MaterializedField outputField) {
+    Preconditions.checkArgument(!outputColToIndex.containsKey(outputField.getPath()),
+        "Duplicate column names %s detected. This is not allowed in Drill Project execution.", outputField.getName());
+
+    outputColToIndex.put(outputField.getPath(), outputColToIndex.size());
+
+    final ValueVector vv = container.addOrGet(outputField, callBack);
+    return vv;
+  }
+
+  private void addOutputColComplex(String fieldName) {
+    Preconditions.checkArgument(!outputColToIndex.containsKey(fieldName),
+        "Duplicate column names %s detected. This is not allowed in Drill Project execution.", fieldName);
+    outputColToIndex.put(fieldName, outputColToIndex.size());
   }
 
   private boolean isImplicitFileColumn(ValueVector vvIn) {

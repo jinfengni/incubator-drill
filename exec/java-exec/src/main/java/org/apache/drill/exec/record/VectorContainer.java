@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.drill.common.expression.SchemaPath;
@@ -39,6 +40,8 @@ import org.apache.drill.exec.vector.ValueVector;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import static org.bouncycastle.asn1.x500.style.RFC4519Style.o;
 
 public class VectorContainer implements VectorAccessible {
 
@@ -202,28 +205,60 @@ public class VectorContainer implements VectorAccessible {
   }
 
   /**
-   * Sorts vectors into canonical order (by field name) in new VectorContainer.
+   * Sorts vectors into canonical order (by field name).
    */
-  public static VectorContainer canonicalize(VectorContainer original) {
+  public VectorContainer canonicalize() {
     VectorContainer vc = new VectorContainer();
-    List<VectorWrapper<?>> canonicalWrappers = new ArrayList<VectorWrapper<?>>(original.wrappers);
     // Sort list of VectorWrapper alphabetically based on SchemaPath.
-    Collections.sort(canonicalWrappers, new Comparator<VectorWrapper<?>>() {
+    Collections.sort(wrappers, new Comparator<VectorWrapper<?>>() {
       @Override
       public int compare(VectorWrapper<?> v1, VectorWrapper<?> v2) {
         return v1.getField().getPath().compareTo(v2.getField().getPath());
       }
     });
+    schemaChanged = true;
+    return this;
+  }
 
-    for (VectorWrapper<?> w : canonicalWrappers) {
-      if (w.isHyper()) {
-        vc.add(w.getValueVectors());
-      } else {
-        vc.add(w.getValueVector());
+//  /**
+//   * Sorts vectors into canonical order (by field name) in new VectorContainer.
+//   */
+//  public static VectorContainer canonicalize(VectorContainer original) {
+//    VectorContainer vc = new VectorContainer();
+//    List<VectorWrapper<?>> canonicalWrappers = new ArrayList<VectorWrapper<?>>(original.wrappers);
+//    // Sort list of VectorWrapper alphabetically based on SchemaPath.
+//    Collections.sort(canonicalWrappers, new Comparator<VectorWrapper<?>>() {
+//      @Override
+//      public int compare(VectorWrapper<?> v1, VectorWrapper<?> v2) {
+//        return v1.getField().getPath().compareTo(v2.getField().getPath());
+//      }
+//    });
+//
+//    for (VectorWrapper<?> w : canonicalWrappers) {
+//      if (w.isHyper()) {
+//        vc.add(w.getValueVectors());
+//      } else {
+//        vc.add(w.getValueVector());
+//      }
+//    }
+//    vc.allocator = original.allocator;
+//    return vc;
+//  }
+
+  /**
+   * Sorts vectors into canonical order (by field name) in new VectorContainer.
+   */
+  public VectorContainer orderVectorByIndex(final Map<String, Integer> colToIndex) {
+    Collections.sort(wrappers, new Comparator<VectorWrapper<?>>() {
+      @Override
+      public int compare(VectorWrapper<?> v1, VectorWrapper<?> v2) {
+        int index1 = colToIndex.get(v1.getField().getPath());
+        int index2 = colToIndex.get(v2.getField().getPath());
+        return index1 - index2;
       }
-    }
-    vc.allocator = original.allocator;
-    return vc;
+    });
+
+    return this;
   }
 
   private void cloneAndTransfer(VectorWrapper<?> wrapper) {

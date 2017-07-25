@@ -219,7 +219,7 @@ public class RecordBatchLoader implements VectorAccessible, Iterable<VectorWrapp
    */
   public void canonicalize() {
     //logger.debug( "RecordBatchLoader : before schema " + schema);
-    container = VectorContainer.canonicalize(container);
+    container.canonicalize();
 
     // rebuild the schema.
     SchemaBuilder b = BatchSchema.newBuilder();

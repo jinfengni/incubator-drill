@@ -136,7 +136,7 @@ public class TopNBatch extends AbstractRecordBatch<TopN> {
             v.clear();
           }
         }
-        c = VectorContainer.canonicalize(c);
+        c.canonicalize();
         for (VectorWrapper<?> w : c) {
           @SuppressWarnings("resource")
           ValueVector v = container.addOrGet(w.getField());
@@ -417,7 +417,7 @@ public class TopNBatch extends AbstractRecordBatch<TopN> {
       oldSchemaContainer.setRecordCount(builder.getSv4().getCount());
       final VectorContainer newSchemaContainer =  SchemaUtil.coerceContainer(oldSchemaContainer, this.schema, oContext);
       // Canonicalize new container since we canonicalize incoming batches before adding to queue.
-      final VectorContainer canonicalizedContainer = VectorContainer.canonicalize(newSchemaContainer);
+      final VectorContainer canonicalizedContainer = newSchemaContainer.canonicalize();
       canonicalizedContainer.buildSchema(SelectionVectorMode.FOUR_BYTE);
       priorityQueue.cleanup();
       priorityQueue = createNewPriorityQueue(context, config.getOrderings(), canonicalizedContainer, MAIN_MAPPING, LEFT_MAPPING, RIGHT_MAPPING);

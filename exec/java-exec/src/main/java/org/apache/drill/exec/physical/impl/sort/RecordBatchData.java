@@ -67,7 +67,7 @@ public class RecordBatchData {
 
   public void canonicalize() {
     SelectionVectorMode mode = container.getSchema().getSelectionVectorMode();
-    container = VectorContainer.canonicalize(container);
+    container.canonicalize();
     container.buildSchema(mode);
   }
 

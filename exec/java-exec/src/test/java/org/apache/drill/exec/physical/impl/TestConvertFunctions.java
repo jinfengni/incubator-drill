@@ -162,7 +162,23 @@ public class TestConvertFunctions extends BaseTestQuery {
         .go();
   }
 
-  @Test // DRILL-4679
+  @Test // DRILL-5667
+  public void testConvertFromJson_drill5667() throws Exception {
+    Object mapVal1 = mapOf("y", "kevin", "z", "paul");
+    Object mapVal2 = mapOf("y", "bill", "z", "peter");
+
+    // right side of union-all produces 0 rows due to FALSE filter, column t.x is a map
+    String query1 = String.format("select 'abc' as col1, convert_from(convert_to(t.x, 'JSON'), 'JSON') as col2, 'xyz' as col3 from cp.`/store/json/input2.json` t "
+        + " where t.`integer` = 2010 "
+        + " union all "
+        + " select 'abc' as col1, t.x as col2, 'xyz' as col3 from cp.`/store/json/input2.json` t"
+        + " where t.`integer` = 2010 ");
+
+    test(query1);
+  }
+
+
+    @Test // DRILL-4679
   public void testConvertFromJson_drill4679() throws Exception {
     Object mapVal1 = mapOf("y", "kevin", "z", "paul");
     Object mapVal2 = mapOf("y", "bill", "z", "peter");
