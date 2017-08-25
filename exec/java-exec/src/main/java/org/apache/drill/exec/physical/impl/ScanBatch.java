@@ -56,6 +56,7 @@ import org.apache.drill.exec.vector.ValueVector;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -80,23 +81,23 @@ public class ScanBatch implements CloseableRecordBatch {
   private Iterator<Map<String, String>> implicitColumns;
   private Map<String, String> implicitValues;
   private final BufferAllocator allocator;
-  private boolean implicitAdded = false;
+  private final List<Map<String, String>> implicitColumnList;
 
   /**
    *
    * @param subScanConfig
    * @param context
    * @param oContext
-   * @param readers
-   * @param implicitColumns : either an emptylist's iterator when all the readers do not have implicit
-   *                        columns, or there is a one-to-one mapping between reader iterator and implicitColumns iterator.
+   * @param readerList
+   * @param implicitColumnList : either an emptylist when all the readers do not have implicit
+   *                        columns, or there is a one-to-one mapping between reader and implicitColumns.
    */
   public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context,
-                   OperatorContext oContext, Iterator<RecordReader> readers,
-                   Iterator<Map<String, String>> implicitColumns) {
+                   OperatorContext oContext, List<RecordReader> readerList,
+                   List<Map<String, String>> implicitColumnList) {
     this.context = context;
-    this.readers = readers;
-    this.implicitColumns = implicitColumns;
+    this.readers = readerList.iterator();
+    this.implicitColumns = implicitColumnList.iterator();
     if (!readers.hasNext()) {
       throw UserException.systemError(
           new ExecutionSetupException("A scan batch must contain at least one reader."))
@@ -107,10 +108,18 @@ public class ScanBatch implements CloseableRecordBatch {
     allocator = oContext.getAllocator();
     mutator = new Mutator(oContext, allocator, container);
 
+    oContext.getStats().startProcessing();
     try {
-      oContext.getStats().startProcessing();
+      if (! verifyImplcitColumns(readerList, implicitColumnList)) {
+        throw new ExecutionSetupException("Either implicit column list does not have same cardinality as reader list, or implicit columns are not same across all the record readers!");
+      }
+      this.implicitColumnList = implicitColumnList;
+      addImplicitVectors();
+      mutator.isNewSchema(); // Implicit vectors are same across all the readers.
+                             // Ignore the implicit vectors when check if there is a new schema in ScanBatch.
+
       advanceNextReader();
-//      addImplicitVectors();
+
     } catch (ExecutionSetupException e) {
       try {
         currentReader.close();
@@ -127,11 +136,11 @@ public class ScanBatch implements CloseableRecordBatch {
   }
 
   public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context,
-                   Iterator<RecordReader> readers)
+                   List<RecordReader> readers)
       throws ExecutionSetupException {
     this(subScanConfig, context,
         context.newOperatorContext(subScanConfig),
-        readers, Collections.<Map<String, String>> emptyList().iterator());
+        readers, Collections.<Map<String, String>> emptyList());
   }
 
   @Override
@@ -179,14 +188,8 @@ public class ScanBatch implements CloseableRecordBatch {
             "recordCount from RecordReader.next() should not be negative");
 
         boolean isNewSchema = mutator.isNewSchema();
-        // We should skip the reader, when recordCount = 0 && ! isNewRegularSchema.
-        // Add/set implicit column vectors, only when reader gets > 0 row, or
-        // when reader gets 0 row but with a schema with new field added
-        if (recordCount > 0 || isNewSchema) {
-          if (!implicitAdded) {
-            addImplicitVectors();
-            mutator.isNewSchema();
-          }
+
+        if (recordCount > 0) {
           populateImplicitVectors();
         }
 
@@ -260,8 +263,8 @@ public class ScanBatch implements CloseableRecordBatch {
       }
       implicitVectors.clear();
 
-      if (implicitValues != null) {
-        for (String column : implicitValues.keySet()) {
+      if (!implicitColumnList.isEmpty()) {
+        for (String column : implicitColumnList.get(0).keySet()) {
           final MaterializedField field = MaterializedField.create(column, Types.optional(MinorType.VARCHAR));
           @SuppressWarnings("resource")
           final ValueVector v = mutator.addField(field, NullableVarCharVector.class);
@@ -456,4 +459,27 @@ public class ScanBatch implements CloseableRecordBatch {
         String.format("You should not call getOutgoingContainer() for class %s",
                       this.getClass().getCanonicalName()));
   }
+
+  private boolean verifyImplcitColumns(List<RecordReader> readerList, List<Map<String, String>> implicitColumnList) {
+    if (implicitColumnList.isEmpty()) {
+      return true;
+    }
+
+    if (readerList.size() != implicitColumnList.size()) {
+      return false;
+    }
+
+    Map<String, String> firstMap = implicitColumnList.get(0);
+
+    for (int i = 1; i< implicitColumnList.size(); i++) {
+      Map<String, String> nonFirstMap = implicitColumnList.get(i);
+
+      if (!firstMap.keySet().equals(nonFirstMap.keySet())) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
 }

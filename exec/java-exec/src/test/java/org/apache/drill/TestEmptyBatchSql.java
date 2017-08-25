@@ -58,16 +58,77 @@ public class TestEmptyBatchSql extends  BaseTestQuery {
   }
 
   /**
-   * Test with query against an empty file. Select clause has *
+   * Test with query against an empty file. Select clause has one or more *
    * star column is expanded into an empty list.
    * @throws Exception
    */
   @Test
   public void testQueryStarColEmptyJson() throws Exception {
     final String rootEmpty = FileUtils.getResourceAsFile("/project/pushdown/empty.json").toURI().toString();
-    final String query = String.format("select * from dfs_test.`%s` ", rootEmpty);
+    final String query1 = String.format("select * from dfs_test.`%s` ", rootEmpty);
 
     final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList();
+
+    testBuilder()
+        .sqlQuery(query1)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+
+    final String query2 = String.format("select *, * from dfs_test.`%s` ", rootEmpty);
+
+    testBuilder()
+        .sqlQuery(query2)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+  }
+
+  /**
+   * Test with query against an empty file. Select clause has one or more qualified *
+   * star column is expanded into an empty list.
+   * @throws Exception
+   */
+  @Test
+  public void testQueryQualifiedStarColEmptyJson() throws Exception {
+    final String rootEmpty = FileUtils.getResourceAsFile("/project/pushdown/empty.json").toURI().toString();
+    final String query1 = String.format("select foo.* from dfs_test.`%s` as foo", rootEmpty);
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList();
+
+    testBuilder()
+        .sqlQuery(query1)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+
+    final String query2 = String.format("select foo.*, foo.* from dfs_test.`%s` as foo", rootEmpty);
+
+    testBuilder()
+        .sqlQuery(query2)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+
+  }
+
+  @Test
+  public void testQueryMapArrayEmptyJson() throws Exception {
+    final String rootEmpty = FileUtils.getResourceAsFile("/project/pushdown/empty.json").toURI().toString();
+    final String query = String.format("select foo.a.b as col1, foo.columns[2] as col2, foo.bar.columns[3] as col3 from dfs_test.`%s` as foo", rootEmpty);
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList();
+
+    final TypeProtos.MajorType majorType = TypeProtos.MajorType.newBuilder()
+        .setMinorType(TypeProtos.MinorType.INT)
+        .setMode(TypeProtos.DataMode.OPTIONAL)
+        .build();
+
+    expectedSchema.add(Pair.of(SchemaPath.getSimplePath("col1"), majorType));
+
+    expectedSchema.add(Pair.of(SchemaPath.getSimplePath("col2"), majorType));
+
+    expectedSchema.add(Pair.of(SchemaPath.getSimplePath("col3"), majorType));
 
     testBuilder()
         .sqlQuery(query)

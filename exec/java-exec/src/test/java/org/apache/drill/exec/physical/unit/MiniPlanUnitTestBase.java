@@ -51,7 +51,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.sun.tools.javac.jvm.ByteCodes.ret;
 import static org.apache.drill.exec.physical.base.AbstractBase.INIT_ALLOCATION;
 import static org.apache.drill.exec.physical.base.AbstractBase.MAX_ALLOCATION;
 
@@ -382,7 +381,12 @@ public class MiniPlanUnitTestBase extends PhysicalOpUnitTestBase {
         readers = TestUtilities.getJsonReadersFromInputFiles(fs, inputPaths, fragContext, columnsToRead);
       }
 
-      RecordBatch scanBatch = new ScanBatch(null, fragContext, readers);
+      List<RecordReader> readerList = new ArrayList<>();
+      while(readers.hasNext()) {
+        readerList.add(readers.next());
+      }
+
+      RecordBatch scanBatch = new ScanBatch(null, fragContext, readerList);
       return scanBatch;
     }
   }
@@ -436,7 +440,7 @@ public class MiniPlanUnitTestBase extends PhysicalOpUnitTestBase {
         }
       }
 
-      RecordBatch scanBatch = new ScanBatch(null, fragContext, readers.iterator());
+      RecordBatch scanBatch = new ScanBatch(null, fragContext, readers);
       return scanBatch;
     }
   } // end of ParquetScanBuilder

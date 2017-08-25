@@ -173,7 +173,7 @@ public class HiveDrillNativeScanBatchCreator implements BatchCreator<HiveDrillNa
         ImpersonationUtil.createProxyUgi(config.getUserName(), context.getQueryUserName())));
     }
 
-    return new ScanBatch(config, context, oContext, readers.iterator(), implicitColumns.iterator());
+    return new ScanBatch(config, context, oContext, readers, implicitColumns);
   }
 
   /**
