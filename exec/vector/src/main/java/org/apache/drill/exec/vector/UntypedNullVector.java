@@ -27,7 +27,7 @@ import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
-/** UntypedNullVector is to represent a value vector with {@link org.apache.drill.common.types.MinorType.NULL}
+/** UntypedNullVector is to represent a value vector with {@link org.apache.drill.common.types.MinorType#NULL}
  *  All values in the vector represent two semantic implications: 1) the value is unknown, 2) the type is unknown.
  *  Because of this, we only have to keep track of the number of values in value vector,
  *  and there is no allocated buffer to back up this value vector. Therefore, the majority of
@@ -132,7 +132,7 @@ public final class UntypedNullVector extends BaseDataValueVector implements Fixe
   }
 
   @Override
-  public int getPayloadByteCount() {
+  public int getPayloadByteCount(int valueCount) {
     return 0;
   }
 
