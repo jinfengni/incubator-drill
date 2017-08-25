@@ -80,6 +80,7 @@ public class ScanBatch implements CloseableRecordBatch {
   private Iterator<Map<String, String>> implicitColumns;
   private Map<String, String> implicitValues;
   private final BufferAllocator allocator;
+  private boolean implicitAdded = false;
 
   /**
    *
@@ -109,7 +110,7 @@ public class ScanBatch implements CloseableRecordBatch {
     try {
       oContext.getStats().startProcessing();
       advanceNextReader();
-      addImplicitVectors();
+//      addImplicitVectors();
     } catch (ExecutionSetupException e) {
       try {
         currentReader.close();
@@ -177,20 +178,21 @@ public class ScanBatch implements CloseableRecordBatch {
         Preconditions.checkArgument(recordCount >= 0,
             "recordCount from RecordReader.next() should not be negative");
 
-        boolean isNewRegularSchema = mutator.isNewSchema();
+        boolean isNewSchema = mutator.isNewSchema();
         // We should skip the reader, when recordCount = 0 && ! isNewRegularSchema.
         // Add/set implicit column vectors, only when reader gets > 0 row, or
         // when reader gets 0 row but with a schema with new field added
-        if (recordCount > 0 || isNewRegularSchema) {
-          addImplicitVectors();
+        if (recordCount > 0 || isNewSchema) {
+          if (!implicitAdded) {
+            addImplicitVectors();
+            mutator.isNewSchema();
+          }
           populateImplicitVectors();
         }
 
-        boolean isNewImplicitSchema = mutator.isNewSchema();
         for (VectorWrapper<?> w : container) {
           w.getValueVector().getMutator().setValueCount(recordCount);
         }
-        final boolean isNewSchema = isNewRegularSchema || isNewImplicitSchema;
         oContext.getStats().batchReceived(0, recordCount, isNewSchema);
 
         if (recordCount == 0) {
