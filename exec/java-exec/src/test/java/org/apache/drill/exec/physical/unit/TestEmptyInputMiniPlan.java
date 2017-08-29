@@ -46,11 +46,15 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
+public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
   protected static DrillFileSystem fs;
+
+  public final String SINGLE_EMPTY_JSON = "/scan/emptyInput/emptyJson/empty.json";
+  public final String SINGLE_EMPTY_JSON2 = "/scan/emptyInput/emptyJson/empty2.json";
 
   @BeforeClass
   public static void initFS() throws Exception {
@@ -61,7 +65,7 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
 
   @Test
   public void testEmptyJsonInput() throws Exception {
-    RecordBatch scanBatch = createEmptyBatchFromJson();
+    RecordBatch scanBatch = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     new MiniPlanTestBuilder()
         .root(scanBatch)
@@ -171,7 +175,7 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
   public void testUnionLeftEmtpy() throws Exception {
     final PhysicalOperator unionAll = new UnionAll(Collections.EMPTY_LIST); // Children list is provided through RecordBatch
 
-    RecordBatch left = createEmptyBatchFromJson();
+    RecordBatch left = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     String file = FileUtils.getResourceAsFile("/tpchmulti/region/01.parquet").toURI().toString();
 
@@ -207,7 +211,7 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
 
   @Test
   public void testHashJoinLeftEmpty() throws Exception {
-    RecordBatch left = createEmptyBatchFromJson();
+    RecordBatch left = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     List<String> rightJsonBatches = Lists.newArrayList(
         "[{\"a\": 50, \"b\" : 10 }]");
@@ -246,7 +250,7 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
         .columnsToRead("a", "b")
         .build();
 
-    RecordBatch right = createEmptyBatchFromJson();
+    RecordBatch right = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     RecordBatch joinBatch = new PopBuilder()
         .physicalOperator(new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "a2")), JoinRelType.INNER))
@@ -270,7 +274,7 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
 
   @Test
   public void testLeftHashJoinLeftEmpty() throws Exception {
-    RecordBatch left = createEmptyBatchFromJson();
+    RecordBatch left = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     List<String> rightJsonBatches = Lists.newArrayList(
         "[{\"a\": 50, \"b\" : 10 }]");
@@ -309,7 +313,7 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
         .columnsToRead("a", "b")
         .build();
 
-    RecordBatch right = createEmptyBatchFromJson();
+    RecordBatch right = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     RecordBatch joinBatch = new PopBuilder()
         .physicalOperator(new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "a2")), JoinRelType.LEFT))
@@ -394,7 +398,7 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
         .withSVMode(BatchSchema.SelectionVectorMode.NONE)
         .build();
 
-    final RecordBatch input = createEmptyBatchFromJson();
+    final RecordBatch input = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     RecordBatch batch = new PopBuilder()
         .physicalOperator(project) // Children list is provided through RecordBatch
@@ -408,24 +412,40 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
         .go();
   }
 
+  /**
+   * Given a physical, first construct scan batch from one single empty json, then construct scan batch from
+   * multiple empty json files. In both case, verify that the output is a NullBatch.
+   * @param pop
+   * @throws Exception
+   */
   private void testSingleInputEmptyBatchHandling(PhysicalOperator pop) throws Exception {
-    final RecordBatch input = createEmptyBatchFromJson();
+    final RecordBatch input = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
-    RecordBatch projBatch = new PopBuilder()
+    RecordBatch batch = new PopBuilder()
         .physicalOperator(pop)
         .addInput(input)
         .build();
 
     new MiniPlanTestBuilder()
-        .root(projBatch)
+        .root(batch)
         .expectNullBatch(true)
         .go();
 
+    final RecordBatch input2 = createScanBatchFromJson(SINGLE_EMPTY_JSON, SINGLE_EMPTY_JSON2);;
+    RecordBatch batch2 = new PopBuilder()
+        .physicalOperator(pop)
+        .addInput(input2)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(batch2)
+        .expectNullBatch(true)
+        .go();
   }
 
   private void testTwoInputEmptyBatchHandling(PhysicalOperator pop) throws Exception {
-    RecordBatch left = createEmptyBatchFromJson();
-    RecordBatch right = createEmptyBatchFromJson();
+    RecordBatch left = createScanBatchFromJson(SINGLE_EMPTY_JSON);
+    RecordBatch right = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     RecordBatch joinBatch = new PopBuilder()
         .physicalOperator(pop)
@@ -439,12 +459,16 @@ public class TestEmptyBatchMiniPlan extends MiniPlanUnitTestBase{
         .go();
   }
 
-  private RecordBatch createEmptyBatchFromJson() throws Exception {
-    String emptyFile = FileUtils.getResourceAsFile("/project/pushdown/empty.json").toURI().toString();
+  private RecordBatch createScanBatchFromJson(String... resourcePaths) throws Exception {
+    List<String> inputPaths = new ArrayList<>();
+
+    for (String resource : resourcePaths) {
+      inputPaths.add(FileUtils.getResourceAsFile(resource).toURI().toString());
+    }
 
     RecordBatch scanBatch = new JsonScanBuilder()
         .fileSystem(fs)
-        .inputPaths(Lists.newArrayList(emptyFile))
+        .inputPaths(inputPaths)
         .build();
 
     return scanBatch;
