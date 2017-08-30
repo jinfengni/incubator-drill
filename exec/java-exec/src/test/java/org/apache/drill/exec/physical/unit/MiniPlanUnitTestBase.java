@@ -51,6 +51,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static org.apache.drill.DrillTestWrapper.addToCombinedVectorResults;
 import static org.apache.drill.exec.physical.base.AbstractBase.INIT_ALLOCATION;
 import static org.apache.drill.exec.physical.base.AbstractBase.MAX_ALLOCATION;
 
@@ -70,7 +71,7 @@ public class MiniPlanUnitTestBase extends PhysicalOpUnitTestBase {
   public static class MiniPlanTestBuilder {
     protected List<Map<String, Object>> baselineRecords;
     protected RecordBatch root;
-    protected boolean expectNullBatch;  // for
+    protected Integer expectBatchNum = null;
     protected BatchSchema expectSchema;
     protected boolean expectZeroRow;
 
@@ -125,7 +126,19 @@ public class MiniPlanUnitTestBase extends PhysicalOpUnitTestBase {
      * @return
      */
     public MiniPlanTestBuilder expectNullBatch(boolean expectNullBatch) {
-      this.expectNullBatch = expectNullBatch;
+      if (expectNullBatch) {
+        this.expectBatchNum = 0;
+      }
+      return this;
+    }
+
+    /**
+     * Specify the expected number of batches from operator tree.
+     * @param
+     * @return
+     */
+    public MiniPlanTestBuilder expectBatchNum(int expectBatchNum) {
+      this.expectBatchNum = expectBatchNum;
       return this;
     }
 
@@ -138,15 +151,21 @@ public class MiniPlanUnitTestBase extends PhysicalOpUnitTestBase {
       final BatchIterator batchIterator = new BatchIterator(root);
 
       // verify case of zero batch.
-      if (expectNullBatch) {
+      if (expectBatchNum != null && expectBatchNum == 0) {
         if (batchIterator.iterator().hasNext()) {
-          throw new AssertionError("Expected zero batches from scan. But operators return at least 1 batch!");
+          throw new AssertionError("Expected zero batches from operator tree. But operators return at least 1 batch!");
         } else {
           return; // successful
         }
       }
+      Map<String, List<Object>> actualSuperVectors = new TreeMap();
 
-      Map<String, List<Object>> actualSuperVectors = DrillTestWrapper.addToCombinedVectorResults(batchIterator, expectSchema);
+      int actualBatchNum = DrillTestWrapper.addToCombinedVectorResults(batchIterator, expectSchema, actualSuperVectors);
+      if (expectBatchNum != null) {
+        if (expectBatchNum != actualBatchNum) {
+          throw new AssertionError(String.format("Expected %s batches from operator tree. But operators return %s batch!", expectBatchNum, actualBatchNum));
+        }
+      }
       Map<String, List<Object>> expectedSuperVectors;
       if (!expectZeroRow) {
         expectedSuperVectors = DrillTestWrapper.translateRecordListToHeapVectors(baselineRecords);

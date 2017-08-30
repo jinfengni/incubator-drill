@@ -767,22 +767,29 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
   }
 
   /**
-   * handle FAST NONE specially when Project for query output. This happens when input returns a
-   * FAST NONE directly ( input does not return any batch with schema/data).
+   * Handle Null input specially when Project operator is for query output. This happens when input return 0 batch
+   * (returns a FAST NONE directly.
    *
+   * <p>
    * Project operator has to return a batch with schema derived using the following 3 rules:
-   *  Case 1:  *  ==>  expand into an empty list of columns.
-   *  Case 2:  regular column reference ==> treat as nullable-int column
-   *  Case 3:  expressions => Call ExpressionTreeMaterialization over an empty vector contain.
+   * </p>
+   * <ul>
+   *  <li>Case 1:  *  ==>  expand into an empty list of columns. </li>
+   *  <li>Case 2:  regular column reference ==> treat as nullable-int column </li>
+   *  <li>Case 3:  expressions => Call ExpressionTreeMaterialization over an empty vector contain.
    *           Once the expression is materialized without error, use the output type of materialized
-   *           expression.
+   *           expression. </li>
+   * </ul>
+   *
+   * <p>
    * The batch is constructed with the above rules, and recordCount = 0.
    * Returned with OK_NEW_SCHEMA to down-stream operator.
+   * </p>
    */
   @Override
-  protected IterOutcome handleFastNone() {
+  protected IterOutcome handleNullInput() {
     if (! popConfig.isOutputProj()) {
-      return super.handleFastNone();
+      return super.handleNullInput();
     }
 
     allocationVectors = new ArrayList<>();

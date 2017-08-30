@@ -50,11 +50,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static org.reflections.util.ConfigurationBuilder.build;
+
 public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
   protected static DrillFileSystem fs;
 
   public final String SINGLE_EMPTY_JSON = "/scan/emptyInput/emptyJson/empty.json";
   public final String SINGLE_EMPTY_JSON2 = "/scan/emptyInput/emptyJson/empty2.json";
+  public final String SINGLE_JSON = "/scan/jsonTbl/1990/1.json";  // {id: 100, name : "John"}
+  public final String SINGLE_JSON2 = "/scan/jsonTbl/1991/2.json"; // {id: 1000, name : "Joe"}
 
   @BeforeClass
   public static void initFS() throws Exception {
@@ -63,6 +67,10 @@ public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
     fs = new DrillFileSystem(conf);
   }
 
+  /**
+   * Test ScanBatch with a single empty json file.
+   * @throws Exception
+   */
   @Test
   public void testEmptyJsonInput() throws Exception {
     RecordBatch scanBatch = createScanBatchFromJson(SINGLE_EMPTY_JSON);
@@ -70,6 +78,95 @@ public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
     new MiniPlanTestBuilder()
         .root(scanBatch)
         .expectNullBatch(true)
+        .go();
+  }
+
+  /**
+   * Test ScanBatch with mixed json files.
+   * input is empty, data_file, empty, data_file
+   * */
+  @Test
+  public void testJsonInputMixedWithEmptyFiles1() throws Exception {
+    RecordBatch scanBatch = createScanBatchFromJson(SINGLE_EMPTY_JSON, SINGLE_JSON, SINGLE_EMPTY_JSON2, SINGLE_JSON2);
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("id", TypeProtos.MinorType.BIGINT)
+        .addNullable("name", TypeProtos.MinorType.VARCHAR)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(scanBatch)
+        .expectSchema(expectedSchema)
+        .baselineValues(100L, "John")
+        .baselineValues(1000L, "Joe")
+        .expectBatchNum(2)
+        .go();
+
+  }
+
+  /**
+   * Test ScanBatch with mixed json files.
+   * input is empty, empty, data_file, data_file
+   * */
+  @Test
+  public void testJsonInputMixedWithEmptyFiles2() throws Exception {
+    RecordBatch scanBatch = createScanBatchFromJson(SINGLE_EMPTY_JSON, SINGLE_EMPTY_JSON2, SINGLE_JSON, SINGLE_JSON2);
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("id", TypeProtos.MinorType.BIGINT)
+        .addNullable("name", TypeProtos.MinorType.VARCHAR)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(scanBatch)
+        .expectSchema(expectedSchema)
+        .baselineValues(100L, "John")
+        .baselineValues(1000L, "Joe")
+        .expectBatchNum(2)
+        .go();
+  }
+
+  /**
+   * Test ScanBatch with mixed json files.
+   * input is empty, data_file, data_file, empty
+   * */
+  @Test
+  public void testJsonInputMixedWithEmptyFiles3() throws Exception {
+    RecordBatch scanBatch = createScanBatchFromJson(SINGLE_EMPTY_JSON, SINGLE_JSON, SINGLE_JSON2, SINGLE_EMPTY_JSON2);
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("id", TypeProtos.MinorType.BIGINT)
+        .addNullable("name", TypeProtos.MinorType.VARCHAR)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(scanBatch)
+        .expectSchema(expectedSchema)
+        .baselineValues(100L, "John")
+        .baselineValues(1000L, "Joe")
+        .expectBatchNum(2)
+        .go();
+  }
+
+  /**
+   * Test ScanBatch with mixed json files.
+   * input is data_file, data_file, empty, empty
+   * */
+  @Test
+  public void testJsonInputMixedWithEmptyFiles4() throws Exception {
+    RecordBatch scanBatch = createScanBatchFromJson(SINGLE_JSON, SINGLE_JSON2, SINGLE_EMPTY_JSON2, SINGLE_EMPTY_JSON2);
+
+    BatchSchema expectedSchema = new SchemaBuilder()
+        .addNullable("id", TypeProtos.MinorType.BIGINT)
+        .addNullable("name", TypeProtos.MinorType.VARCHAR)
+        .build();
+
+    new MiniPlanTestBuilder()
+        .root(scanBatch)
+        .expectSchema(expectedSchema)
+        .baselineValues(100L, "John")
+        .baselineValues(1000L, "Joe")
+        .expectBatchNum(2)
         .go();
   }
 

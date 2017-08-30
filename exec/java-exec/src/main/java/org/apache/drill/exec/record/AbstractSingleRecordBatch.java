@@ -24,8 +24,6 @@ import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.vector.SchemaChangeCallBack;
 
-import static org.apache.drill.exec.record.RecordBatch.IterOutcome.NOT_YET;
-
 public abstract class AbstractSingleRecordBatch<T extends PhysicalOperator> extends AbstractRecordBatch<T> {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(new Object() {}.getClass().getEnclosingClass());
 
@@ -64,7 +62,7 @@ public abstract class AbstractSingleRecordBatch<T extends PhysicalOperator> exte
     switch (upstream) {
     case NONE:
       if (state == BatchState.FIRST) {
-        return handleFastNone();
+        return handleNullInput();
       }
       return upstream;
     case NOT_YET:
@@ -133,17 +131,20 @@ public abstract class AbstractSingleRecordBatch<T extends PhysicalOperator> exte
   protected abstract IterOutcome doWork();
 
   /**
-   * Default behavior to handle fast NONE (incoming's first next() return NONE, in stead of OK_NEW_SCHEMA):
-   * FAST NONE could happen when the underneath Scan operators do not produce any batch with schema.
+   * Default behavior to handle NULL input (aka FAST NONE): incoming return NONE before return a OK_NEW_SCHEMA:
+   * This could happen when the underneath Scan operators do not produce any batch with schema.
+   *
+   * Notice that NULL input is different from input with an empty batch. In the later case, input provides
+   * at least a batch, thought it's empty.
    *
    * This behavior could be override in each individual operator, if the operator's semantics is to
    * inject a batch with schema.
    *
    * @return IterOutcome.NONE.
    */
-  protected IterOutcome handleFastNone() {
+  protected IterOutcome handleNullInput() {
     container.buildSchema(SelectionVectorMode.NONE);
     return IterOutcome.NONE;
-  };
+  }
 
 }
