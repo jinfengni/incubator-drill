@@ -50,9 +50,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.reflections.util.ConfigurationBuilder.build;
-
-public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
+public class TestNullInputMiniPlan extends MiniPlanUnitTestBase{
   protected static DrillFileSystem fs;
 
   public final String SINGLE_EMPTY_JSON = "/scan/emptyInput/emptyJson/empty.json";
@@ -173,99 +171,99 @@ public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
   @Test
   public void testProjectEmpty() throws Exception {
     final PhysicalOperator project = new Project(parseExprs("x+5", "x"), null);
-    testSingleInputEmptyBatchHandling(project);
+    testSingleInputNullBatchHandling(project);
   }
 
   @Test
   public void testFilterEmpty() throws Exception {
     final PhysicalOperator filter = new Filter(null, parseExpr("a=5"), 1.0f);
-    testSingleInputEmptyBatchHandling(filter);
+    testSingleInputNullBatchHandling(filter);
   }
 
   @Test
   public void testHashAggEmpty() throws Exception {
     final PhysicalOperator hashAgg = new HashAggregate(null, AggPrelBase.OperatorPhase.PHASE_1of1, parseExprs("a", "a"), parseExprs("sum(b)", "b_sum"), 1.0f);
-    testSingleInputEmptyBatchHandling(hashAgg);
+    testSingleInputNullBatchHandling(hashAgg);
   }
 
   @Test
   public void testStreamingAggEmpty() throws Exception {
     final PhysicalOperator hashAgg = new StreamingAggregate(null, parseExprs("a", "a"), parseExprs("sum(b)", "b_sum"), 1.0f);
-    testSingleInputEmptyBatchHandling(hashAgg);
+    testSingleInputNullBatchHandling(hashAgg);
   }
 
   @Test
   public void testSortEmpty() throws Exception {
     final PhysicalOperator sort = new ExternalSort(null,
         Lists.newArrayList(ordering("b", RelFieldCollation.Direction.ASCENDING, RelFieldCollation.NullDirection.FIRST)), false);
-    testSingleInputEmptyBatchHandling(sort);
+    testSingleInputNullBatchHandling(sort);
   }
 
   @Test
   public void testLimitEmpty() throws Exception {
     final PhysicalOperator limit = new Limit(null, 10, 5);
-    testSingleInputEmptyBatchHandling(limit);
+    testSingleInputNullBatchHandling(limit);
   }
 
   @Test
   public void testFlattenEmpty() throws Exception {
     final PhysicalOperator flatten = new FlattenPOP(null, SchemaPath.getSimplePath("col1"));
-    testSingleInputEmptyBatchHandling(flatten);
+    testSingleInputNullBatchHandling(flatten);
   }
 
   @Test
   public void testUnionEmptyBoth() throws Exception {
     final PhysicalOperator unionAll = new UnionAll(Collections.EMPTY_LIST); // Children list is provided through RecordBatch
-    testTwoInputEmptyBatchHandling(unionAll);
+    testTwoInputNullBatchHandling(unionAll);
   }
 
   @Test
   public void testHashJoinEmptyBoth() throws Exception {
    final PhysicalOperator join = new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.INNER);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
   public void testLeftHashJoinEmptyBoth() throws Exception {
     final PhysicalOperator join = new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.LEFT);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
   public void testRightHashJoinEmptyBoth() throws Exception {
     final PhysicalOperator join = new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.RIGHT);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
   public void testFullHashJoinEmptyBoth() throws Exception {
     final PhysicalOperator join = new HashJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.FULL);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
   public void testMergeJoinEmptyBoth() throws Exception {
     final PhysicalOperator join = new MergeJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.INNER);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
   public void testLeftMergeJoinEmptyBoth() throws Exception {
     final PhysicalOperator join = new MergeJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.LEFT);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
   public void testRightMergeJoinEmptyBoth() throws Exception {
     final PhysicalOperator join = new MergeJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.RIGHT);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
   @Ignore("Full Merge join is not supported.")
   public void testFullMergeJoinEmptyBoth() throws Exception {
     final PhysicalOperator join = new MergeJoinPOP(null, null, Lists.newArrayList(joinCond("a", "EQUALS", "b")), JoinRelType.FULL);
-    testTwoInputEmptyBatchHandling(join);
+    testTwoInputNullBatchHandling(join);
   }
 
   @Test
@@ -434,10 +432,10 @@ public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
   @Test
   public void testUnionFilterAll() throws Exception {
     List<String> leftJsonBatches = Lists.newArrayList(
-        "[{\"a\": 5, \"b\" : 1 }]");
+        "[{\"a\": 5, \"b\" : \"name1\" }]");
 
     List<String> rightJsonBatches = Lists.newArrayList(
-        "[{\"a\": 50, \"b\" : 10 }]");
+        "[{\"a\": 50, \"b\" : \"name2\" }]");
 
     RecordBatch leftScan = new JsonScanBuilder()
         .jsonBatches(leftJsonBatches)
@@ -467,7 +465,7 @@ public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
 
     BatchSchema expectedSchema = new SchemaBuilder()
         .addNullable("a", TypeProtos.MinorType.BIGINT)
-        .addNullable("b", TypeProtos.MinorType.BIGINT)
+        .addNullable("b", TypeProtos.MinorType.VARCHAR)
         .withSVMode(BatchSchema.SelectionVectorMode.NONE)
         .build();
 
@@ -515,7 +513,7 @@ public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
    * @param pop
    * @throws Exception
    */
-  private void testSingleInputEmptyBatchHandling(PhysicalOperator pop) throws Exception {
+  private void testSingleInputNullBatchHandling(PhysicalOperator pop) throws Exception {
     final RecordBatch input = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 
     RecordBatch batch = new PopBuilder()
@@ -540,7 +538,7 @@ public class TestEmptyInputMiniPlan extends MiniPlanUnitTestBase{
         .go();
   }
 
-  private void testTwoInputEmptyBatchHandling(PhysicalOperator pop) throws Exception {
+  private void testTwoInputNullBatchHandling(PhysicalOperator pop) throws Exception {
     RecordBatch left = createScanBatchFromJson(SINGLE_EMPTY_JSON);
     RecordBatch right = createScanBatchFromJson(SINGLE_EMPTY_JSON);
 

@@ -24,12 +24,10 @@ import org.apache.drill.exec.expr.holders.ValueHolder;
 
 public class UntypedNullHolder implements ValueHolder {
   public static final TypeProtos.MajorType TYPE = Types.optional(TypeProtos.MinorType.NULL);
+  public static final int WIDTH = 0;
+  public int isSet = 1;
 
   public TypeProtos.MajorType getType() {return TYPE;}
-
-  public static final int WIDTH = 0;
-
-  public int isSet = 1;
 
   @Deprecated
   public int hashCode(){
@@ -44,7 +42,5 @@ public class UntypedNullHolder implements ValueHolder {
   public String toString(){
     throw new UnsupportedOperationException();
   }
-
-
 
 }

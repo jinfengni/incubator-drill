@@ -57,10 +57,12 @@ public class ProjectPrel extends DrillProjectRelBase implements Prel{
    * @param rowType output rowType of projection expression.
    * @param outputProj true if ProjectPrel is inserted by {@link org.apache.drill.exec.planner.physical.visitor.TopProjectVisitor}
    *                   Such top Project operator does the following processing, before the result was presented to Screen/Writer
-   *                   1) ensure final output field names are preserved,
-   *                   2) handle cases where input does not return any batch (a fast NONE) (see ProjectRecordBatch.handleNullInput() method)
-   *                   3) handle cases where expressions in upstream operator were evaluated to NULL type
+   *                   <ol>
+   *                   <li>ensure final output field names are preserved</li>
+   *                   <li>handle cases where input does not return any batch (a fast NONE) (see ProjectRecordBatch.handleNullInput() method)</li>
+   *                   <li>handle cases where expressions in upstream operator were evaluated to NULL type </li>
    *                   (Null type will be converted into Nullable-INT)
+   *                   </ol>
    *                   false otherwise.
    */
   public ProjectPrel(RelOptCluster cluster, RelTraitSet traits, RelNode child, List<RexNode> exps,

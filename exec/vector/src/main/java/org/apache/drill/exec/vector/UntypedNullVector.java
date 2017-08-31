@@ -27,6 +27,8 @@ import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
+import static org.apache.calcite.sql.parser.impl.SqlParserImplConstants.C;
+
 /** UntypedNullVector is to represent a value vector with {@link org.apache.drill.common.types.MinorType#NULL}
  *  All values in the vector represent two semantic implications: 1) the value is unknown, 2) the type is unknown.
  *  Because of this, we only have to keep track of the number of values in value vector,
@@ -44,7 +46,7 @@ public final class UntypedNullVector extends BaseDataValueVector implements Fixe
 
   private final Accessor accessor = new Accessor();
   private final Mutator mutator = new Mutator();
-  private int valueCount ;
+  private int valueCount;
 
   public UntypedNullVector(MaterializedField field, BufferAllocator allocator) {
     super(field, allocator);
@@ -61,7 +63,7 @@ public final class UntypedNullVector extends BaseDataValueVector implements Fixe
 
   @Override
   public int getValueCapacity(){
-    return Character.MAX_VALUE;
+    return ValueVector.MAX_ROW_COUNT;
   }
 
   @Override
@@ -207,7 +209,8 @@ public final class UntypedNullVector extends BaseDataValueVector implements Fixe
 
     @Override
     public Object getObject(int index) {
-      throw new UnsupportedOperationException();
+      checkBounds(index);
+      return null;
     }
 
     public void get(int index, UntypedNullHolder holder) {
@@ -223,7 +226,7 @@ public final class UntypedNullVector extends BaseDataValueVector implements Fixe
    */
    public final class Mutator extends BaseMutator {
 
-    private Mutator() {};
+    private Mutator() {}
 
     public void set(int index, UntypedNullHolder holder) {
       throw new UnsupportedOperationException("UntypedNullVector does not support set");

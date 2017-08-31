@@ -187,6 +187,10 @@ public class TestEmptyInputSql extends BaseTestQuery {
         .run();
   }
 
+  /**
+   * Test select * against empty csv with empty header. * is expanded into empty list of fields.
+   * @throws Exception
+   */
   @Test
   public void testQueryEmptyCsvH() throws Exception {
     final String rootEmpty = FileUtils.getResourceAsFile(SINGLE_EMPTY_CSVH).toURI().toString();
@@ -201,6 +205,11 @@ public class TestEmptyInputSql extends BaseTestQuery {
         .run();
   }
 
+  /**
+   * Test select * against empty csv file. * is exapnede into "columns : repeated-varchar",
+   * which is the default column from reading a csv file.
+   * @throws Exception
+   */
   @Test
   public void testQueryEmptyCsv() throws Exception {
     final String rootEmpty = FileUtils.getResourceAsFile(SINGLE_EMPTY_CSV).toURI().toString();
@@ -214,6 +223,27 @@ public class TestEmptyInputSql extends BaseTestQuery {
         .build();
 
     expectedSchema.add(Pair.of(SchemaPath.getSimplePath("columns"), majorType));
+
+    testBuilder()
+        .sqlQuery(query1)
+        .schemaBaseLine(expectedSchema)
+        .build()
+        .run();
+  }
+
+  @Test
+  public void testExpressionMaterializeErrorEmptyJSON() throws Exception {
+    final String rootEmpty = FileUtils.getResourceAsFile(SINGLE_EMPTY_JSON).toURI().toString();
+    final String query1 = String.format("select afunctionNotExist(a) as col1 from dfs_test.`%s` ", rootEmpty);
+
+    final List<Pair<SchemaPath, TypeProtos.MajorType>> expectedSchema = Lists.newArrayList();
+
+    TypeProtos.MajorType majorType = TypeProtos.MajorType.newBuilder()
+        .setMinorType(TypeProtos.MinorType.VARCHAR)
+        .setMode(TypeProtos.DataMode.REPEATED)
+        .build();
+
+    expectedSchema.add(Pair.of(SchemaPath.getSimplePath("col1"), majorType));
 
     testBuilder()
         .sqlQuery(query1)

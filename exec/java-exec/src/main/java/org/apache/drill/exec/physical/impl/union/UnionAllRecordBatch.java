@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.physical.impl.union;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.calcite.util.Pair;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
@@ -41,9 +42,10 @@ import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.record.TransferPair;
 import org.apache.drill.exec.record.TypedFieldId;
+import org.apache.drill.exec.record.VectorAccessibleUtilities;
 import org.apache.drill.exec.record.VectorWrapper;
 import org.apache.drill.exec.resolver.TypeCastRules;
-import org.apache.drill.exec.vector.AllocationHelper;
+import org.apache.drill.exec.util.VectorUtil;
 import org.apache.drill.exec.vector.FixedWidthVector;
 import org.apache.drill.exec.vector.SchemaChangeCallBack;
 import org.apache.drill.exec.vector.ValueVector;
@@ -91,41 +93,23 @@ public class UnionAllRecordBatch extends AbstractBinaryRecordBatch<UnionAll> {
 
     container.buildSchema(BatchSchema.SelectionVectorMode.NONE);
 
-    for (VectorWrapper vv: container) {
-      vv.getValueVector().allocateNew();
-      vv.getValueVector().getMutator().setValueCount(0);
-    }
+    VectorAccessibleUtilities.allocateVectors(container, 0);
+    VectorAccessibleUtilities.setValueCount(container,0);
   }
 
   @Override
   public IterOutcome innerNext() {
     try {
-      if (!unionInputIterator.hasNext()) {
-        return IterOutcome.NONE;
-      }
+      while (true) {
+        if (!unionInputIterator.hasNext()) {
+          return IterOutcome.NONE;
+        }
 
-      Pair<IterOutcome, RecordBatch> nextBatch = unionInputIterator.next();
+        Pair<IterOutcome, RecordBatch> nextBatch = unionInputIterator.next();
+        IterOutcome upstream = nextBatch.left;
+        RecordBatch incoming = nextBatch.right;
 
-      IterOutcome upstream = nextBatch.left;
-      RecordBatch incoming = nextBatch.right;
-
-      // skip batches with same schema as the previous one yet having 0 row.
-      if (upstream == IterOutcome.OK && incoming.getRecordCount() == 0) {
-        do {
-          for (final VectorWrapper<?> w : incoming) {
-            w.clear();
-          }
-          if (!unionInputIterator.hasNext()) {
-            return IterOutcome.NONE;
-          }
-          nextBatch = unionInputIterator.next();
-          upstream = nextBatch.left;
-          incoming = nextBatch.right;
-        } while ((upstream == IterOutcome.OK) &&
-                incoming.getRecordCount() == 0);
-      }
-
-      switch(upstream) {
+        switch (upstream) {
         case NONE:
         case OUT_OF_MEMORY:
         case STOP:
@@ -133,9 +117,15 @@ public class UnionAllRecordBatch extends AbstractBinaryRecordBatch<UnionAll> {
         case OK_NEW_SCHEMA:
           return doWork(nextBatch.right, true);
         case OK:
+          // skip batches with same schema as the previous one yet having 0 row.
+          if (incoming.getRecordCount() == 0) {
+            VectorAccessibleUtilities.clear(incoming);
+            continue;
+          }
           return doWork(nextBatch.right, false);
         default:
-          throw new IllegalStateException(String.format("Unknown state %s.", nextBatch.left));
+          throw new IllegalStateException(String.format("Unknown state %s.", upstream));
+        }
       }
     } catch (ClassTransformationException | IOException | SchemaChangeException ex) {
       context.fail(ex);
@@ -152,25 +142,17 @@ public class UnionAllRecordBatch extends AbstractBinaryRecordBatch<UnionAll> {
 
   @SuppressWarnings("resource")
   private IterOutcome doWork(RecordBatch inputBatch, boolean newSchema) throws ClassTransformationException, IOException, SchemaChangeException {
-    if (inputBatch.getSchema().getFieldCount() != container.getSchema().getFieldCount()) {
-      // wrong.
-    }
+    Preconditions.checkArgument(inputBatch.getSchema().getFieldCount() == container.getSchema().getFieldCount(),
+        "Input batch and output batch have different field counthas!");
 
     if (newSchema) {
       createUnionAller(inputBatch);
     }
 
     container.zeroVectors();
-
-    for (final ValueVector v : this.allocationVectors) {
-      AllocationHelper.allocateNew(v, inputBatch.getRecordCount());
-    }
-
+    VectorUtil.allocateVectors(allocationVectors, inputBatch.getRecordCount());
     recordCount = unionall.unionRecords(0, inputBatch.getRecordCount(), 0);
-    for (final ValueVector v : allocationVectors) {
-      final ValueVector.Mutator m = v.getMutator();
-      m.setValueCount(recordCount);
-    }
+    VectorUtil.setValueCount(allocationVectors, recordCount);
 
     if (callBack.getSchemaChangedAndReset()) {
       return IterOutcome.OK_NEW_SCHEMA;
@@ -181,7 +163,7 @@ public class UnionAllRecordBatch extends AbstractBinaryRecordBatch<UnionAll> {
 
   private void createUnionAller(RecordBatch inputBatch) throws ClassTransformationException, IOException, SchemaChangeException {
     transfers.clear();
-    allocationVectors.clear();;
+    allocationVectors.clear();
 
     final ClassGenerator<UnionAller> cg = CodeGenerator.getRoot(UnionAller.TEMPLATE_DEFINITION, context.getFunctionRegistry(), context.getOptions());
     cg.getCodeGenerator().plainJavaCapable(true);
@@ -198,16 +180,15 @@ public class UnionAllRecordBatch extends AbstractBinaryRecordBatch<UnionAll> {
       // transfer directly,
       // rename columns or
       // cast data types (Minortype or DataMode)
-      if (hasSameTypeAndMode(container.getSchema().getColumn(index), vvIn.getField())
+      if (container.getSchema().getColumn(index).hasSameTypeAndMode(vvIn.getField())
           && vvIn.getField().getType().getMinorType() != TypeProtos.MinorType.MAP // Per DRILL-5521, existing bug for map transfer
           ) {
         // Transfer column
         TransferPair tp = vvIn.makeTransferPair(vvOut);
         transfers.add(tp);
-        // Copy data in order to rename the column
       } else if (vvIn.getField().getType().getMinorType() == TypeProtos.MinorType.NULL) {
         continue;
-      } else {
+      } else { // Copy data in order to rename the column
         SchemaPath inputPath = SchemaPath.getSimplePath(vvIn.getField().getPath());
         MaterializedField inField = vvIn.getField();
         MaterializedField outputField = vvOut.getField();
@@ -265,7 +246,7 @@ public class UnionAllRecordBatch extends AbstractBinaryRecordBatch<UnionAll> {
       MaterializedField leftField  = leftIter.next();
       MaterializedField rightField = rightIter.next();
 
-      if (hasSameTypeAndMode(leftField, rightField)) {
+      if (leftField.hasSameTypeAndMode(rightField)) {
         TypeProtos.MajorType.Builder builder = TypeProtos.MajorType.newBuilder().setMinorType(leftField.getType().getMinorType()).setMode(leftField.getDataMode());
         builder = Types.calculateTypePrecisionAndScale(leftField.getType(), rightField.getType(), builder);
         container.addOrGet(MaterializedField.create(leftField.getPath(), builder.build()), callBack);

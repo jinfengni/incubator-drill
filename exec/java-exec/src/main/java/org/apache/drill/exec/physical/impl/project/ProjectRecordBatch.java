@@ -805,6 +805,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project> {
     VectorContainer emptyVC = new VectorContainer();
     emptyVC.buildSchema(SelectionVectorMode.NONE);
     RecordBatch emptyIncomingBatch = new SimpleRecordBatch(emptyVC, context);
+
     try {
       setupNewSchemaFromInput(emptyIncomingBatch);
     } catch (SchemaChangeException e) {
