@@ -48,8 +48,8 @@ public class DrillPushProjIntoScan extends RelOptRule {
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    final Project proj = (Project) call.rel(0);
-    final TableScan scan = (TableScan) call.rel(1);
+    final Project proj = call.rel(0);
+    final TableScan scan = call.rel(1);
 
     try {
       ProjectPushInfo columnInfo = PrelUtil.getColumns(scan.getRowType(), proj.getProjects());
@@ -60,7 +60,7 @@ public class DrillPushProjIntoScan extends RelOptRule {
         table = scan.getTable().unwrap(DrillTranslatableTable.class).getDrillTable();
       }
 
-      if (columnInfo == null || columnInfo.isStarQuery() //
+      if (columnInfo == null
           || !table //
           .getGroupScan().canPushdownProjects(columnInfo.columns)) {
         return;

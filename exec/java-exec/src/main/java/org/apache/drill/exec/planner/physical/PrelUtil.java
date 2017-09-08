@@ -289,6 +289,12 @@ public class PrelUtil {
       if ("ITEM".equals(call.getOperator().getName())) {
         PathSegment mapOrArray = call.operands.get(0).accept(this);
         if (mapOrArray != null) {
+          if (mapOrArray instanceof NameSegment && ((NameSegment)mapOrArray).getPath().equals("*")) {
+            PathSegment child = convertLiteral((RexLiteral) call.operands.get(1));
+            if (child instanceof NameSegment) {
+              return child;
+            }
+          }
           if (call.operands.get(1) instanceof RexLiteral) {
             return mapOrArray.cloneWithNewChild(convertLiteral((RexLiteral) call.operands.get(1)));
           }
