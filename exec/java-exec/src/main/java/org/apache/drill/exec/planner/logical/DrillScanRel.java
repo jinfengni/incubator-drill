@@ -20,6 +20,7 @@ package org.apache.drill.exec.planner.logical;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.collect.Lists;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.drill.common.JSONOptions;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
@@ -53,7 +54,7 @@ public class DrillScanRel extends DrillScanRelBase implements DrillRel {
   final private RelDataType rowType;
   private GroupScan groupScan;
   private List<SchemaPath> columns;
-  private PlannerSettings settings;
+  private final PlannerSettings settings;
   private final boolean partitionFilterPushdown;
 
   /** Creates a DrillScan. */
@@ -64,10 +65,8 @@ public class DrillScanRel extends DrillScanRelBase implements DrillRel {
     /** Creates a DrillScan. */
   public DrillScanRel(final RelOptCluster cluster, final RelTraitSet traits,
       final RelOptTable table, boolean partitionFilterPushdown) {
-    // By default, scan does not support project pushdown.
-    // Decision whether push projects into scan will be made solely in DrillPushProjIntoScanRule.
-    this(cluster, traits, table, table.getRowType(), GroupScan.ALL_COLUMNS, partitionFilterPushdown);
-    this.settings = PrelUtil.getPlannerSettings(cluster.getPlanner());
+    // By default, scan's rowType specify the list of columns to read. Pass the column list created from rowType.
+    this(cluster, traits, table, table.getRowType(), getColumnListFromRowType(table.getRowType()), partitionFilterPushdown);
   }
 
   /** Creates a DrillScan. */
@@ -108,16 +107,6 @@ public class DrillScanRel extends DrillScanRelBase implements DrillRel {
     this.settings = PrelUtil.getPlannerSettings(cluster.getPlanner());
     this.partitionFilterPushdown = partitionFilterPushdown;
   }
-
-//
-//  private static GroupScan getCopy(GroupScan scan){
-//    try {
-//      return (GroupScan) scan.getNewWithChildren((List<PhysicalOperator>) (Object) Collections.emptyList());
-//    } catch (ExecutionSetupException e) {
-//      throw new DrillRuntimeException("Unexpected failure while coping node.", e);
-//    }
-//  }
-
   public List<SchemaPath> getColumns() {
     return this.columns;
   }
@@ -194,4 +183,11 @@ public class DrillScanRel extends DrillScanRelBase implements DrillRel {
     return this.partitionFilterPushdown;
   }
 
+  private static List<SchemaPath> getColumnListFromRowType(RelDataType rowType) {
+    List<SchemaPath> columns = Lists.newArrayList();
+    for (String name : rowType.getFieldNames()) {
+      columns.add(SchemaPath.getSimplePath(name));
+    }
+    return columns;
+  }
 }
